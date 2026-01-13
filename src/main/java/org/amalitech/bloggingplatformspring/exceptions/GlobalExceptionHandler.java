@@ -41,4 +41,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(status).body(errorResponse);
     }
 
+    @ExceptionHandler(UserRegistrationException.class)
+    public ResponseEntity<ErrorResponse> handleUserRegistrationException(UserRegistrationException e) {
+        HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+        ErrorResponse errorResponse = new ErrorResponse(
+                "INTERNAL SERVER EXCEPTION",
+                e.getMessage(),
+                status.value()
+        );
+        return ResponseEntity.status(status).body(errorResponse);
+    }
+
 }
