@@ -28,13 +28,13 @@ public class UserDAO implements UserRepository {
     }
 
     @Override
-    public User registerUser() throws SQLException {
+    public User saveUser(String username, String email, String password) throws SQLException {
         String checkQuery = "SELECT COUNT(*) FROM users WHERE username = ? OR email = ?";
         try (Connection conn = getConnection();
              PreparedStatement checkStmt = conn.prepareStatement(checkQuery)) {
 
-            checkStmt.setString(1, "user");
-            checkStmt.setString(2, "user@email.com");
+            checkStmt.setString(1, username);
+            checkStmt.setString(2, email);
 
             try (ResultSet rs = checkStmt.executeQuery()) {
                 if (rs.next() && rs.getInt(1) > 0) {
@@ -48,9 +48,9 @@ public class UserDAO implements UserRepository {
                         RETURNING id, username, email, password
                     """;
             try (PreparedStatement stmt = conn.prepareStatement(insertQuery)) {
-                stmt.setString(1, "user");
-                stmt.setString(2, "user@email.com");
-                stmt.setString(3, "password");
+                stmt.setString(1, username);
+                stmt.setString(2, email);
+                stmt.setString(3, password);
 
                 try (ResultSet rs = stmt.executeQuery()) {
                     if (rs.next()) {

@@ -5,6 +5,6 @@ import org.amalitech.bloggingplatformspring.entity.User;
 import java.sql.SQLException;
 
 public interface UserRepository {
-    User registerUser() throws SQLException;
+    User saveUser(String username, String email, String password) throws SQLException;
 
 }

@@ -1,7 +1,9 @@
 package org.amalitech.bloggingplatformspring.services;
 
+import org.amalitech.bloggingplatformspring.dtos.requests.RegisterUserDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.UserResponseDTO;
 import org.amalitech.bloggingplatformspring.entity.User;
+import org.amalitech.bloggingplatformspring.exceptions.BadRequestException;
 import org.amalitech.bloggingplatformspring.exceptions.UserRegistrationException;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.amalitech.bloggingplatformspring.utils.UserUtils;
@@ -20,9 +22,17 @@ public class UserService {
         this.userUtils = new UserUtils();
     }
 
-    public UserResponseDTO registerUser() {
+    public UserResponseDTO registerUser(RegisterUserDTO registerUserDTO) {
+        String username = registerUserDTO.getUsername();
+        String email = registerUserDTO.getEmail();
+        String password = registerUserDTO.getPassword();
+
+        if (password.toLowerCase().contains(username)) {
+            throw new BadRequestException("Password must not contain username");
+        }
+
         try {
-            User user = userRepository.registerUser();
+            User user = userRepository.saveUser(username, email, password);
             return userUtils.mapUserToUserResponse(user);
 
         } catch (SQLException e) {
@@ -30,4 +40,7 @@ public class UserService {
         }
     }
 
+    public UserResponseDTO signInUser() {
+        return null;
+    }
 }

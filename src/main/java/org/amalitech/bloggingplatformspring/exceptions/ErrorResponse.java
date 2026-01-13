@@ -10,11 +10,11 @@ import java.time.format.DateTimeFormatter;
 @Setter
 public class ErrorResponse {
     private String errorStatus;
-    private String errorMessage;
+    private Object errorMessage;
     private int errorCode;
     private String timestamp;
 
-    public ErrorResponse(String errorStatus, String errorMessage, int errorCode) {
+    public ErrorResponse(String errorStatus, Object errorMessage, int errorCode) {
         this.errorStatus = errorStatus;
         this.errorMessage = errorMessage;
         this.errorCode = errorCode;
