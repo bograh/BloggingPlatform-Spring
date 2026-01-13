@@ -16,7 +16,7 @@ import java.sql.SQLException;
 public class UserDAO implements UserRepository {
 
     private final ConnectionProvider connectionProvider;
-    private UserUtils userUtils;
+    private final UserUtils userUtils;
 
     public UserDAO(ConnectionProvider connectionProvider) {
         this.connectionProvider = connectionProvider;
@@ -61,4 +61,24 @@ public class UserDAO implements UserRepository {
         }
         throw new SQLException("Failed to register user");
     }
+
+
+    @Override
+    public User getUserByEmailAndPassword(String email, String password) throws SQLException {
+        UserUtils userUtils = new UserUtils();
+        String query = "SELECT * FROM users WHERE email = ? AND password = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setString(1, email);
+            stmt.setString(2, password);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return userUtils.mapRowToUser(rs);
+            }
+        }
+        return null;
+    }
+
+
 }

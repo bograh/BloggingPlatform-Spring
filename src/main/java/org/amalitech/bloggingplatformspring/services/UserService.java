@@ -1,10 +1,11 @@
 package org.amalitech.bloggingplatformspring.services;
 
 import org.amalitech.bloggingplatformspring.dtos.requests.RegisterUserDTO;
+import org.amalitech.bloggingplatformspring.dtos.requests.SignInUserDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.UserResponseDTO;
 import org.amalitech.bloggingplatformspring.entity.User;
 import org.amalitech.bloggingplatformspring.exceptions.BadRequestException;
-import org.amalitech.bloggingplatformspring.exceptions.UserRegistrationException;
+import org.amalitech.bloggingplatformspring.exceptions.SQLQueryException;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.amalitech.bloggingplatformspring.utils.UserUtils;
 import org.springframework.stereotype.Service;
@@ -32,15 +33,25 @@ public class UserService {
         }
 
         try {
+
             User user = userRepository.saveUser(username, email, password);
             return userUtils.mapUserToUserResponse(user);
 
         } catch (SQLException e) {
-            throw new UserRegistrationException("Failed to register user");
+            throw new SQLQueryException("Failed to register user");
         }
     }
 
-    public UserResponseDTO signInUser() {
-        return null;
+    public UserResponseDTO signInUser(SignInUserDTO signInUserDTO) {
+        try {
+
+            User user = userRepository.getUserByEmailAndPassword(signInUserDTO.getEmail(), signInUserDTO.getPassword());
+            return userUtils.mapUserToUserResponse(user);
+
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+            e.printStackTrace();
+            throw new SQLQueryException("Failed to sign user");
+        }
     }
 }

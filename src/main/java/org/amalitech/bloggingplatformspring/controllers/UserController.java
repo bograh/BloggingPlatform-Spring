@@ -31,8 +31,8 @@ public class UserController {
     }
 
     @PostMapping("/sign-in")
-    public ResponseEntity<ApiResponse<UserResponseDTO>> signInUser(@RequestBody SignInUserDTO signInUserDTO) {
-        UserResponseDTO userResponse = userService.signInUser();
+    public ResponseEntity<ApiResponse<UserResponseDTO>> signInUser(@Valid @RequestBody SignInUserDTO signInUserDTO) {
+        UserResponseDTO userResponse = userService.signInUser(signInUserDTO);
         ApiResponse<UserResponseDTO> response = ApiResponse.success("User sign in successful", userResponse);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
