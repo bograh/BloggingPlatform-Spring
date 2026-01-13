@@ -18,7 +18,7 @@ public class RegisterUserDTO {
     @NotBlank(message = "Email cannot be blank")
     private String email;
 
-    @Size(min = 6, max = 50, message = "Username cannot be less than 6 or greater than 50")
+    @Size(min = 6, max = 50, message = "Password cannot be less than 6 or greater than 50")
     @NotBlank(message = "Password cannot be blank")
     private String password;
 }
