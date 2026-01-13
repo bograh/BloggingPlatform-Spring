@@ -18,8 +18,8 @@ public class GlobalExceptionHandler {
 
         HttpStatus status = HttpStatus.NOT_FOUND;
 
-        return ResponseEntity.status(status)
-                .body(new ErrorResponse(
+        return ResponseEntity.status(status).body(
+                new ErrorResponse(
                         "NOT FOUND",
                         e.getMessage(),
                         status.value()
@@ -27,13 +27,12 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(BadRequestException.class)
-    public ResponseEntity<ErrorResponse> handleBadRequestException(
-            BadRequestException e) {
+    public ResponseEntity<ErrorResponse> handleBadRequestException(BadRequestException e) {
 
         HttpStatus status = HttpStatus.BAD_REQUEST;
 
-        return ResponseEntity.status(status)
-                .body(new ErrorResponse(
+        return ResponseEntity.status(status).body(
+                new ErrorResponse(
                         "BAD REQUEST",
                         e.getMessage(),
                         status.value()
@@ -41,27 +40,25 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(ForbiddenException.class)
-    public ResponseEntity<ErrorResponse> handleForbiddenException(
-            ForbiddenException e) {
+    public ResponseEntity<ErrorResponse> handleForbiddenException(ForbiddenException e) {
 
         HttpStatus status = HttpStatus.FORBIDDEN;
 
-        return ResponseEntity.status(status)
-                .body(new ErrorResponse(
+        return ResponseEntity.status(status).body(
+                new ErrorResponse(
                         "FORBIDDEN",
                         e.getMessage(),
                         status.value()
                 ));
     }
 
-    @ExceptionHandler(UserRegistrationException.class)
-    public ResponseEntity<ErrorResponse> handleUserRegistrationException(
-            UserRegistrationException e) {
+    @ExceptionHandler(SQLQueryException.class)
+    public ResponseEntity<ErrorResponse> handleSQLQueryException(SQLQueryException e) {
 
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
 
-        return ResponseEntity.status(status)
-                .body(new ErrorResponse(
+        return ResponseEntity.status(status).body(
+                new ErrorResponse(
                         "INTERNAL SERVER ERROR",
                         e.getMessage(),
                         status.value()
@@ -69,8 +66,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleValidationException(
-            MethodArgumentNotValidException e) {
+    public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException e) {
 
         Map<String, String> fieldErrors = new HashMap<>();
 
@@ -82,8 +78,8 @@ public class GlobalExceptionHandler {
 
         HttpStatus status = HttpStatus.BAD_REQUEST;
 
-        return ResponseEntity.status(status)
-                .body(new ErrorResponse(
+        return ResponseEntity.status(status).body(
+                new ErrorResponse(
                         "VALIDATION FAILED",
                         fieldErrors,
                         status.value()
