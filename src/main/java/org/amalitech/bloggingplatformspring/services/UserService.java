@@ -49,8 +49,6 @@ public class UserService {
             return userUtils.mapUserToUserResponse(user);
 
         } catch (SQLException e) {
-            System.out.println(e.getMessage());
-            e.printStackTrace();
             throw new SQLQueryException("Failed to sign user");
         }
     }

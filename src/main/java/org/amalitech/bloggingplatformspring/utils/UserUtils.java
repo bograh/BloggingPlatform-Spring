@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 public class UserUtils {
 
     public User mapRowToUser(ResultSet rs) throws SQLException {
-        Long id = rs.getLong("id");
+        long id = rs.getInt("id");
         String username = rs.getString("username");
         String email = rs.getString("email");
         LocalDateTime createdAt = rs.getTimestamp("created_at").toLocalDateTime();
