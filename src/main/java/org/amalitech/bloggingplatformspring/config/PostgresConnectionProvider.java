@@ -8,13 +8,18 @@ import java.sql.SQLException;
 
 @Configuration
 public class PostgresConnectionProvider implements ConnectionProvider {
+    private final DatabaseConfig databaseConfig;
+
+    public PostgresConnectionProvider(DatabaseConfig databaseConfig) {
+        this.databaseConfig = databaseConfig;
+    }
 
     @Override
     public Connection getConnection() throws SQLException {
         return DriverManager.getConnection(
-                DatabaseConfig.DB_URL,
-                DatabaseConfig.DB_USER,
-                DatabaseConfig.DB_PASSWORD
+                databaseConfig.getDbUrl(),
+                databaseConfig.getDbUser(),
+                databaseConfig.getDbPassword()
         );
     }
 }
