@@ -2,8 +2,10 @@ package org.amalitech.bloggingplatformspring.services;
 
 import lombok.extern.slf4j.Slf4j;
 import org.amalitech.bloggingplatformspring.dtos.requests.CreatePostDTO;
+import org.amalitech.bloggingplatformspring.dtos.requests.UpdatePostDTO;
 import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
 import org.amalitech.bloggingplatformspring.entity.Post;
+import org.amalitech.bloggingplatformspring.entity.User;
 import org.amalitech.bloggingplatformspring.exceptions.BadRequestException;
 import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
 import org.amalitech.bloggingplatformspring.exceptions.SQLQueryException;
@@ -13,7 +15,9 @@ import org.amalitech.bloggingplatformspring.utils.PostUtils;
 import org.springframework.stereotype.Service;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -38,7 +42,7 @@ public class PostService {
             return postUtils.createResponseFromPostAndTags(post, authorName, tagNames);
 
         } catch (SQLException e) {
-            throw new SQLQueryException("Failed to create post");
+            throw new SQLQueryException("Failed to create post: " + e.getMessage());
         }
     }
 
@@ -47,7 +51,7 @@ public class PostService {
             return postRepository.getAllPosts();
 
         } catch (SQLException e) {
-            throw new SQLQueryException("Error occurred while fetching posts.");
+            throw new SQLQueryException("Error occurred while fetching posts: " + e.getMessage());
         }
     }
 
@@ -63,7 +67,40 @@ public class PostService {
             );
 
         } catch (SQLException e) {
-            throw new SQLQueryException("Error occurred while fetching posts.");
+            throw new SQLQueryException("Error occurred while fetching posts: " + e.getMessage());
+        }
+    }
+
+    public PostResponseDTO updatePost(int postId, UpdatePostDTO updatePostDTO) {
+        try {
+            PostResponseDTO existingPost = postRepository.getPostById(postId).orElseThrow(
+                    () -> new ResourceNotFoundException("Post with ID: " + postId + " not found.")
+            );
+
+            User user = userRepository.findUserByUsername(existingPost.getAuthor()).orElseThrow(
+                    () -> new ResourceNotFoundException("User not found with username: " + existingPost.getAuthor())
+            );
+
+            String title = updatePostDTO.getTitle() == null
+                    ? existingPost.getTitle() : updatePostDTO.getTitle();
+
+            String body = updatePostDTO.getBody() == null
+                    ? existingPost.getBody() : updatePostDTO.getBody();
+
+            UUID authorId = user.getId();
+
+            List<String> newTagList = new ArrayList<>(existingPost.getTags());
+            List<String> newTags = updatePostDTO.getTags().isEmpty() ? List.of() : updatePostDTO.getTags();
+            newTagList.addAll(newTags);
+
+            Post post = new Post(existingPost.getId(), title, body, authorId, null, null);
+
+            Post updatedPost = postRepository.updatePost(post, newTagList);
+
+            return postUtils.createResponseFromPostAndTags(updatedPost, user.getUsername(), newTagList);
+
+        } catch (SQLException e) {
+            throw new SQLQueryException("Error occurred while updating post: " + e.getMessage());
         }
     }
 

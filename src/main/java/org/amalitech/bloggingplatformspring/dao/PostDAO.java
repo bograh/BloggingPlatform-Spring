@@ -5,6 +5,7 @@ import org.amalitech.bloggingplatformspring.config.ConnectionProvider;
 import org.amalitech.bloggingplatformspring.dtos.requests.CreatePostDTO;
 import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
 import org.amalitech.bloggingplatformspring.entity.Post;
+import org.amalitech.bloggingplatformspring.exceptions.ForbiddenException;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.TagRepository;
 import org.amalitech.bloggingplatformspring.utils.PostUtils;
@@ -17,7 +18,6 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Slf4j
 @Repository
@@ -60,26 +60,7 @@ public class PostDAO implements PostRepository {
                 }
 
                 List<String> tagNames = createPostDTO.getTags();
-                if (tagNames != null && !tagNames.isEmpty()) {
-
-                    try (PreparedStatement ps = conn.prepareStatement(insertPostTagQuery)) {
-                        for (String tagName : tagNames) {
-                            int tagId;
-                            if (tagRepository.existsByName(tagName)) {
-                                tagId = tagRepository.getIdByName(tagName).orElse(-1);
-                            } else {
-                                tagId = tagRepository.saveTag(tagName).getId();
-                            }
-//                            tagIds.add(tagId);
-
-                            ps.setInt(1, post.getId());
-                            ps.setInt(2, tagId);
-                            ps.addBatch();
-                        }
-
-                        ps.executeBatch();
-                    }
-                }
+                savePostTags(post, conn, tagNames);
                 conn.commit();
                 return post;
             } catch (SQLException e) {
@@ -162,8 +143,36 @@ public class PostDAO implements PostRepository {
     }
 
     @Override
-    public Post updatePost() throws SQLException {
-        return null;
+    public Post updatePost(Post post, List<String> tagNames) throws SQLException {
+        String updatePostSql =
+                "UPDATE posts SET title=?, body=?, updated_at=CURRENT_TIMESTAMP " +
+                        "WHERE id=? AND author_id=?";
+
+        try (Connection conn = getConnection()) {
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement stmt = conn.prepareStatement(updatePostSql)) {
+                stmt.setString(1, post.getTitle());
+                stmt.setString(2, post.getBody());
+                stmt.setInt(3, post.getId());
+                stmt.setObject(4, post.getAuthorId());
+
+                if (stmt.executeUpdate() == 0) {
+                    throw new ForbiddenException("You are not permitted to update this post");
+                }
+            }
+
+            try (PreparedStatement ps =
+                         conn.prepareStatement("DELETE FROM post_tags WHERE post_id=?")) {
+                ps.setInt(1, post.getId());
+                ps.executeUpdate();
+            }
+
+            savePostTags(post, conn, tagNames);
+            conn.commit();
+            return post;
+
+        }
     }
 
     @Override
@@ -174,7 +183,22 @@ public class PostDAO implements PostRepository {
     private ResultSet executeInsert(PreparedStatement stmt, CreatePostDTO dto) throws SQLException {
         stmt.setString(1, dto.getTitle());
         stmt.setString(2, dto.getBody());
-        stmt.setObject(3, UUID.fromString(dto.getAuthorId()));
+        stmt.setObject(3, dto.getAuthorId());
         return stmt.executeQuery();
+    }
+
+    private void savePostTags(Post post, Connection conn, List<String> tagNames) throws SQLException {
+        if (tagNames != null && !tagNames.isEmpty()) {
+            try (PreparedStatement ps =
+                         conn.prepareStatement("INSERT INTO post_tags (post_id, tag_id) VALUES (?, ?)")) {
+                for (String tagName : tagNames) {
+                    int tagId = tagRepository.findOrCreate(tagName, conn);
+                    ps.setInt(1, post.getId());
+                    ps.setInt(2, tagId);
+                    ps.addBatch();
+                }
+                ps.executeBatch();
+            }
+        }
     }
 }
