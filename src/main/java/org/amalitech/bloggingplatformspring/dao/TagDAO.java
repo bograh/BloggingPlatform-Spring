@@ -69,7 +69,7 @@ public class TagDAO implements TagRepository {
     }
 
     @Override
-    public List<Tag> getAllTagsFromList(List<String> tagsList) throws SQLException {
+    public List<Tag> getAllTagsFromNamesList(List<String> tagsList) throws SQLException {
         if (tagsList == null || tagsList.isEmpty()) {
             return Collections.emptyList();
         }

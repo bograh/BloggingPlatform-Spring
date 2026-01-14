@@ -12,7 +12,7 @@ public interface TagRepository {
 
     List<Tag> getAllTags() throws SQLException;
 
-    List<Tag> getAllTagsFromList(List<String> tagsList) throws SQLException;
+    List<Tag> getAllTagsFromNamesList(List<String> tagsList) throws SQLException;
 
     Boolean existsByName(String name) throws SQLException;
 

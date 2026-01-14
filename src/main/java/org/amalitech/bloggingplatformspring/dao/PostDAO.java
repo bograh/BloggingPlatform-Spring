@@ -43,7 +43,6 @@ public class PostDAO implements PostRepository {
                 """;
         String insertPostTagQuery = "INSERT INTO post_tags (post_id, tag_id) VALUES (?, ?)";
 
-//        List<Integer> tagIds = new ArrayList<>();
         Post post;
         try (Connection conn = getConnection()) {
             conn.setAutoCommit(false);
