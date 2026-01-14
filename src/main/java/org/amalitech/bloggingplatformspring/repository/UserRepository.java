@@ -14,4 +14,6 @@ public interface UserRepository {
     String getUsernameById(UUID id) throws SQLException;
 
     Optional<User> findUserById(UUID id) throws SQLException;
+
+    Optional<User> findUserByUsername(String username) throws SQLException;
 }

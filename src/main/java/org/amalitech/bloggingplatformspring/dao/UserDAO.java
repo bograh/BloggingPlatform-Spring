@@ -114,5 +114,20 @@ public class UserDAO implements UserRepository {
         return Optional.empty();
     }
 
+    @Override
+    public Optional<User> findUserByUsername(String username) throws SQLException {
+        String query = "SELECT * FROM users WHERE username = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setObject(1, username);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return Optional.ofNullable(userUtils.mapRowToUser(rs));
+            }
+        }
+        return Optional.empty();
+    }
+
 
 }
