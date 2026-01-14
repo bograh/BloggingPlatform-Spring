@@ -46,7 +46,7 @@ public class UserDAO implements UserRepository {
             String insertQuery = """
                         INSERT INTO users (username, email, password)
                         VALUES (?, ?, ?)
-                        RETURNING id, username, email, password
+                        RETURNING id, username, email, password, created_at
                     """;
             try (PreparedStatement stmt = conn.prepareStatement(insertQuery)) {
                 stmt.setString(1, username);
