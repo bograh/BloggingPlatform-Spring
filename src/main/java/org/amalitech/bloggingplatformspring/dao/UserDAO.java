@@ -83,5 +83,20 @@ public class UserDAO implements UserRepository {
         throw new ForbiddenException("Invalid email or password");
     }
 
+    @Override
+    public String getUsernameById(String authorId) throws SQLException {
+        String query = "SELECT username FROM users WHERE id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setString(1, authorId);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getString("username");
+            }
+        }
+        return "";
+    }
+
 
 }
