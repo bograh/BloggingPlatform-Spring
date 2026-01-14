@@ -16,6 +16,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Slf4j
 @Repository
@@ -39,7 +41,7 @@ public class PostDAO implements PostRepository {
     public Post savePost(CreatePostDTO createPostDTO) throws SQLException {
         String insertPostQuery = """
                     INSERT INTO posts (title, body, author_id) VALUES (?, ?, ?)
-                    RETURNING id, title, body, author_id, updated_at
+                    RETURNING id, title, body, author_id, posted_at, updated_at
                 """;
         String insertPostTagQuery = "INSERT INTO post_tags (post_id, tag_id) VALUES (?, ?)";
 
@@ -124,7 +126,7 @@ public class PostDAO implements PostRepository {
     }
 
     @Override
-    public PostResponseDTO getPostById(int id) throws SQLException {
+    public Optional<PostResponseDTO> getPostById(int id) throws SQLException {
         String query = """
                     SELECT
                         p.id,
@@ -153,10 +155,10 @@ public class PostDAO implements PostRepository {
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next()) {
-                return postUtils.mapRowToPostResponse(rs);
+                return Optional.ofNullable(postUtils.mapRowToPostResponse(rs));
             }
         }
-        return null;
+        return Optional.empty();
     }
 
     @Override
@@ -172,7 +174,7 @@ public class PostDAO implements PostRepository {
     private ResultSet executeInsert(PreparedStatement stmt, CreatePostDTO dto) throws SQLException {
         stmt.setString(1, dto.getTitle());
         stmt.setString(2, dto.getBody());
-        stmt.setString(3, dto.getAuthorId());
+        stmt.setObject(3, UUID.fromString(dto.getAuthorId()));
         return stmt.executeQuery();
     }
 }

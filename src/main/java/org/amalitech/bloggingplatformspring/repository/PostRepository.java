@@ -6,13 +6,14 @@ import org.amalitech.bloggingplatformspring.entity.Post;
 
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Optional;
 
 public interface PostRepository {
     Post savePost(CreatePostDTO createPostDTO) throws SQLException;
 
     List<PostResponseDTO> getAllPosts() throws SQLException;
 
-    PostResponseDTO getPostById(int id) throws SQLException;
+    Optional<PostResponseDTO> getPostById(int id) throws SQLException;
 
     Post updatePost() throws SQLException;
 

@@ -19,7 +19,7 @@ public class PostUtils {
         String body = rs.getString("body");
         LocalDateTime createdAt = rs.getTimestamp("posted_at").toLocalDateTime();
         LocalDateTime updatedAt = rs.getTimestamp("updated_at").toLocalDateTime();
-        String authorId = rs.getString("author_id");
+        String authorId = rs.getObject("author_id").toString();
 
         return new Post(
                 id, title, body,
@@ -45,9 +45,9 @@ public class PostUtils {
         );
     }
 
-    public PostResponseDTO createResponseFromPostAndTags(Post post, List<String> tags) {
+    public PostResponseDTO createResponseFromPostAndTags(Post post, String authorName, List<String> tags) {
         return new PostResponseDTO(
-                post.getId(), post.getTitle(), post.getBody(), post.getAuthorId(), tags, formatDate(post.getUpdatedAt())
+                post.getId(), post.getTitle(), post.getBody(), authorName, tags, formatDate(post.getUpdatedAt())
         );
     }
 
