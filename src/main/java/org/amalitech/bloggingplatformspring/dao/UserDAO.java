@@ -12,6 +12,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.UUID;
 
 @Repository
 public class UserDAO implements UserRepository {
@@ -44,14 +45,15 @@ public class UserDAO implements UserRepository {
             }
 
             String insertQuery = """
-                        INSERT INTO users (username, email, password)
-                        VALUES (?, ?, ?)
+                        INSERT INTO users (id, username, email, password)
+                        VALUES (?, ?, ?, ?)
                         RETURNING id, username, email, password, created_at
                     """;
             try (PreparedStatement stmt = conn.prepareStatement(insertQuery)) {
-                stmt.setString(1, username);
-                stmt.setString(2, email);
-                stmt.setString(3, password);
+                stmt.setObject(1, UUID.randomUUID());
+                stmt.setString(2, username);
+                stmt.setString(3, email);
+                stmt.setString(4, password);
 
                 try (ResultSet rs = stmt.executeQuery()) {
                     if (rs.next()) {
