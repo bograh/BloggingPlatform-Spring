@@ -45,7 +45,7 @@ public class UserService {
     public UserResponseDTO signInUser(SignInUserDTO signInUserDTO) {
         try {
 
-            User user = userRepository.getUserByEmailAndPassword(signInUserDTO.getEmail(), signInUserDTO.getPassword());
+            User user = userRepository.findUserByEmailAndPassword(signInUserDTO.getEmail(), signInUserDTO.getPassword());
             return userUtils.mapUserToUserResponse(user);
 
         } catch (SQLException e) {

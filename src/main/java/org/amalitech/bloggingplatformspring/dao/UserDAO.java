@@ -12,6 +12,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -67,7 +68,7 @@ public class UserDAO implements UserRepository {
 
 
     @Override
-    public User getUserByEmailAndPassword(String email, String password) throws SQLException {
+    public User findUserByEmailAndPassword(String email, String password) throws SQLException {
         UserUtils userUtils = new UserUtils();
         String query = "SELECT * FROM users WHERE email = ? AND password = ?";
         try (Connection conn = getConnection();
@@ -96,6 +97,21 @@ public class UserDAO implements UserRepository {
             }
         }
         return "";
+    }
+
+    @Override
+    public Optional<User> findUserById(UUID id) throws SQLException {
+        String query = "SELECT * FROM users WHERE id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setObject(1, id);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return Optional.ofNullable(userUtils.mapRowToUser(rs));
+            }
+        }
+        return Optional.empty();
     }
 
 
