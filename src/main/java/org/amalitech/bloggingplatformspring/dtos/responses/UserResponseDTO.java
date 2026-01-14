@@ -1,4 +1,4 @@
-package org.amalitech.bloggingplatformspring.dtos.requests;
+package org.amalitech.bloggingplatformspring.dtos.responses;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

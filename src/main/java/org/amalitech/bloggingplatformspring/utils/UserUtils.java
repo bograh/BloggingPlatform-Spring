@@ -1,6 +1,6 @@
 package org.amalitech.bloggingplatformspring.utils;
 
-import org.amalitech.bloggingplatformspring.dtos.requests.UserResponseDTO;
+import org.amalitech.bloggingplatformspring.dtos.responses.UserResponseDTO;
 import org.amalitech.bloggingplatformspring.entity.User;
 
 import java.sql.ResultSet;

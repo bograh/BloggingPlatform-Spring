@@ -2,7 +2,7 @@ package org.amalitech.bloggingplatformspring.services;
 
 import org.amalitech.bloggingplatformspring.dtos.requests.RegisterUserDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.SignInUserDTO;
-import org.amalitech.bloggingplatformspring.dtos.requests.UserResponseDTO;
+import org.amalitech.bloggingplatformspring.dtos.responses.UserResponseDTO;
 import org.amalitech.bloggingplatformspring.entity.User;
 import org.amalitech.bloggingplatformspring.exceptions.BadRequestException;
 import org.amalitech.bloggingplatformspring.exceptions.SQLQueryException;
