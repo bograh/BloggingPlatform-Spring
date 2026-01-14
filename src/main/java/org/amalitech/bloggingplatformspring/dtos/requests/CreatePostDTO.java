@@ -21,5 +21,5 @@ public class CreatePostDTO {
 
     @UUID(message = "Invalid author ID format")
     @NotBlank(message = "Author ID should not be blank")
-    private String authorId;
+    private UUID authorId;
 }

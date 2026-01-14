@@ -38,7 +38,6 @@ public class UserService {
             return userUtils.mapUserToUserResponse(user);
 
         } catch (SQLException e) {
-            e.printStackTrace();
             throw new SQLQueryException("Failed to register user");
         }
     }

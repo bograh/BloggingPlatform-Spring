@@ -15,7 +15,7 @@ public interface PostRepository {
 
     Optional<PostResponseDTO> getPostById(int id) throws SQLException;
 
-    Post updatePost() throws SQLException;
+    Post updatePost(Post post, List<String> tagNames) throws SQLException;
 
     void deletePost(int id, String signedInUserId) throws SQLException;
 

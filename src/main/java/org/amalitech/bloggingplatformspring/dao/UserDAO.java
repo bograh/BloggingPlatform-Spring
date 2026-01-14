@@ -84,12 +84,12 @@ public class UserDAO implements UserRepository {
     }
 
     @Override
-    public String getUsernameById(String userId) throws SQLException {
+    public String getUsernameById(UUID userId) throws SQLException {
         String query = "SELECT username FROM users WHERE id = ?";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
 
-            stmt.setObject(1, UUID.fromString(userId));
+            stmt.setObject(1, userId);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
                 return rs.getString("username");

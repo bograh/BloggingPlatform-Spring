@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -15,7 +16,7 @@ public class Post {
     private int id;
     private String title;
     private String body;
-    private String authorId;
+    private UUID authorId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
