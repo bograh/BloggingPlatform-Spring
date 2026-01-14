@@ -73,6 +73,8 @@ public class PostService {
 
     public PostResponseDTO updatePost(int postId, UpdatePostDTO updatePostDTO) {
         try {
+            // check if userId == post.authorId, then throw ForbiddenException
+
             PostResponseDTO existingPost = postRepository.getPostById(postId).orElseThrow(
                     () -> new ResourceNotFoundException("Post with ID: " + postId + " not found.")
             );
@@ -90,7 +92,7 @@ public class PostService {
             UUID authorId = user.getId();
 
             List<String> newTagList = new ArrayList<>(existingPost.getTags());
-            List<String> newTags = updatePostDTO.getTags().isEmpty() ? List.of() : updatePostDTO.getTags();
+            List<String> newTags = updatePostDTO.getTags() == null ? List.of() : updatePostDTO.getTags();
             newTagList.addAll(newTags);
 
             Post post = new Post(existingPost.getId(), title, body, authorId, null, null);
