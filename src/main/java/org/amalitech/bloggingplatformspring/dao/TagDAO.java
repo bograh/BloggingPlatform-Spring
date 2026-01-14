@@ -6,10 +6,7 @@ import org.amalitech.bloggingplatformspring.repository.TagRepository;
 import org.amalitech.bloggingplatformspring.utils.TagUtils;
 import org.springframework.stereotype.Repository;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -130,4 +127,35 @@ public class TagDAO implements TagRepository {
         }
     }
 
+    @Override
+    public int findOrCreate(String tagName, Connection conn) throws SQLException {
+        String selectSql = "SELECT id FROM tags WHERE name = ?";
+
+        try (PreparedStatement selectStmt = conn.prepareStatement(selectSql)) {
+            selectStmt.setString(1, tagName);
+
+            try (ResultSet rs = selectStmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt("id");
+                }
+            }
+        }
+
+        String insertSql = "INSERT INTO tags (name) VALUES (?)";
+
+        try (PreparedStatement insertStmt =
+                     conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
+
+            insertStmt.setString(1, tagName);
+            insertStmt.executeUpdate();
+
+            try (ResultSet keys = insertStmt.getGeneratedKeys()) {
+                if (keys.next()) {
+                    return keys.getInt(1);
+                }
+            }
+        }
+
+        throw new SQLException("Failed to find or create tag: " + tagName);
+    }
 }
