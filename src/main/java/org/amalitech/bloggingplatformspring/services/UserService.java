@@ -34,6 +34,14 @@ public class UserService {
 
         try {
 
+            if (userRepository.userExistsByUsername(username)) {
+                throw new BadRequestException("Username is taken");
+            }
+
+            if (userRepository.userExistsByEmail(email)) {
+                throw new BadRequestException("Email is taken");
+            }
+
             User user = userRepository.saveUser(username, email, password);
             return userUtils.mapUserToUserResponse(user);
 

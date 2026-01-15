@@ -12,6 +12,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -115,6 +116,16 @@ public class UserDAO implements UserRepository {
     }
 
     @Override
+    public Boolean userExistsByUsername(String username) throws SQLException {
+        return userExistsByField("username", username);
+    }
+
+    @Override
+    public Boolean userExistsByEmail(String email) throws SQLException {
+        return userExistsByField("email", email);
+    }
+
+    @Override
     public Optional<User> findUserByUsername(String username) throws SQLException {
         String query = "SELECT * FROM users WHERE username = ?";
         try (Connection conn = getConnection();
@@ -129,5 +140,20 @@ public class UserDAO implements UserRepository {
         return Optional.empty();
     }
 
+    private Boolean userExistsByField(String fieldName, String value) throws SQLException {
+        if (!List.of("username", "email").contains(fieldName)) {
+            throw new IllegalArgumentException("Invalid field name: " + fieldName);
+        }
 
+        String query = "SELECT COUNT(*) FROM users WHERE " + fieldName + " = ?";
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setString(1, value);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next() && rs.getInt(1) > 0;
+            }
+        }
+    }
 }
