@@ -1,10 +1,7 @@
 package org.amalitech.bloggingplatformspring.services;
 
 import lombok.extern.slf4j.Slf4j;
-import org.amalitech.bloggingplatformspring.dtos.requests.CreatePostDTO;
-import org.amalitech.bloggingplatformspring.dtos.requests.DeletePostRequestDTO;
-import org.amalitech.bloggingplatformspring.dtos.requests.PageRequest;
-import org.amalitech.bloggingplatformspring.dtos.requests.UpdatePostDTO;
+import org.amalitech.bloggingplatformspring.dtos.requests.*;
 import org.amalitech.bloggingplatformspring.dtos.responses.PageResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
 import org.amalitech.bloggingplatformspring.entity.Post;
@@ -54,11 +51,9 @@ public class PostService {
         }
     }
 
-    public PageResponse<PostResponseDTO> getPaginatedPosts(int page, int size, String sortBy, String sortDirection) {
-        int pageSize = Math.min(50, size);
-        PageRequest pageRequest = new PageRequest(page, pageSize, sortBy, sortDirection);
+    public PageResponse<PostResponseDTO> getPaginatedPosts(PageRequest pageRequest, PostFilterRequest postFilterRequest) {
         try {
-            return postRepository.getAllPosts(pageRequest);
+            return postRepository.getAllPosts(pageRequest, postFilterRequest);
         } catch (SQLException e) {
             throw new SQLQueryException("Error occurred while fetching posts: " + e.getMessage());
         }

@@ -2,6 +2,7 @@ package org.amalitech.bloggingplatformspring.repository;
 
 import org.amalitech.bloggingplatformspring.dtos.requests.CreatePostDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.PageRequest;
+import org.amalitech.bloggingplatformspring.dtos.requests.PostFilterRequest;
 import org.amalitech.bloggingplatformspring.dtos.responses.PageResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
 import org.amalitech.bloggingplatformspring.entity.Post;
@@ -26,5 +27,5 @@ public interface PostRepository {
 
     List<String> getTagsByPostId(int postId) throws SQLException;
 
-    PageResponse<PostResponseDTO> getAllPosts(PageRequest pageRequest) throws SQLException;
+    PageResponse<PostResponseDTO> getAllPosts(PageRequest pageRequest, PostFilterRequest postFilterRequest) throws SQLException;
 }

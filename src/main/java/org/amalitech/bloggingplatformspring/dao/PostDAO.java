@@ -2,8 +2,11 @@ package org.amalitech.bloggingplatformspring.dao;
 
 import lombok.extern.slf4j.Slf4j;
 import org.amalitech.bloggingplatformspring.config.ConnectionProvider;
+import org.amalitech.bloggingplatformspring.dao.helpers.DAOHelperMethods;
+import org.amalitech.bloggingplatformspring.dao.helpers.FilterClause;
 import org.amalitech.bloggingplatformspring.dtos.requests.CreatePostDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.PageRequest;
+import org.amalitech.bloggingplatformspring.dtos.requests.PostFilterRequest;
 import org.amalitech.bloggingplatformspring.dtos.responses.PageResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
 import org.amalitech.bloggingplatformspring.entity.Post;
@@ -31,11 +34,13 @@ public class PostDAO implements PostRepository {
     private final ConnectionProvider connectionProvider;
     private final TagRepository tagRepository;
     private final PostUtils postUtils;
+    private final DAOHelperMethods helperMethods;
 
     public PostDAO(ConnectionProvider connectionProvider, TagRepository tagRepository) {
         this.connectionProvider = connectionProvider;
         this.tagRepository = tagRepository;
         this.postUtils = new PostUtils();
+        helperMethods = new DAOHelperMethods();
     }
 
     private Connection getConnection() throws SQLException {
@@ -109,7 +114,7 @@ public class PostDAO implements PostRepository {
         return posts;
     }
 
-    public PageResponse<PostResponseDTO> getAllPosts(PageRequest pageRequest) throws SQLException {
+    public PageResponse<PostResponseDTO> getAllPosts(PageRequest pageRequest, PostFilterRequest postFilterRequest) throws SQLException {
         if (pageRequest == null) {
             throw new IllegalArgumentException("PageRequest cannot be null");
         }
@@ -118,9 +123,11 @@ public class PostDAO implements PostRepository {
         int page = pageRequest.page();
         int offset = page * size;
 
-        PostSortField sortField = matchSortByToEntityField(pageRequest.sortBy());
-        SortDirection direction = getSortDirection(pageRequest.sortDirection());
-        String orderByClause = buildOrderByClause(sortField, direction);
+        PostSortField sortField = helperMethods.matchSortByToEntityField(pageRequest.sortBy());
+        SortDirection direction = helperMethods.getSortDirection(pageRequest.sortDirection());
+        String orderByClause = helperMethods.buildOrderByClause(sortField, direction);
+        FilterClause filterClause = helperMethods.buildFilterClause(postFilterRequest);
+        String whereClause = filterClause.whereClause();
 
         String query = """
                 SELECT
@@ -139,19 +146,26 @@ public class PostDAO implements PostRepository {
                 JOIN users u ON u.id = p.author_id
                 LEFT JOIN post_tags pt ON pt.post_id = p.id
                 LEFT JOIN tags t ON t.id = pt.tag_id
+                %s
                 GROUP BY
                     p.id, p.title, p.body, p.updated_at, u.username
                 ORDER BY %s
                 LIMIT ? OFFSET ?
-                """.formatted(orderByClause);
+                """.formatted(whereClause, orderByClause);
 
         List<PostResponseDTO> posts = new ArrayList<>();
         int totalElements = 0;
 
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
-            stmt.setInt(1, size);
-            stmt.setInt(2, offset);
+
+            int paramIndex = 1;
+            for (Object param : filterClause.parameters()) {
+                stmt.setObject(paramIndex++, param);
+            }
+
+            stmt.setInt(paramIndex++, size);
+            stmt.setInt(paramIndex, offset);
 
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
@@ -316,45 +330,4 @@ public class PostDAO implements PostRepository {
         }
     }
 
-    private PostSortField matchSortByToEntityField(String sortBy) {
-        if (sortBy == null || sortBy.isBlank()) {
-            return PostSortField.UPDATED_AT;
-        }
-
-        return switch (sortBy.toLowerCase().trim()) {
-            case "id" -> PostSortField.ID;
-            case "title" -> PostSortField.TITLE;
-            case "body" -> PostSortField.BODY;
-            case "author" -> PostSortField.AUTHOR;
-            default -> PostSortField.UPDATED_AT;
-        };
-    }
-
-    private SortDirection getSortDirection(String sortDirection) {
-        if (sortDirection == null || sortDirection.isBlank()) {
-            return SortDirection.DESC;
-        }
-
-        return switch (sortDirection.toUpperCase().trim()) {
-            case "ASC", "ASCENDING" -> SortDirection.ASC;
-            default -> SortDirection.DESC;
-        };
-    }
-
-    private String buildOrderByClause(PostSortField sortField, SortDirection direction) {
-        String column = switch (sortField) {
-            case ID -> "p.id";
-            case TITLE -> "p.title";
-            case BODY -> "p.body";
-            case AUTHOR -> "u.username";
-            case UPDATED_AT -> "p.updated_at";
-        };
-
-        String dir = switch (direction) {
-            case ASC -> "ASC";
-            case DESC -> "DESC";
-        };
-
-        return column + " " + dir;
-    }
 }
