@@ -18,6 +18,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Slf4j
 @Repository
@@ -73,23 +74,21 @@ public class PostDAO implements PostRepository {
     @Override
     public List<PostResponseDTO> getAllPosts() throws SQLException {
         String query = """
-                    SELECT
-                        p.id,
-                        p.title,
-                        p.body,
-                        p.updated_at,
-                        u.username AS author,
-                        COALESCE(
-                            ARRAY_AGG(t.name ORDER BY t.name)
-                            FILTER (WHERE t.name IS NOT NULL),
-                            '{}'
-                        ) AS tags
-                    FROM posts p
+                SELECT
+                    p.id,
+                    p.title,
+                    p.body,
+                    p.updated_at,
+                    u.username AS author,
+                    COALESCE(ARRAY_AGG (t.name ORDER BY t.name)
+                    FILTER (WHERE t.name IS NOT NULL), '{}') AS tags
+                FROM posts p
                     JOIN users u ON u.id = p.author_id
                     LEFT JOIN post_tags pt ON pt.post_id = p.id
                     LEFT JOIN tags t ON t.id = pt.tag_id
-                    GROUP BY p.id, u.username, p.posted_at
-                    ORDER BY p.posted_at DESC
+                GROUP BY
+                    p.id, p.title,p.body, p.updated_at, u.username
+                ORDER BY p.updated_at DESC
                 """;
 
         List<PostResponseDTO> posts = new ArrayList<>();
@@ -107,26 +106,41 @@ public class PostDAO implements PostRepository {
     }
 
     @Override
-    public Optional<PostResponseDTO> getPostById(int id) throws SQLException {
+    public Optional<Post> findPostById(int id) throws SQLException {
+        String query = "SELECT * FROM posts WHERE id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setInt(1, id);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return Optional.ofNullable(postUtils.mapRowToPost(rs));
+            }
+
+        }
+        return Optional.empty();
+    }
+
+    @Override
+    public Optional<PostResponseDTO> getPostResponseById(int id) throws SQLException {
         String query = """
-                    SELECT
-                        p.id,
-                        p.title,
-                        p.body,
-                        p.updated_at,
-                        u.username AS author,
-                        COALESCE(
-                            ARRAY_AGG(t.name ORDER BY t.name)
-                            FILTER (WHERE t.name IS NOT NULL),
-                            '{}'
-                        ) AS tags
-                    FROM posts p
-                    JOIN users u ON u.id = p.author_id
-                    LEFT JOIN post_tags pt ON pt.post_id = p.id
-                    LEFT JOIN tags t ON t.id = pt.tag_id
-                    WHERE p.id = ?
-                    GROUP BY p.id, u.username, p.posted_at
-                    ORDER BY p.posted_at DESC
+                SELECT
+                    p.id,
+                    p.title,
+                    p.body,
+                    p.updated_at,
+                    u.username AS author,
+                    COALESCE(ARRAY_AGG (t.name ORDER BY t.name)
+                             FILTER (WHERE t.name IS NOT NULL), '{}') AS tags
+                FROM posts p
+                         JOIN users u ON u.id = p.author_id
+                         LEFT JOIN post_tags pt ON pt.post_id = p.id
+                         LEFT JOIN tags t ON t.id = pt.tag_id
+                WHERE p.id = ?
+                GROUP BY
+                    p.id, p.title,p.body, p.updated_at, u.username
+                ORDER BY p.updated_at DESC
                 """;
 
         try (Connection conn = getConnection();
@@ -143,7 +157,7 @@ public class PostDAO implements PostRepository {
     }
 
     @Override
-    public Post updatePost(Post post, List<String> tagNames) throws SQLException {
+    public void updatePost(Post post, List<String> tagNames) throws SQLException {
         String updatePostSql =
                 "UPDATE posts SET title=?, body=?, updated_at=CURRENT_TIMESTAMP " +
                         "WHERE id=? AND author_id=?";
@@ -170,14 +184,46 @@ public class PostDAO implements PostRepository {
 
             savePostTags(post, conn, tagNames);
             conn.commit();
-            return post;
 
         }
     }
 
     @Override
-    public void deletePost(int id, String signedInUserId) throws SQLException {
+    public void deletePost(int postId, UUID signedInUserId) throws SQLException {
+        String query = "DELETE FROM posts WHERE id = ? AND author_id = ?";
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
 
+            stmt.setInt(1, postId);
+            stmt.setObject(2, signedInUserId);
+
+            stmt.executeUpdate();
+        }
+    }
+
+    @Override
+    public List<String> getTagsByPostId(int postId) throws SQLException {
+        String query = """
+                SELECT t.name
+                FROM tags t
+                JOIN post_tags pt ON pt.tag_id = t.id
+                WHERE pt.post_id = ?
+                ORDER BY t.name;
+                """;
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setInt(1, postId);
+            ResultSet rs = stmt.executeQuery();
+
+            List<String> tags = new ArrayList<>();
+
+
+            while (rs.next()) {
+                tags.add(rs.getString("name"));
+            }
+            return tags;
+        }
     }
 
     private ResultSet executeInsert(PreparedStatement stmt, CreatePostDTO dto) throws SQLException {

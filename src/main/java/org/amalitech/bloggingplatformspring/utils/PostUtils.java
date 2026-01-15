@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 public class PostUtils {
 
@@ -19,7 +20,7 @@ public class PostUtils {
         String body = rs.getString("body");
         LocalDateTime createdAt = rs.getTimestamp("posted_at").toLocalDateTime();
         LocalDateTime updatedAt = rs.getTimestamp("updated_at").toLocalDateTime();
-        String authorId = rs.getObject("author_id").toString();
+        UUID authorId = (UUID) rs.getObject("author_id");
 
         return new Post(
                 id, title, body,

@@ -2,6 +2,8 @@ package org.amalitech.bloggingplatformspring.controllers;
 
 import jakarta.validation.Valid;
 import org.amalitech.bloggingplatformspring.dtos.requests.CreatePostDTO;
+import org.amalitech.bloggingplatformspring.dtos.requests.DeletePostRequestDTO;
+import org.amalitech.bloggingplatformspring.dtos.requests.UpdatePostDTO;
 import org.amalitech.bloggingplatformspring.dtos.responses.ApiResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
 import org.amalitech.bloggingplatformspring.services.PostService;
@@ -40,5 +42,19 @@ public class PostController {
         PostResponseDTO post = postService.getPostById(postId);
         ApiResponse<PostResponseDTO> response = ApiResponse.success("Post retrieved successfully", post);
         return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{postId}")
+    public ResponseEntity<ApiResponse<PostResponseDTO>> updatePost(@PathVariable int postId, @RequestBody UpdatePostDTO updatePostDTO) {
+        PostResponseDTO post = postService.updatePost(postId, updatePostDTO);
+        ApiResponse<PostResponseDTO> response = ApiResponse.success("Post updated successfully", post);
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{postId}")
+    public ResponseEntity<ApiResponse<Void>> deletePost(@PathVariable int postId, @RequestBody DeletePostRequestDTO deletePostRequestDTO) {
+        postService.deletePost(postId, deletePostRequestDTO);
+        ApiResponse<Void> response = ApiResponse.success("Post deleted successfully.");
+        return new ResponseEntity<>(response, HttpStatus.NO_CONTENT);
     }
 }

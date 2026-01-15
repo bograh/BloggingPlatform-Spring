@@ -2,13 +2,12 @@ package org.amalitech.bloggingplatformspring.services;
 
 import lombok.extern.slf4j.Slf4j;
 import org.amalitech.bloggingplatformspring.dtos.requests.CreatePostDTO;
+import org.amalitech.bloggingplatformspring.dtos.requests.DeletePostRequestDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.UpdatePostDTO;
 import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
 import org.amalitech.bloggingplatformspring.entity.Post;
 import org.amalitech.bloggingplatformspring.entity.User;
-import org.amalitech.bloggingplatformspring.exceptions.BadRequestException;
-import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
-import org.amalitech.bloggingplatformspring.exceptions.SQLQueryException;
+import org.amalitech.bloggingplatformspring.exceptions.*;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.amalitech.bloggingplatformspring.utils.PostUtils;
@@ -62,7 +61,7 @@ public class PostService {
 
         try {
 
-            return postRepository.getPostById(postId).orElseThrow(
+            return postRepository.getPostResponseById(postId).orElseThrow(
                     () -> new ResourceNotFoundException("Post not Found with ID: " + postId)
             );
 
@@ -73,15 +72,18 @@ public class PostService {
 
     public PostResponseDTO updatePost(int postId, UpdatePostDTO updatePostDTO) {
         try {
-            // check if userId == post.authorId, then throw ForbiddenException
 
-            PostResponseDTO existingPost = postRepository.getPostById(postId).orElseThrow(
+            PostResponseDTO existingPost = postRepository.getPostResponseById(postId).orElseThrow(
                     () -> new ResourceNotFoundException("Post with ID: " + postId + " not found.")
             );
 
             User user = userRepository.findUserByUsername(existingPost.getAuthor()).orElseThrow(
                     () -> new ResourceNotFoundException("User not found with username: " + existingPost.getAuthor())
             );
+
+            if (!user.getUsername().equalsIgnoreCase(existingPost.getAuthor())) {
+                throw new ForbiddenException("You are not permitted to edit this post.");
+            }
 
             String title = updatePostDTO.getTitle() == null
                     ? existingPost.getTitle() : updatePostDTO.getTitle();
@@ -103,6 +105,30 @@ public class PostService {
 
         } catch (SQLException e) {
             throw new SQLQueryException("Error occurred while updating post: " + e.getMessage());
+        }
+    }
+
+    public void deletePost(int postId, DeletePostRequestDTO deletePostRequestDTO) {
+        try {
+            UUID userID = UUID.fromString(deletePostRequestDTO.getAuthorId());
+
+            Post post = postRepository.findPostById(postId).orElseThrow(
+                    () -> new ResourceNotFoundException("Post with ID: " + postId + " not found.")
+            );
+
+            User user = userRepository.findUserById(userID).orElseThrow(
+                    () -> new ResourceNotFoundException("User not found with username: " + userID.toString()));
+
+            if (!user.getId().equals(post.getAuthorId())) {
+                throw new ForbiddenException("You are not permitted to delete this post.");
+            }
+
+            postRepository.deletePost(postId, userID);
+
+        } catch (IllegalArgumentException e) {
+            throw new InvalidUserIdFormatException("Invalid user ID format: " + e.getMessage());
+        } catch (SQLException e) {
+            throw new SQLQueryException("Error occurred while deleting post: " + e.getMessage());
         }
     }
 
