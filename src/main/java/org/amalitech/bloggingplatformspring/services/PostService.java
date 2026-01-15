@@ -14,7 +14,9 @@ import org.amalitech.bloggingplatformspring.utils.PostUtils;
 import org.springframework.stereotype.Service;
 
 import java.sql.SQLException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -73,36 +75,44 @@ public class PostService {
     public PostResponseDTO updatePost(int postId, UpdatePostDTO updatePostDTO) {
         try {
 
-            PostResponseDTO existingPost = postRepository.getPostResponseById(postId).orElseThrow(
+            UUID userID = UUID.fromString(updatePostDTO.getAuthorId());
+
+            Post post = postRepository.findPostById(postId).orElseThrow(
                     () -> new ResourceNotFoundException("Post with ID: " + postId + " not found.")
             );
 
-            User user = userRepository.findUserByUsername(existingPost.getAuthor()).orElseThrow(
-                    () -> new ResourceNotFoundException("User not found with username: " + existingPost.getAuthor())
+            User user = userRepository.findUserById(userID).orElseThrow(
+                    () -> new ResourceNotFoundException("User not found with ID: " + userID)
             );
 
-            if (!user.getUsername().equalsIgnoreCase(existingPost.getAuthor())) {
+            if (!user.getId().equals(post.getAuthorId())) {
                 throw new ForbiddenException("You are not permitted to edit this post.");
             }
 
             String title = updatePostDTO.getTitle() == null
-                    ? existingPost.getTitle() : updatePostDTO.getTitle();
+                    ? post.getTitle() : updatePostDTO.getTitle();
 
             String body = updatePostDTO.getBody() == null
-                    ? existingPost.getBody() : updatePostDTO.getBody();
+                    ? post.getBody() : updatePostDTO.getBody();
 
-            UUID authorId = user.getId();
+            List<String> updatedTags = updatePostDTO.getTags() == null
+                    ? postRepository.getTagsByPostId(postId)
+                    : new ArrayList<>(new HashSet<>(updatePostDTO.getTags()));
 
-            List<String> newTagList = new ArrayList<>(existingPost.getTags());
-            List<String> newTags = updatePostDTO.getTags() == null ? List.of() : updatePostDTO.getTags();
-            newTagList.addAll(newTags);
+            Post updatedPost = new Post(
+                    post.getId(),
+                    title,
+                    body,
+                    post.getAuthorId(),
+                    post.getCreatedAt(),
+                    LocalDateTime.now()
+            );
 
-            Post post = new Post(existingPost.getId(), title, body, authorId, null, null);
+            postRepository.updatePost(updatedPost, updatedTags);
+            return postUtils.createResponseFromPostAndTags(updatedPost, user.getUsername(), updatedTags);
 
-            Post updatedPost = postRepository.updatePost(post, newTagList);
-
-            return postUtils.createResponseFromPostAndTags(updatedPost, user.getUsername(), newTagList);
-
+        } catch (IllegalArgumentException e) {
+            throw new InvalidUserIdFormatException("Invalid user ID format: " + e.getMessage());
         } catch (SQLException e) {
             throw new SQLQueryException("Error occurred while updating post: " + e.getMessage());
         }
@@ -117,7 +127,7 @@ public class PostService {
             );
 
             User user = userRepository.findUserById(userID).orElseThrow(
-                    () -> new ResourceNotFoundException("User not found with username: " + userID.toString()));
+                    () -> new ResourceNotFoundException("User not found with username: " + userID));
 
             if (!user.getId().equals(post.getAuthorId())) {
                 throw new ForbiddenException("You are not permitted to delete this post.");

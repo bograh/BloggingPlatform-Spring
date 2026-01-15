@@ -26,28 +26,34 @@ public class PostController {
     @PostMapping
     public ResponseEntity<ApiResponse<PostResponseDTO>> createPost(@Valid @RequestBody CreatePostDTO createPostDTO) {
         PostResponseDTO postResponseDTO = postService.createPost(createPostDTO);
-        ApiResponse<PostResponseDTO> response = ApiResponse.success("Post created successfully", postResponseDTO);
+        ApiResponse<PostResponseDTO> response =
+                ApiResponse.success("Post created successfully", postResponseDTO);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<PostResponseDTO>>> getAllPosts() {
         List<PostResponseDTO> posts = postService.getAllPosts();
-        ApiResponse<List<PostResponseDTO>> response = ApiResponse.success("Posts retrieved successfully", posts);
+        ApiResponse<List<PostResponseDTO>> response =
+                ApiResponse.success("Posts retrieved successfully", posts);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{postId}")
     public ResponseEntity<ApiResponse<PostResponseDTO>> getPostById(@PathVariable int postId) {
         PostResponseDTO post = postService.getPostById(postId);
-        ApiResponse<PostResponseDTO> response = ApiResponse.success("Post retrieved successfully", post);
+        ApiResponse<PostResponseDTO> response =
+                ApiResponse.success("Post retrieved successfully", post);
         return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{postId}")
-    public ResponseEntity<ApiResponse<PostResponseDTO>> updatePost(@PathVariable int postId, @RequestBody UpdatePostDTO updatePostDTO) {
+    public ResponseEntity<ApiResponse<PostResponseDTO>> updatePost(
+            @PathVariable int postId,
+            @Valid @RequestBody UpdatePostDTO updatePostDTO) {
         PostResponseDTO post = postService.updatePost(postId, updatePostDTO);
-        ApiResponse<PostResponseDTO> response = ApiResponse.success("Post updated successfully", post);
+        ApiResponse<PostResponseDTO> response =
+                ApiResponse.success("Post updated successfully", post);
         return ResponseEntity.ok(response);
     }
 
