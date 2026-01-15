@@ -65,6 +65,19 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+    @ExceptionHandler(InvalidUserIdFormatException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidUserIdFormatException(InvalidUserIdFormatException e) {
+
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+
+        return ResponseEntity.status(status).body(
+                new ErrorResponse(
+                        "BAD REQUEST",
+                        e.getMessage(),
+                        status.value()
+                ));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException e) {
 
