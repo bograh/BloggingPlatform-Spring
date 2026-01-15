@@ -3,7 +3,9 @@ package org.amalitech.bloggingplatformspring.services;
 import lombok.extern.slf4j.Slf4j;
 import org.amalitech.bloggingplatformspring.dtos.requests.CreatePostDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.DeletePostRequestDTO;
+import org.amalitech.bloggingplatformspring.dtos.requests.PageRequest;
 import org.amalitech.bloggingplatformspring.dtos.requests.UpdatePostDTO;
+import org.amalitech.bloggingplatformspring.dtos.responses.PageResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
 import org.amalitech.bloggingplatformspring.entity.Post;
 import org.amalitech.bloggingplatformspring.entity.User;
@@ -34,6 +36,11 @@ public class PostService {
         this.postUtils = new PostUtils();
     }
 
+    /*
+    TODO:
+    - Implement searching using appropriate algorithms/indexed fields
+     */
+
     public PostResponseDTO createPost(CreatePostDTO createPostDTO) {
         try {
             Post post = postRepository.savePost(createPostDTO);
@@ -44,6 +51,16 @@ public class PostService {
 
         } catch (SQLException e) {
             throw new SQLQueryException("Failed to create post: " + e.getMessage());
+        }
+    }
+
+    public PageResponse<PostResponseDTO> getPaginatedPosts(int page, int size, String sortBy, String sortDirection) {
+        int pageSize = Math.min(50, size);
+        PageRequest pageRequest = new PageRequest(page, pageSize, sortBy, sortDirection);
+        try {
+            return postRepository.getAllPosts(pageRequest);
+        } catch (SQLException e) {
+            throw new SQLQueryException("Error occurred while fetching posts: " + e.getMessage());
         }
     }
 
@@ -141,6 +158,4 @@ public class PostService {
             throw new SQLQueryException("Error occurred while deleting post: " + e.getMessage());
         }
     }
-
-
 }
