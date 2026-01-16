@@ -34,19 +34,25 @@ public class PostService {
     }
 
     public PostResponseDTO createPost(CreatePostDTO createPostDTO) {
+        UUID userId;
         try {
-            UUID userId = UUID.fromString(createPostDTO.getAuthorId());
+            userId = UUID.fromString(createPostDTO.getAuthorId());
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Invalid authorId UUID");
+        }
 
-            userRepository.findUserById(userId).orElseThrow(
-                    () -> new ResourceNotFoundException("User not found with ID: " + userId)
-            );
-
+        User user;
+        try {
+            user = userRepository.findUserById(userId)
+                    .orElseThrow(() ->
+                            new ResourceNotFoundException("User not found with ID: " + userId));
             Post post = postRepository.savePost(createPostDTO);
-            List<String> tagNames = createPostDTO.getTags();
-            String authorName = userRepository.getUsernameById(post.getAuthorId());
 
-            return postUtils.createResponseFromPostAndTags(post, authorName, tagNames);
-
+            return postUtils.createResponseFromPostAndTags(
+                    post,
+                    user.getUsername(),
+                    createPostDTO.getTags()
+            );
         } catch (SQLException e) {
             throw new SQLQueryException("Failed to create post: " + e.getMessage());
         }
