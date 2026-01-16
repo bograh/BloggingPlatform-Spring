@@ -36,6 +36,12 @@ public class PostService {
 
     public PostResponseDTO createPost(CreatePostDTO createPostDTO) {
         try {
+            UUID userId = UUID.fromString(createPostDTO.getAuthorId());
+
+            userRepository.findUserById(userId).orElseThrow(
+                    () -> new ResourceNotFoundException("User not found with ID: " + userId)
+            );
+
             Post post = postRepository.savePost(createPostDTO);
             List<String> tagNames = createPostDTO.getTags();
             String authorName = userRepository.getUsernameById(post.getAuthorId());
