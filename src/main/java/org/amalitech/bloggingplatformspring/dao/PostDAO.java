@@ -311,7 +311,7 @@ public class PostDAO implements PostRepository {
     private ResultSet executeInsert(PreparedStatement stmt, CreatePostDTO dto) throws SQLException {
         stmt.setString(1, dto.getTitle());
         stmt.setString(2, dto.getBody());
-        stmt.setObject(3, dto.getAuthorId());
+        stmt.setObject(3, UUID.fromString(dto.getAuthorId()));
         return stmt.executeQuery();
     }
 

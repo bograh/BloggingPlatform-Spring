@@ -54,7 +54,7 @@ public class PostUtils {
 
     private String formatDate(LocalDateTime localDateTime) {
         return localDateTime.format(
-                DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy HH:mm:ss")
+                DateTimeFormatter.ofPattern(Constants.DateTimeFormatPattern)
         );
     }
 

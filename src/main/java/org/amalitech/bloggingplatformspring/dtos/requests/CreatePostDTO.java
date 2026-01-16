@@ -3,7 +3,6 @@ package org.amalitech.bloggingplatformspring.dtos.requests;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.validator.constraints.UUID;
 
 import java.util.List;
 
@@ -19,7 +18,6 @@ public class CreatePostDTO {
 
     private List<String> tags;
 
-    @UUID(message = "Invalid author ID format")
     @NotBlank(message = "Author ID should not be blank")
-    private UUID authorId;
+    private String authorId;
 }
