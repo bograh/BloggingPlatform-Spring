@@ -33,11 +33,6 @@ public class PostService {
         this.postUtils = new PostUtils();
     }
 
-    /*
-    TODO:
-    - Implement searching using appropriate algorithms/indexed fields
-     */
-
     public PostResponseDTO createPost(CreatePostDTO createPostDTO) {
         try {
             Post post = postRepository.savePost(createPostDTO);
