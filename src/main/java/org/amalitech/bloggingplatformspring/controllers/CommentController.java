@@ -31,8 +31,8 @@ public class CommentController {
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<CommentDocument>>> getAllCommentsByPostId(int postId) {
+    @GetMapping("/post/{postId}")
+    public ResponseEntity<ApiResponse<List<CommentDocument>>> getAllCommentsByPostId(@PathVariable int postId) {
         List<CommentDocument> comments = commentService.getAllCommentsByPostId(postId);
         ApiResponse<List<CommentDocument>> response = ApiResponse.success(
                 "Comments for post retrieved successfully",
