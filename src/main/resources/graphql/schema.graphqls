@@ -1,0 +1,132 @@
+# GraphQL Schema for Blogging Platform
+
+# Scalar types
+scalar UUID
+scalar DateTime
+
+# User Type
+type User {
+    id: UUID!
+    username: String!
+    email: String!
+}
+
+# Post Type
+type Post {
+    id: Int!
+    title: String!
+    body: String!
+    authorId: UUID!
+    author: User
+    tags: [Tag!]
+    createdAt: DateTime!
+    updatedAt: DateTime!
+}
+
+# Comment Type
+type Comment {
+    id: String!
+    postId: Int!
+    authorId: String!
+    authorUsername: String!
+    content: String!
+    createdAt: DateTime!
+}
+
+# Tag Type
+type Tag {
+    id: Int!
+    name: String!
+}
+
+# Paginated Response Types
+type PostPage {
+    content: [Post!]!
+    pageNumber: Int!
+    pageSize: Int!
+    totalElements: Int!
+    totalPages: Int!
+}
+
+# Input Types for Mutations
+input RegisterUserInput {
+    username: String!
+    email: String!
+    password: String!
+}
+
+input SignInUserInput {
+    email: String!
+    password: String!
+}
+
+input CreatePostInput {
+    title: String!
+    body: String!
+    authorId: String!
+    tags: [String!]
+}
+
+input UpdatePostInput {
+    title: String
+    body: String
+    authorId: String!
+    tags: [String!]
+}
+
+input CreateCommentInput {
+    postId: Int!
+    authorId: String!
+    commentContent: String!
+}
+
+input DeleteCommentInput {
+    authorId: String!
+}
+
+input PostFilterInput {
+    tag: String
+    authorId: String
+    keyword: String
+}
+
+input PageRequestInput {
+    page: Int = 0
+    size: Int = 10
+    sortBy: String = "createdAt"
+    sortDirection: String = "DESC"
+}
+
+# Query Type
+type Query {
+    # User Queries
+    getUser(userId: UUID!): User
+
+    # Post Queries
+    getPost(postId: Int!): Post
+    getAllPosts: [Post!]!
+    getPaginatedPosts(pageRequest: PageRequestInput, filter: PostFilterInput): PostPage!
+
+    # Comment Queries
+    getComment(commentId: String!): Comment
+    getCommentsByPost(postId: Int!): [Comment!]!
+
+    # Tag Queries
+    getAllTags: [Tag!]!
+}
+
+# Mutation Type
+type Mutation {
+    # User Mutations
+    registerUser(input: RegisterUserInput!): User!
+    signInUser(input: SignInUserInput!): User!
+
+    # Post Mutations
+    createPost(input: CreatePostInput!): Post!
+    updatePost(postId: Int!, input: UpdatePostInput!): Post!
+    deletePost(postId: Int!, authorId: String!): Boolean!
+
+    # Comment Mutations
+    createComment(input: CreateCommentInput!): Comment!
+    deleteComment(commentId: String!, input: DeleteCommentInput!): Boolean!
+}
