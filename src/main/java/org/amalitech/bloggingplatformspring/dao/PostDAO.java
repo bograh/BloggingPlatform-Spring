@@ -13,6 +13,7 @@ import org.amalitech.bloggingplatformspring.entity.Post;
 import org.amalitech.bloggingplatformspring.enums.PostSortField;
 import org.amalitech.bloggingplatformspring.enums.SortDirection;
 import org.amalitech.bloggingplatformspring.exceptions.ForbiddenException;
+import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.TagRepository;
 import org.amalitech.bloggingplatformspring.utils.PostUtils;
@@ -35,12 +36,14 @@ public class PostDAO implements PostRepository {
     private final TagRepository tagRepository;
     private final PostUtils postUtils;
     private final DAOHelperMethods helperMethods;
+    private final CommentRepository commentRepository;
 
-    public PostDAO(ConnectionProvider connectionProvider, TagRepository tagRepository) {
+    public PostDAO(ConnectionProvider connectionProvider, TagRepository tagRepository, CommentDAO commentRepository) {
         this.connectionProvider = connectionProvider;
         this.tagRepository = tagRepository;
         this.postUtils = new PostUtils();
         helperMethods = new DAOHelperMethods();
+        this.commentRepository = commentRepository;
     }
 
     private Connection getConnection() throws SQLException {
@@ -107,7 +110,8 @@ public class PostDAO implements PostRepository {
              ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
-                posts.add(postUtils.mapRowToPostResponse(rs));
+                long totalComments = commentRepository.getTotalCommentsByPostId(rs.getInt("id"));
+                posts.add(postUtils.mapRowToPostResponse(rs, totalComments));
             }
         }
 
@@ -172,7 +176,8 @@ public class PostDAO implements PostRepository {
                     if (totalElements == 0) {
                         totalElements = rs.getInt("total_count");
                     }
-                    posts.add(postUtils.mapRowToPostResponse(rs));
+                    long totalComments = commentRepository.getTotalCommentsByPostId(rs.getInt("id"));
+                    posts.add(postUtils.mapRowToPostResponse(rs, totalComments));
                 }
             }
         }
@@ -232,7 +237,8 @@ public class PostDAO implements PostRepository {
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next()) {
-                return Optional.ofNullable(postUtils.mapRowToPostResponse(rs));
+                long totalComments = commentRepository.getTotalCommentsByPostId(id);
+                return Optional.ofNullable(postUtils.mapRowToPostResponse(rs, totalComments));
             }
         }
         return Optional.empty();

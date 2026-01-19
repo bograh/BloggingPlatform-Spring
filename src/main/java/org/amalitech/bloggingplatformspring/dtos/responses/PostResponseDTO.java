@@ -18,4 +18,5 @@ public class PostResponseDTO {
     private String author;
     private List<String> tags;
     private String lastUpdated;
+    private long totalComments;
 }

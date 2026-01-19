@@ -5,7 +5,6 @@ import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.InsertOneResult;
-import org.amalitech.bloggingplatformspring.config.MongoConnection;
 import org.amalitech.bloggingplatformspring.entity.Comment;
 import org.amalitech.bloggingplatformspring.entity.CommentDocument;
 import org.amalitech.bloggingplatformspring.exceptions.ForbiddenException;
@@ -87,5 +86,11 @@ public class CommentDAO implements CommentRepository {
             throw new ForbiddenException("You are not allowed to delete this comment.");
         }
         result.getDeletedCount();
+    }
+
+    @Override
+    public long getTotalCommentsByPostId(int postId) {
+        Bson filter = Filters.eq("postId", postId);
+        return commentsCollection.countDocuments(filter);
     }
 }
