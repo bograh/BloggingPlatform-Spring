@@ -52,6 +52,19 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ErrorResponse> handleUnauthorizedException(UnauthorizedException e) {
+
+        HttpStatus status = HttpStatus.UNAUTHORIZED;
+
+        return ResponseEntity.status(status).body(
+                new ErrorResponse(
+                        "UNAUTHORIZED",
+                        e.getMessage(),
+                        status.value()
+                ));
+    }
+
     @ExceptionHandler(SQLQueryException.class)
     public ResponseEntity<ErrorResponse> handleSQLQueryException(SQLQueryException e) {
 
