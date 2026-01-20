@@ -6,16 +6,26 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.*;
 import org.springframework.stereotype.Component;
 
-import java.util.Arrays;
+import java.lang.reflect.Field;
+import java.util.*;
 
 /**
  * Aspect for logging method calls, arguments, return values, and exceptions.
  * Applies to service layer methods across the blogging platform.
+ * Includes automatic masking of sensitive data in logs.
  */
 @Slf4j
 @Aspect
 @Component
 public class LoggingAspect {
+
+    /**
+     * Set of field names that should be masked in logs (case-insensitive)
+     */
+    private static final Set<String> SENSITIVE_FIELD_NAMES = new HashSet<>(List.of("password"));
+
+    private static final String MASK = "[REDACTED]";
+    private static final int MAX_STRING_LENGTH = 200;
 
 
     /**
@@ -44,7 +54,7 @@ public class LoggingAspect {
     }
 
     /**
-     * Before advice - logs method entry with arguments
+     * Before advice - logs method entry with arguments (sensitive data masked)
      */
     @Before("serviceMethods()")
     public void logMethodEntry(JoinPoint joinPoint) {
@@ -53,7 +63,7 @@ public class LoggingAspect {
 
         log.info("==> Entering method: {} with arguments: {}",
                 methodName,
-                Arrays.toString(args));
+                maskSensitiveData(args));
     }
 
     /**
@@ -118,7 +128,7 @@ public class LoggingAspect {
         long startTime = System.currentTimeMillis();
 
         log.info("[ANALYTICS] Starting analytics operation: {} with parameters: {}",
-                methodName, Arrays.toString(args));
+                methodName, maskSensitiveData(args));
 
         try {
             Object result = joinPoint.proceed();
@@ -147,5 +157,132 @@ public class LoggingAspect {
 
         log.debug("[AUDIT] Method execution completed - Class: {}, Method: {}",
                 className, methodName);
+    }
+
+    /**
+     * Masks sensitive data in method arguments
+     * @param args the method arguments
+     * @return string representation with sensitive fields masked
+     */
+    private String maskSensitiveData(Object[] args) {
+        if (args == null || args.length == 0) {
+            return "[]";
+        }
+
+        return Arrays.stream(args)
+                .map(this::maskObject)
+                .toList()
+                .toString();
+    }
+
+    /**
+     * Masks sensitive fields in an object using reflection
+     * @param obj the object to mask
+     * @return string representation with sensitive fields masked
+     */
+    private String maskObject(Object obj) {
+        if (obj == null) {
+            return "null";
+        }
+
+        // Handle primitive types and common classes
+        if (obj.getClass().isPrimitive() || obj instanceof String ||
+                obj instanceof Number || obj instanceof Boolean ||
+                obj instanceof Character) {
+            return truncateString(obj.toString());
+        }
+
+        // Handle collections
+        if (obj instanceof Collection<?> collection) {
+            return collection.stream()
+                    .map(this::maskObject)
+                    .toList()
+                    .toString();
+        }
+
+        // Handle arrays
+        if (obj.getClass().isArray()) {
+            return maskSensitiveData((Object[]) obj);
+        }
+
+        // Handle DTOs and custom objects using reflection
+        return maskObjectFields(obj);
+    }
+
+    /**
+     * Masks sensitive fields in a custom object using reflection
+     * @param obj the object to inspect
+     * @return string representation with sensitive fields masked
+     */
+    private String maskObjectFields(Object obj) {
+        try {
+            Class<?> clazz = obj.getClass();
+            StringBuilder result = new StringBuilder(clazz.getSimpleName()).append("{");
+
+            Field[] fields = clazz.getDeclaredFields();
+            List<String> fieldStrings = new ArrayList<>();
+
+            for (Field field : fields) {
+                // Skip static fields
+                if (java.lang.reflect.Modifier.isStatic(field.getModifiers())) {
+                    continue;
+                }
+
+                field.setAccessible(true);
+                String fieldName = field.getName();
+                Object fieldValue;
+
+                try {
+                    fieldValue = field.get(obj);
+                } catch (IllegalAccessException e) {
+                    fieldValue = "N/A";
+                }
+
+                // Check if field name is sensitive
+                if (isSensitiveField(fieldName)) {
+                    fieldStrings.add(fieldName + "=" + MASK);
+                } else if (fieldValue == null) {
+                    fieldStrings.add(fieldName + "=null");
+                } else if (fieldValue instanceof String) {
+                    fieldStrings.add(fieldName + "=\"" + truncateString(fieldValue.toString()) + "\"");
+                } else if (fieldValue instanceof Collection || fieldValue.getClass().isArray()) {
+                    fieldStrings.add(fieldName + "=" + maskObject(fieldValue));
+                } else {
+                    fieldStrings.add(fieldName + "=" + truncateString(fieldValue.toString()));
+                }
+            }
+
+            result.append(String.join(", ", fieldStrings));
+            result.append("}");
+
+            return result.toString();
+        } catch (Exception e) {
+            // Fallback to toString if reflection fails
+            return truncateString(obj.toString());
+        }
+    }
+
+    /**
+     * Checks if a field name is sensitive
+     * @param fieldName the field name to check
+     * @return true if the field should be masked
+     */
+    private boolean isSensitiveField(String fieldName) {
+        return SENSITIVE_FIELD_NAMES.contains(fieldName.toLowerCase());
+    }
+
+    /**
+     * Truncates long strings to prevent log flooding
+     * @param str the string to truncate
+     * @return truncated string
+     */
+    private String truncateString(String str) {
+        if (str == null) {
+            return "null";
+        }
+        if (str.length() > MAX_STRING_LENGTH) {
+            return str.substring(0, MAX_STRING_LENGTH) + "...(truncated)";
+        }
+        return str;
     }
 }
