@@ -16,13 +16,12 @@ This document describes the Aspect-Oriented Programming (AOP) implementation in 
 
 ## Architecture
 
-The AOP implementation follows a modular design with three main aspects:
+The AOP implementation follows a modular design with two main aspects:
 
 ```
 src/main/java/org/amalitech/bloggingplatformspring/aop/
-├── LoggingAspect.java                 # Method execution logging
-├── PerformanceMonitoringAspect.java   # Performance measurement
-├── ExceptionMonitoringAspect.java     # Exception tracking
+├── LoggingAspect.java                 # Method execution logging and exception tracking
+├── PerformanceMonitoringAspect.java   # Performance measurement and metrics
 └── config/
     └── AopConfig.java                 # AOP configuration
 ```
@@ -31,96 +30,65 @@ src/main/java/org/amalitech/bloggingplatformspring/aop/
 
 ### 1. LoggingAspect
 
-**Purpose:** Provides comprehensive logging for method executions across service, controller, and repository layers.
+**Purpose:** Provides comprehensive logging for method executions across the service layer, including method entry, exit, return values, and exception tracking.
 
 **Advice Types Used:**
-- `@Before` - Logs before method execution with arguments
-- `@After` - Logs after method execution (success or failure)
+- `@Before` - Logs method entry with arguments
+- `@After` - Logs method completion (audit logging)
 - `@AfterReturning` - Logs successful execution with return value
-- `@AfterThrowing` - Logs when exceptions are thrown
+- `@AfterThrowing` - Logs exceptions thrown by service methods
+- `@Around` - Enhanced logging for CRUD and analytics operations with execution time
 
 **Pointcuts:**
-- `serviceLayer()` - All methods in `services.*` package
-- `controllerLayer()` - All methods in `controllers.*` package
-- `repositoryLayer()` - All methods in `repository.*` package
+- `serviceMethods()` - All methods in `services.*` package
+- `crudOperations()` - Methods matching create*, update*, delete* patterns
+- `analyticsOperations()` - Methods matching *Analytics*, *Report*, *Statistics* patterns
 
 **Log Format Examples:**
 ```
-🔵 [BEFORE] Executing service method: PostService.createPost(..) with arguments: [CreatePostDTO(...)]
-✅ [AFTER-RETURNING] Method PostService.createPost(..) returned: PostResponseDTO
-⚫ [AFTER] Completed service method: PostService.createPost(..)
-❌ [AFTER-THROWING] Method UserService.registerUser(..) threw exception: BadRequestException - Username is taken
+==> Entering method: PostService.createPost(..) with arguments: [CreatePostDTO(...)]
+<== Successfully completed method: PostService.createPost(..) with result: PostResponseDTO
+<!> Exception in method: UserService.registerUser(..) - Exception type: BadRequestException - Message: Username is taken
+[CRUD] Starting operation: PostService.createPost(..)
+[CRUD] Successfully completed operation: PostService.createPost(..) in 87 ms
+[ANALYTICS] Starting analytics operation: ReportService.generateReport(..)
+[AUDIT] Method execution completed - Class: PostService, Method: createPost(..)
 ```
 
 ### 2. PerformanceMonitoringAspect
 
-**Purpose:** Monitors and measures execution time of service methods to identify performance bottlenecks.
+**Purpose:** Monitors and measures execution time and memory usage of service and repository methods to identify performance bottlenecks. Collects detailed metrics for analysis.
 
 **Advice Types Used:**
-- `@Around` - Wraps method execution to measure time
+- `@Around` - Wraps method execution to measure performance
 
 **Pointcuts:**
-- `serviceLayer()` - All service methods
-- `crudOperations()` - Create, update, delete, save methods
-- `queryOperations()` - Get, find, search methods
-- `analyticsOperations()` - Analytics, statistics, report methods
+- `serviceMethods()` - All methods in `services.*` package
+- `repositoryMethods()` - All methods in `repository.*` package
 
 **Performance Thresholds:**
-- **Fast:** < 100ms
-- **Normal:** 100-500ms
-- **Acceptable:** 500-1000ms
-- **Slow:** 1000-5000ms (⚠️ Warning)
-- **Very Slow:** > 5000ms (🔴 Critical)
-
-**Log Format Examples:**
-```
-⚡ [PERFORMANCE] PostService.getAllPosts(..) executed in 235 ms
-🟡 [SLOW] UserService.findUsersByName(..) took 1547 ms (WARNING - threshold: 1000 ms)
-📝 [CRUD-START] Starting CRUD operation: PostService.createPost(..)
-📝 [CRUD-END] CRUD operation PostService.createPost(..) completed in 89 ms
-🔍 [QUERY-START] Starting query: PostService.getPostById(..)
-🐌 [SLOW-QUERY] Query PostService.searchPosts(..) took 1234 ms (threshold: 1000 ms)
-```
-
-### 3. ExceptionMonitoringAspect
-
-**Purpose:** Centralized exception logging and categorization for debugging and monitoring.
-
-**Advice Types Used:**
-- `@AfterThrowing` - Logs exceptions from service, controller, and repository layers
+- **FAST:** < 100ms
+- **NORMAL:** 100-500ms
+- **SLOW:** 500-1000ms
+- **CRITICAL:** > 1000ms (⚠️ Warning for slow operations)
 
 **Features:**
-- Exception categorization by type
-- HTTP status mapping for API errors
-- Database error detection
-- Detailed stack traces in debug mode
-
-**Exception Categories:**
-- 📂 RESOURCE_NOT_FOUND (404)
-- ⚠️ BAD_REQUEST (400)
-- 🔒 UNAUTHORIZED (401)
-- 🚫 FORBIDDEN (403)
-- 💾 DATABASE_ERROR (500)
-- ⚠️ NULL_POINTER (potential bug)
-- 📝 INVALID_ARGUMENT
+- Execution time measurement
+- Memory usage tracking
+- Slow operation detection (> 1000ms)
+- Success/failure tracking
+- Comprehensive metrics collection (call counts, min/max/avg execution times)
+- Performance summary reporting
 
 **Log Format Examples:**
 ```
-❌ [SERVICE-EXCEPTION] Exception in PostService.getPostById
-   Exception Type: org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException
-   Exception Message: Post not found
-   Method Arguments: [123]
-   📂 Category: RESOURCE_NOT_FOUND - Resource not available
-
-🌐 [CONTROLLER-EXCEPTION] Exception in endpoint: PostController.createPost
-   Exception: BadRequestException - Invalid post title
-   HTTP Status: 400 - BAD REQUEST
-   Endpoint: PostController.createPost(..)
-
-💾 [REPOSITORY-EXCEPTION] Data access error in PostRepository.findById
-   Database Exception: SQLQueryException - Failed to execute query
-   🔴 DATABASE ERROR DETECTED - Check database connectivity and queries
+[PERFORMANCE] 2026-01-20 10:15:30 | FAST | Method: SERVICE::PostService.getPostById(..) | Execution Time: 45 ms | Memory: 128 KB | Status: SUCCESS
+[PERFORMANCE] 2026-01-20 10:15:31 | NORMAL | Method: SERVICE::PostService.getAllPosts(..) | Execution Time: 235 ms | Memory: 512 KB | Status: SUCCESS
+[PERFORMANCE] SLOW SERVICE OPERATION DETECTED: PostService.searchPosts(..) took 1234 ms
+[PERFORMANCE] 2026-01-20 10:15:32 | CRITICAL | Method: REPOSITORY::PostRepository.findAll(..) | Execution Time: 1547 ms | Memory: 2048 KB | Status: SUCCESS
 ```
+
+
 
 ## Configuration
 
@@ -171,14 +139,13 @@ PostResponseDTO post = postService.createPost(createPostDTO);
 AOP automatically generates logs:
 
 ```
-🔵 [BEFORE] Executing service method: PostService.createPost(..) with arguments: [CreatePostDTO(...)]
-⚡ [PERFORMANCE] PostService.createPost(..) executed in 87 ms
-📝 [CRUD-START] Starting CRUD operation: PostService.createPost(..)
-📝 [CRUD-END] CRUD operation PostService.createPost(..) completed in 87 ms
-✅ [AFTER-RETURNING] Method PostService.createPost(..) returned: PostResponseDTO
-⚫ [AFTER] Completed service method: PostService.createPost(..)
-💾 [REPOSITORY] Executing data access: PostRepository.save(..)
-💾 [REPOSITORY-COMPLETE] Data access completed: PostRepository.save(..)
+==> Entering method: PostService.createPost(..) with arguments: [CreatePostDTO(...)]
+[CRUD] Starting operation: PostService.createPost(..)
+[PERFORMANCE] 2026-01-20 10:15:30 | FAST | Method: SERVICE::PostService.createPost(..) | Execution Time: 87 ms | Memory: 256 KB | Status: SUCCESS
+[PERFORMANCE] 2026-01-20 10:15:30 | FAST | Method: REPOSITORY::PostRepository.save(..) | Execution Time: 45 ms | Memory: 128 KB | Status: SUCCESS
+[CRUD] Successfully completed operation: PostService.createPost(..) in 87 ms
+<== Successfully completed method: PostService.createPost(..) with result: PostResponseDTO
+[AUDIT] Method execution completed - Class: PostService, Method: PostService.createPost(..)
 ```
 
 ### Example 2: Exception Handling
@@ -196,27 +163,27 @@ try {
 AOP logs:
 
 ```
-❌ [SERVICE-EXCEPTION] Exception in UserService.registerUser
-   Exception Type: org.amalitech.bloggingplatformspring.exceptions.BadRequestException
-   Exception Message: Username is taken
-   Method Arguments: [RegisterUserDTO(...)]
-   ⚠️ Category: BAD_REQUEST - Invalid input data
+==> Entering method: UserService.registerUser(..) with arguments: [RegisterUserDTO(...)]
+<!> Exception in method: UserService.registerUser(..) - Exception type: BadRequestException - Message: Username is taken
+[AUDIT] Method execution completed - Class: UserService, Method: UserService.registerUser(..)
 ```
 
 ### Example 3: Performance Monitoring
 
-Slow queries are automatically detected:
+Slow operations are automatically detected:
 
 ```java
 PageResponse<PostResponseDTO> posts = postService.searchPosts(searchDTO);
 ```
 
-If the query is slow:
+If the operation is slow:
 
 ```
-🔍 [QUERY-START] Starting query: PostService.searchPosts(..)
-🐌 [SLOW-QUERY] Query PostService.searchPosts(..) took 1547 ms (threshold: 1000 ms)
-🟡 [SLOW] PostService.searchPosts(..) took 1547 ms (WARNING - threshold: 1000 ms)
+==> Entering method: PostService.searchPosts(..) with arguments: [SearchDTO(...)]
+[PERFORMANCE] SLOW SERVICE OPERATION DETECTED: PostService.searchPosts(..) took 1547 ms
+[PERFORMANCE] 2026-01-20 10:15:35 | CRITICAL | Method: SERVICE::PostService.searchPosts(..) | Execution Time: 1547 ms | Memory: 1024 KB | Status: SUCCESS
+<== Successfully completed method: PostService.searchPosts(..) with result: PageResponse
+[AUDIT] Method execution completed - Class: PostService, Method: PostService.searchPosts(..)
 ```
 
 ## Performance Thresholds
@@ -226,19 +193,17 @@ If the query is slow:
 Current thresholds are defined in `PerformanceMonitoringAspect.java`:
 
 ```java
-private static final long SLOW_METHOD_THRESHOLD = 1000; // 1 second
-private static final long VERY_SLOW_METHOD_THRESHOLD = 5000; // 5 seconds
+private static final long SLOW_THRESHOLD_MS = 1000; // 1 second
 ```
 
 ### Threshold Categories
 
-| Execution Time | Category | Log Level | Symbol |
-|---------------|----------|-----------|--------|
-| < 100ms | FAST | INFO | ⚡ |
-| 100-500ms | NORMAL | INFO | ⚡ |
-| 500-1000ms | ACCEPTABLE | INFO | ⚡ |
-| 1000-5000ms | SLOW | WARN | 🟡 |
-| > 5000ms | VERY SLOW | ERROR | 🔴 |
+| Execution Time | Category | Log Level | Description |
+|---------------|----------|-----------|-------------|
+| < 100ms | FAST | INFO | Optimal performance |
+| 100-500ms | NORMAL | INFO | Acceptable performance |
+| 500-1000ms | SLOW | INFO | Getting slower |
+| > 1000ms | CRITICAL | WARN | Slow operation detected |
 
 ## Testing
 
@@ -253,10 +218,10 @@ For testing AOP functionality, use `@SpringBootTest`:
 ```java
 @SpringBootTest
 public class AopIntegrationTest {
-    
+
     @Autowired
     private PostService postService; // Real bean with AOP
-    
+
     @Test
     public void testAopLogging() {
         // AOP will intercept this call
@@ -337,13 +302,13 @@ public void logBeforeNewLayer(JoinPoint joinPoint) {
 
 ## AOP Advice Types Summary
 
-| Advice | When it Runs | Use Case |
-|--------|-------------|----------|
-| `@Before` | Before method execution | Input validation, pre-processing |
-| `@After` | After method (success or failure) | Cleanup, final logging |
-| `@AfterReturning` | After successful execution | Result logging, post-processing |
-| `@AfterThrowing` | When exception thrown | Error logging, monitoring |
-| `@Around` | Wraps entire method | Performance measurement, transactions |
+| Advice | When it Runs | Use Case | Used In |
+|--------|-------------|----------|----------|
+| `@Before` | Before method execution | Input logging, method entry | LoggingAspect |
+| `@After` | After method (success or failure) | Audit logging, cleanup | LoggingAspect |
+| `@AfterReturning` | After successful execution | Result logging, success tracking | LoggingAspect |
+| `@AfterThrowing` | When exception thrown | Error logging, exception tracking | LoggingAspect |
+| `@Around` | Wraps entire method | Performance measurement, CRUD/analytics logging | LoggingAspect, PerformanceMonitoringAspect |
 
 ## Troubleshooting
 
@@ -379,9 +344,10 @@ public void logBeforeNewLayer(JoinPoint joinPoint) {
 
 The AOP implementation provides comprehensive cross-cutting concerns handling for the Blogging Platform application. It enables:
 
-- ✅ Centralized logging across all layers
-- ✅ Performance monitoring and bottleneck detection
-- ✅ Exception tracking and categorization
+- ✅ Centralized logging across service layer
+- ✅ Performance monitoring and bottleneck detection with metrics collection
+- ✅ Exception tracking via @AfterThrowing advice
+- ✅ Memory usage monitoring
 - ✅ Minimal code intrusion
 - ✅ Easy maintenance and updates
 

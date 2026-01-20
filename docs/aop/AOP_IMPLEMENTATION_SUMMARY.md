@@ -30,40 +30,32 @@
 
 #### LoggingAspect.java
 - **Location:** `src/main/java/org/amalitech/bloggingplatformspring/aop/LoggingAspect.java`
-- **Lines of Code:** 120+
-- **Advice Types:** @Before, @After, @AfterReturning, @AfterThrowing
+- **Lines of Code:** 140+
+- **Advice Types:** @Before, @After, @AfterReturning, @AfterThrowing, @Around
 - **Features:**
   - Method execution logging
   - Input argument capture
   - Return value logging
   - Exception logging
-  - Layer-specific logging (Service, Controller, Repository)
+  - CRUD operation logging with timing
+  - Analytics operation logging with timing
+  - Audit logging
 
 #### PerformanceMonitoringAspect.java
 - **Location:** `src/main/java/org/amalitech/bloggingplatformspring/aop/PerformanceMonitoringAspect.java`
-- **Lines of Code:** 180+
+- **Lines of Code:** 230+
 - **Advice Types:** @Around
 - **Features:**
   - Execution time measurement
+  - Memory usage tracking
   - Slow method detection (> 1 second)
-  - Critical performance alerts (> 5 seconds)
-  - Specialized monitoring for:
-    - CRUD operations (create, update, delete, save)
-    - Query operations (get, find, search)
-    - Analytics operations
-  - Performance categorization (FAST, NORMAL, SLOW, VERY SLOW)
-
-#### ExceptionMonitoringAspect.java
-- **Location:** `src/main/java/org/amalitech/bloggingplatformspring/aop/ExceptionMonitoringAspect.java`
-- **Lines of Code:** 150+
-- **Advice Types:** @AfterThrowing
-- **Features:**
-  - Centralized exception logging
-  - Exception categorization
-  - HTTP status mapping (400, 401, 403, 404, 500)
-  - Database error detection
-  - Detailed error context
-  - Stack trace logging (debug mode)
+  - Success/failure tracking
+  - Comprehensive metrics collection:
+    - Call counts (total, successful, failed)
+    - Min/max/avg execution times
+  - Performance categorization (FAST, NORMAL, SLOW, CRITICAL)
+  - Performance summary reporting
+  - Monitoring for both service and repository layers
 
 #### AopConfig.java
 - **Location:** `src/main/java/org/amalitech/bloggingplatformspring/aop/config/AopConfig.java`
@@ -77,26 +69,22 @@
 
 | Pointcut | Target | Pattern |
 |----------|--------|---------|
-| serviceLayer | All service methods | `org.amalitech.bloggingplatformspring.services.*.*(..)` |
-| controllerLayer | All controller methods | `org.amalitech.bloggingplatformspring.controllers.*.*(..)` |
-| repositoryLayer | All repository methods | `org.amalitech.bloggingplatformspring.repository.*.*(..)` |
-| crudOperations | CRUD methods | `create*, update*, delete*, save*` |
-| queryOperations | Query methods | `get*, find*, search*` |
-| analyticsOperations | Analytics methods | `analytics*, statistics*, report*` |
+| serviceMethods | All service methods | `org.amalitech.bloggingplatformspring.services..*(..)` |
+| repositoryMethods | All repository methods | `org.amalitech.bloggingplatformspring.repository..*(..)` |
+| crudOperations | CRUD methods | `create*, update*, delete*` (in services) |
+| analyticsOperations | Analytics methods | `*Analytics*, *Report*, *Statistics*` (in services) |
 
 ### 4. Performance Thresholds
 
 ```java
-SLOW_METHOD_THRESHOLD = 1000ms        // 1 second - WARNING
-VERY_SLOW_METHOD_THRESHOLD = 5000ms   // 5 seconds - CRITICAL
+SLOW_THRESHOLD_MS = 1000ms  // 1 second - WARNING
 ```
 
 Performance categories:
-- **< 100ms:** FAST ⚡
-- **100-500ms:** NORMAL ⚡
-- **500-1000ms:** ACCEPTABLE ⚡
-- **1000-5000ms:** SLOW 🟡 (Warning)
-- **> 5000ms:** VERY SLOW 🔴 (Error)
+- **< 100ms:** FAST
+- **100-500ms:** NORMAL
+- **500-1000ms:** SLOW
+- **> 1000ms:** CRITICAL (⚠️ Warning)
 
 ## 📚 Documentation Created
 
@@ -135,71 +123,47 @@ Performance categories:
 ## 🔍 Monitoring Coverage
 
 ### Services Monitored
-✅ **UserService**
-- registerUser()
-- signInUser()
-
-✅ **PostService**
-- createPost()
-- updatePost()
-- deletePost()
-- getPostById()
-- getAllPosts()
-- searchPosts()
-
-✅ **CommentService**
-- addCommentToPost()
-- getCommentsForPost()
-- deleteComment()
-
-### Controllers Monitored
-✅ **UserController** - All endpoints
-✅ **PostController** - All endpoints
-✅ **CommentController** - All endpoints
+✅ **All Services** in the `services` package
+- Logging: method entry, exit, return values, exceptions
+- Performance: execution time, memory usage, metrics collection
+- CRUD operations: enhanced logging with timing
+- Analytics operations: detailed parameter and timing logging
 
 ### Repositories Monitored
-✅ **UserRepository** - All data access methods
-✅ **PostRepository** - All data access methods
-✅ **CommentRepository** - All data access methods
-✅ **TagRepository** - All data access methods
+✅ **All Repositories** in the `repository` package
+- Performance monitoring: execution time, memory usage, slow operation detection
 
-## 📊 Log Output Examples
+## 📊Log Output Examples
 
 ### Normal Operation
 ```
-🔧 AOP Configuration initialized
-   ✅ LoggingAspect enabled
-   ✅ PerformanceMonitoringAspect enabled
-   ✅ ExceptionMonitoringAspect enabled
-   📊 Monitoring service layer, controllers, and repositories
+AOP Configuration initialized
+LoggingAspect enabled
+PerformanceMonitoringAspect enabled
+Monitoring service layer, controllers, and repositories
 
-🔵 [BEFORE] Executing service method: PostService.createPost(..) with arguments: [CreatePostDTO(...)]
-💾 [REPOSITORY] Executing data access: PostRepository.save(..)
-💾 [REPOSITORY-COMPLETE] Data access completed: PostRepository.save(..)
-⚡ [PERFORMANCE] PostService.createPost(..) executed in 87 ms
-📝 [CRUD-END] CRUD operation PostService.createPost(..) completed in 87 ms
-✅ [AFTER-RETURNING] Method PostService.createPost(..) returned: PostResponseDTO
-⚫ [AFTER] Completed service method: PostService.createPost(..)
+==> Entering method: PostService.createPost(..) with arguments: [CreatePostDTO(...)]
+[CRUD] Starting operation: PostService.createPost(..)
+[PERFORMANCE] 2026-01-20 10:15:30 | FAST | Method: SERVICE::PostService.createPost(..) | Execution Time: 87 ms | Memory: 256 KB | Status: SUCCESS
+[PERFORMANCE] 2026-01-20 10:15:30 | FAST | Method: REPOSITORY::PostRepository.save(..) | Execution Time: 45 ms | Memory: 128 KB | Status: SUCCESS
+[CRUD] Successfully completed operation: PostService.createPost(..) in 87 ms
+<== Successfully completed method: PostService.createPost(..) with result: PostResponseDTO
+[AUDIT] Method execution completed - Class: PostService, Method: PostService.createPost(..)
 ```
 
 ### Performance Warning
 ```
-🔍 [QUERY-START] Starting query: PostService.searchPosts(..)
-🐌 [SLOW-QUERY] Query PostService.searchPosts(..) took 1547 ms (threshold: 1000 ms)
-🟡 [SLOW] PostService.searchPosts(..) took 1547 ms (WARNING - threshold: 1000 ms)
+==> Entering method: PostService.searchPosts(..) with arguments: [SearchDTO(...)]
+[PERFORMANCE] SLOW SERVICE OPERATION DETECTED: PostService.searchPosts(..) took 1547 ms
+[PERFORMANCE] 2026-01-20 10:15:35 | CRITICAL | Method: SERVICE::PostService.searchPosts(..) | Execution Time: 1547 ms | Memory: 1024 KB | Status: SUCCESS
+<== Successfully completed method: PostService.searchPosts(..) with result: PageResponse
 ```
 
 ### Exception Tracking
 ```
-❌ [SERVICE-EXCEPTION] Exception in UserService.registerUser
-   Exception Type: org.amalitech.bloggingplatformspring.exceptions.BadRequestException
-   Exception Message: Username is taken
-   Method Arguments: [RegisterUserDTO(username=john, email=john@email.com)]
-   ⚠️ Category: BAD_REQUEST - Invalid input data
-
-🌐 [CONTROLLER-EXCEPTION] Exception in endpoint: UserController.registerUser
-   Exception: BadRequestException - Username is taken
-   HTTP Status: 400 - BAD REQUEST
+==> Entering method: UserService.registerUser(..) with arguments: [RegisterUserDTO(...)]
+<!> Exception in method: UserService.registerUser(..) - Exception type: BadRequestException - Message: Username is taken
+[AUDIT] Method execution completed - Class: UserService, Method: UserService.registerUser(..)
 ```
 
 ## 🧪 Testing
@@ -231,43 +195,43 @@ mvn test
 
 ### 1. Automatic Logging
 - ✅ Zero code intrusion in business logic
-- ✅ Consistent logging format across layers
+- ✅ Consistent logging format across service layer
 - ✅ Configurable log levels
 - ✅ Detailed execution context
+- ✅ Exception tracking via @AfterThrowing
 
 ### 2. Performance Monitoring
 - ✅ Automatic execution time measurement
+- ✅ Memory usage tracking
 - ✅ Slow operation detection
-- ✅ Critical performance alerting
-- ✅ Operation categorization (CRUD, Query, Analytics)
+- ✅ Comprehensive metrics collection (call counts, min/max/avg times)
+- ✅ Performance summary reporting
 - ✅ Configurable thresholds
+- ✅ Monitoring for services and repositories
 
-### 3. Exception Tracking
-- ✅ Centralized exception logging
-- ✅ Exception categorization
-- ✅ HTTP status mapping
-- ✅ Database error detection
-- ✅ Root cause analysis support
+### 3. Specialized Operation Logging
+- ✅ Enhanced CRUD operation logging with timing
+- ✅ Analytics operation logging with parameters and timing
+- ✅ Audit logging for method completion
 
 ### 4. Developer Experience
 - ✅ Comprehensive documentation
 - ✅ Quick reference guide
-- ✅ Clear log symbols and formatting
+- ✅ Clear log formatting
 - ✅ Easy configuration
 - ✅ Troubleshooting guide
 
 ## 📁 Files Created/Modified
 
-### New Files (5)
+### New Files (4)
 1. `src/main/java/org/amalitech/bloggingplatformspring/aop/LoggingAspect.java`
 2. `src/main/java/org/amalitech/bloggingplatformspring/aop/PerformanceMonitoringAspect.java`
-3. `src/main/java/org/amalitech/bloggingplatformspring/aop/ExceptionMonitoringAspect.java`
-4. `src/main/java/org/amalitech/bloggingplatformspring/aop/config/AopConfig.java`
-5. `README.md`
+3. `src/main/java/org/amalitech/bloggingplatformspring/aop/config/AopConfig.java`
+4. `README.md` (updated)
 
 ### Documentation Files (3)
 1. `AOP_IMPLEMENTATION_GUIDE.md` (450+ lines)
-2. `AOP_QUICK_REFERENCE.md` (350+ lines)
+2. `AOP_QUICK_REFERENCE.md` (300+ lines)
 3. `AOP_IMPLEMENTATION_SUMMARY.md` (this file)
 
 ### Modified Files (1)
@@ -277,15 +241,16 @@ mvn test
 
 ### For Developers
 - ✅ No need to add manual logging in every method
-- ✅ Automatic performance tracking
+- ✅ Automatic performance tracking with metrics
 - ✅ Easy debugging with detailed logs
 - ✅ Quick identification of bottlenecks
 
 ### For Operations
 - ✅ Centralized monitoring
 - ✅ Performance issue detection
-- ✅ Exception tracking and categorization
+- ✅ Exception tracking
 - ✅ Detailed error context for troubleshooting
+- ✅ Memory usage monitoring
 
 ### For the Application
 - ✅ Improved maintainability
@@ -330,29 +295,28 @@ mvn test
 ## ✅ Acceptance Criteria Verification
 
 ### ✅ AOP aspects implemented using @Before, @After, and @Around
-- **@Before:** LoggingAspect (6 methods)
-- **@After:** LoggingAspect (1 method)
-- **@AfterReturning:** LoggingAspect (3 methods)
-- **@AfterThrowing:** LoggingAspect (1 method), ExceptionMonitoringAspect (3 methods)
-- **@Around:** PerformanceMonitoringAspect (4 methods)
+- **@Before:** LoggingAspect (1 method - logMethodEntry)
+- **@After:** LoggingAspect (1 method - auditLog)
+- **@AfterReturning:** LoggingAspect (1 method - logMethodExit)
+- **@AfterThrowing:** LoggingAspect (1 method - logException)
+- **@Around:** LoggingAspect (2 methods - logCrudOperation, logAnalyticsOperation), PerformanceMonitoringAspect (2 methods - monitorServicePerformance, monitorRepositoryPerformance)
 
 ### ✅ Logging and monitoring applied to critical service methods
-- **UserService:** ✅ All methods
-- **PostService:** ✅ All CRUD and analytics methods
-- **CommentService:** ✅ All methods
-- **Controllers:** ✅ All endpoints
-- **Repositories:** ✅ All data access
+- **All Services:** ✅ All methods monitored
+- **All Repositories:** ✅ All methods monitored
+- **CRUD Operations:** ✅ Enhanced logging
+- **Analytics Operations:** ✅ Detailed logging
 
 ### ✅ Performance measurements integrated within AOP aspects
-- **Execution time measurement:** ✅ All service methods
-- **Slow method detection:** ✅ Threshold: 1000ms
-- **Critical alerts:** ✅ Threshold: 5000ms
-- **Operation categorization:** ✅ CRUD, Query, Analytics
-- **Performance categories:** ✅ FAST, NORMAL, SLOW, VERY_SLOW
+- **Execution time measurement:** ✅ All service and repository methods
+- **Memory usage tracking:** ✅ All monitored methods
+- **Slow operation detection:** ✅ Threshold: 1000ms
+- **Metrics collection:** ✅ Call counts, min/max/avg times, success/failure tracking
+- **Performance categories:** ✅ FAST, NORMAL, SLOW, CRITICAL
 
 ### ✅ Implementation documented within project files and README
 - **AOP_IMPLEMENTATION_GUIDE.md:** ✅ Complete guide (450+ lines)
-- **AOP_QUICK_REFERENCE.md:** ✅ Quick reference (350+ lines)
+- **AOP_QUICK_REFERENCE.md:** ✅ Quick reference (300+ lines)
 - **README.md:** ✅ Updated with AOP section
 - **Code comments:** ✅ Javadoc for all aspects and methods
 

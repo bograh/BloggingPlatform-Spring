@@ -13,91 +13,79 @@ modifying business code.
 
 | Aspect                      | File                                   | Purpose                  |
 |-----------------------------|----------------------------------------|--------------------------|
-| LoggingAspect               | `aop/LoggingAspect.java`               | Method execution logging |
-| PerformanceMonitoringAspect | `aop/PerformanceMonitoringAspect.java` | Performance measurement  |
-| ExceptionMonitoringAspect   | `aop/ExceptionMonitoringAspect.java`   | Exception tracking       |
+| LoggingAspect               | `aop/LoggingAspect.java`               | Method execution logging and exception tracking |
+| PerformanceMonitoringAspect | `aop/PerformanceMonitoringAspect.java` | Performance measurement and metrics |
 | AopConfig                   | `aop/config/AopConfig.java`            | Configuration            |
 
 ## 🔍 What Gets Monitored
 
 ### Automatically Monitored Layers
 
-- ✅ **Services** - All methods in `services.*` package
-- ✅ **Controllers** - All methods in `controllers.*` package
-- ✅ **Repositories** - All methods in `repository.*` package
+- ✅ **Services** - All methods in `services..*` package
+- ✅ **Repositories** - All methods in `repository..*` package
 
 ### Special Monitoring
 
-- 📝 **CRUD Operations** - create*, update*, delete*, save*
-- 🔍 **Query Operations** - get*, find*, search*
-- 📊 **Analytics** - analytics*, statistics*, report*
+- 📝 **CRUD Operations** - create*, update*, delete* (enhanced logging with timing)
+- 📊 **Analytics** - *Analytics*, *Report*, *Statistics* (detailed parameter and timing logging)
 
-## 📊 Log Symbol Guide
+##  Log Symbol Guide
 
 ### Execution Flow
 
 | Symbol | Meaning         | When                    |
 |--------|-----------------|-------------------------|
-| 🔵     | BEFORE          | Before method execution |
-| ⚫      | AFTER           | After method completion |
-| ✅      | AFTER-RETURNING | Successful execution    |
-| ❌      | AFTER-THROWING  | Exception thrown        |
+| ==>    | BEFORE          | Before method execution |
+| <==    | AFTER-RETURNING | Successful execution    |
+| <!>    | AFTER-THROWING  | Exception thrown        |
+| [AUDIT]| AFTER           | After method completion |
 
 ### Performance
 
-| Symbol | Meaning     | Threshold      |
-|--------|-------------|----------------|
-| ⚡      | FAST/NORMAL | < 1000ms       |
-| 🟡     | SLOW        | 1000-5000ms    |
-| 🔴     | VERY SLOW   | > 5000ms       |
-| 🐌     | SLOW QUERY  | Query > 1000ms |
+| Level    | Threshold      | Description |
+|----------|----------------|-------------|
+| FAST     | < 100ms        | Optimal     |
+| NORMAL   | 100-500ms      | Acceptable  |
+| SLOW     | 500-1000ms     | Getting slow|
+| CRITICAL | > 1000ms       | Warning     |
 
 ### Operations
 
-| Symbol | Type                |
-|--------|---------------------|
-| 📝     | CRUD operation      |
-| 🔍     | Query operation     |
-| 📊     | Analytics operation |
-| 💾     | Repository/Database |
-| 🌐     | Controller/API      |
-
-### Exceptions
-
-| Symbol | Category           | HTTP |
-|--------|--------------------|------|
-| 📂     | RESOURCE_NOT_FOUND | 404  |
-| ⚠️     | BAD_REQUEST        | 400  |
-| 🔒     | UNAUTHORIZED       | 401  |
-| 🚫     | FORBIDDEN          | 403  |
-| 💾     | DATABASE_ERROR     | 500  |
+| Prefix       | Type                |
+|--------------|---------------------|
+| [CRUD]       | CRUD operation      |
+| [ANALYTICS]  | Analytics operation |
+| [PERFORMANCE]| Performance metrics |
+| [AUDIT]      | Audit logging       |
 
 ## 📝 Example Logs
 
 ### Normal Execution
 
 ```
-🔵 [BEFORE] Executing service method: PostService.createPost(..)
-⚡ [PERFORMANCE] PostService.createPost(..) executed in 87 ms
-✅ [AFTER-RETURNING] Method returned: PostResponseDTO
-⚫ [AFTER] Completed service method
+==> Entering method: PostService.createPost(..) with arguments: [CreatePostDTO(...)]
+[CRUD] Starting operation: PostService.createPost(..)
+[PERFORMANCE] 2026-01-20 10:15:30 | FAST | Method: SERVICE::PostService.createPost(..) | Execution Time: 87 ms | Memory: 256 KB | Status: SUCCESS
+[CRUD] Successfully completed operation: PostService.createPost(..) in 87 ms
+<== Successfully completed method: PostService.createPost(..) with result: PostResponseDTO
+[AUDIT] Method execution completed - Class: PostService, Method: PostService.createPost(..)
 ```
 
-### Slow Query Warning
+### Slow Operation Warning
 
 ```
-🔍 [QUERY-START] Starting query: PostService.searchPosts(..)
-🐌 [SLOW-QUERY] Query took 1547 ms (threshold: 1000 ms)
-🟡 [SLOW] PostService.searchPosts(..) took 1547 ms
+==> Entering method: PostService.searchPosts(..) with arguments: [SearchDTO(...)]
+[PERFORMANCE] SLOW SERVICE OPERATION DETECTED: PostService.searchPosts(..) took 1547 ms
+[PERFORMANCE] 2026-01-20 10:15:35 | CRITICAL | Method: SERVICE::PostService.searchPosts(..) | Execution Time: 1547 ms | Memory: 1024 KB | Status: SUCCESS
+<== Successfully completed method: PostService.searchPosts(..) with result: PageResponse
 ```
 
 ### Exception
 
 ```
-❌ [SERVICE-EXCEPTION] Exception in UserService.registerUser
-   Exception Type: BadRequestException
-   Exception Message: Username is taken
-   ⚠️ Category: BAD_REQUEST - Invalid input data
+==> Entering method: UserService.registerUser(..) with arguments: [RegisterUserDTO(...)]
+<!> Exception in method: UserService.registerUser(..) - Exception type: BadRequestException - Message: Username is taken
+[AUDIT] Method execution completed - Class: UserService, Method: UserService.registerUser(..)
 ```
 
 ## ⚙️ Configuration
@@ -119,10 +107,7 @@ logging.level.org.amalitech.bloggingplatformspring.aop.ExceptionMonitoringAspect
 Defined in `PerformanceMonitoringAspect.java`:
 
 ```java
-SLOW_METHOD_THRESHOLD =1000
-ms        // 1 second
-        VERY_SLOW_METHOD_THRESHOLD = 5000
-ms   // 5 seconds
+SLOW_THRESHOLD_MS = 1000ms  // 1 second
 ```
 
 ## 🧪 Testing AOP
@@ -170,10 +155,10 @@ mvn spring-boot:run
 Look for startup logs:
 
 ```
-🔧 AOP Configuration initialized
-   ✅ LoggingAspect enabled
-   ✅ PerformanceMonitoringAspect enabled
-   ✅ ExceptionMonitoringAspect enabled
+AOP Configuration initialized
+LoggingAspect enabled
+PerformanceMonitoringAspect enabled
+Monitoring service layer, controllers, and repositories
 ```
 
 ### Make API Call
@@ -258,12 +243,12 @@ mvn spring-boot:run | grep "CRUD"
 4. **Using mocks?**
     - AOP doesn't work with `@Mock` objects
 
-### False "Slow" Warnings?
+### Adjust Performance Thresholds
 
-Adjust thresholds in `PerformanceMonitoringAspect.java`:
+Modify thresholds in `PerformanceMonitoringAspect.java`:
 
 ```java
-private static final long SLOW_METHOD_THRESHOLD = 2000; // Change to 2 seconds
+private static final long SLOW_THRESHOLD_MS = 2000; // Change to 2 seconds
 ```
 
 ## 📚 Documentation
