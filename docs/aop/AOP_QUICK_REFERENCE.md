@@ -13,7 +13,7 @@ modifying business code.
 
 | Aspect                      | File                                   | Purpose                  |
 |-----------------------------|----------------------------------------|--------------------------|
-| LoggingAspect               | `aop/LoggingAspect.java`               | Method execution logging and exception tracking |
+| LoggingAspect               | `aop/LoggingAspect.java`               | Method execution logging with **sensitive data masking** |
 | PerformanceMonitoringAspect | `aop/PerformanceMonitoringAspect.java` | Performance measurement and metrics |
 | AopConfig                   | `aop/config/AopConfig.java`            | Configuration            |
 
@@ -28,6 +28,27 @@ modifying business code.
 
 - 📝 **CRUD Operations** - create*, update*, delete* (enhanced logging with timing)
 - 📊 **Analytics** - *Analytics*, *Report*, *Statistics* (detailed parameter and timing logging)
+
+## 🔒 Sensitive Data Masking
+
+### Automatically Masked Fields
+
+The following fields are automatically masked in logs (case-insensitive):
+
+- **Passwords:** password, passwd, pwd
+- **Tokens:** token, accessToken, refreshToken
+- **Secrets:** secret, secretKey, apiKey
+- **Payment:** creditCard, cvv, cvc, cardNumber
+- **Personal:** ssn, pin, socialSecurityNumber
+- **Security:** authorization, privateKey
+
+### Example
+```
+==> Entering method: UserService.registerUser(..) with arguments:
+[RegisterUserDTO{username="john", email="john@example.com", password=***MASKED***}]
+```
+
+**See:** [SENSITIVE_DATA_MASKING.md](SENSITIVE_DATA_MASKING.md) for complete documentation.
 
 ##  Log Symbol Guide
 
@@ -63,12 +84,21 @@ modifying business code.
 ### Normal Execution
 
 ```
-==> Entering method: PostService.createPost(..) with arguments: [CreatePostDTO(...)]
+==> Entering method: PostService.createPost(..) with arguments: [CreatePostDTO{title="My Post", body="Content here...", authorId="123"}]
 [CRUD] Starting operation: PostService.createPost(..)
 [PERFORMANCE] 2026-01-20 10:15:30 | FAST | Method: SERVICE::PostService.createPost(..) | Execution Time: 87 ms | Memory: 256 KB | Status: SUCCESS
 [CRUD] Successfully completed operation: PostService.createPost(..) in 87 ms
 <== Successfully completed method: PostService.createPost(..) with result: PostResponseDTO
 [AUDIT] Method execution completed - Class: PostService, Method: PostService.createPost(..)
+```
+
+### Execution with Sensitive Data
+
+```
+==> Entering method: UserService.registerUser(..) with arguments: [RegisterUserDTO{username="john_doe", email="john@example.com", password=***MASKED***}]
+[CRUD] Starting operation: UserService.registerUser(..)
+[CRUD] Successfully completed operation: UserService.registerUser(..) in 120 ms
+<== Successfully completed method: UserService.registerUser(..) with result: UserResponseDTO
 ```
 
 ### Slow Operation Warning

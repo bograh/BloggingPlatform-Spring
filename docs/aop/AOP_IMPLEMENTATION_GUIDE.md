@@ -30,28 +30,44 @@ src/main/java/org/amalitech/bloggingplatformspring/aop/
 
 ### 1. LoggingAspect
 
-**Purpose:** Provides comprehensive logging for method executions across the service layer, including method entry, exit, return values, and exception tracking.
+**Purpose:** Provides comprehensive logging for method executions across the service layer, including method entry, exit, return values, and exception tracking. **Includes automatic masking of sensitive data** for security.
 
 **Advice Types Used:**
-- `@Before` - Logs method entry with arguments
+- `@Before` - Logs method entry with arguments (sensitive data masked)
 - `@After` - Logs method completion (audit logging)
 - `@AfterReturning` - Logs successful execution with return value
 - `@AfterThrowing` - Logs exceptions thrown by service methods
 - `@Around` - Enhanced logging for CRUD and analytics operations with execution time
+
+**Security Features:**
+- **Automatic Data Masking** - Sensitive fields are automatically masked in logs
+- **Masked Fields:** password, token, secret, apiKey, creditCard, cvv, ssn, pin, authorization, etc.
+- **Reflection-based Inspection** - Uses reflection to mask sensitive fields in request objects
+- **String Truncation** - Long strings are truncated to prevent log flooding (max 200 chars)
 
 **Pointcuts:**
 - `serviceMethods()` - All methods in `services.*` package
 - `crudOperations()` - Methods matching create*, update*, delete* patterns
 - `analyticsOperations()` - Methods matching *Analytics*, *Report*, *Statistics* patterns
 
+**Masked Fields List:**
+- Passwords: `password`, `passwd`, `pwd`
+- Secrets: `secret`, `secretkey`, `secretKey`
+- Tokens: `token`, `accesstoken`, `accessToken`, `refreshtoken`, `refreshToken`
+- API Keys: `apikey`, `apiKey`, `api_key`
+- Payment: `creditcard`, `creditCard`, `cardnumber`, `cvv`, `cvc`
+- Personal: `ssn`, `socialsecuritynumber`, `pin`
+- Security: `authorization`, `privatekey`, `privateKey`
+
 **Log Format Examples:**
 ```
-==> Entering method: PostService.createPost(..) with arguments: [CreatePostDTO(...)]
+==> Entering method: UserService.registerUser(..) with arguments: [RegisterUserDTO{username="john", email="john@example.com", password=***MASKED***}]
+==> Entering method: PostService.createPost(..) with arguments: [CreatePostDTO{title="My Post", body="Content...", ...}]
 <== Successfully completed method: PostService.createPost(..) with result: PostResponseDTO
 <!> Exception in method: UserService.registerUser(..) - Exception type: BadRequestException - Message: Username is taken
 [CRUD] Starting operation: PostService.createPost(..)
 [CRUD] Successfully completed operation: PostService.createPost(..) in 87 ms
-[ANALYTICS] Starting analytics operation: ReportService.generateReport(..)
+[ANALYTICS] Starting analytics operation: ReportService.generateReport(..) with parameters: [AnalyticsDTO{...}]
 [AUDIT] Method execution completed - Class: PostService, Method: createPost(..)
 ```
 
@@ -139,13 +155,33 @@ PostResponseDTO post = postService.createPost(createPostDTO);
 AOP automatically generates logs:
 
 ```
-==> Entering method: PostService.createPost(..) with arguments: [CreatePostDTO(...)]
+==> Entering method: PostService.createPost(..) with arguments: [CreatePostDTO{title="My Post", body="Content...", authorId="123", tags=["tech", "java"]}]
 [CRUD] Starting operation: PostService.createPost(..)
 [PERFORMANCE] 2026-01-20 10:15:30 | FAST | Method: SERVICE::PostService.createPost(..) | Execution Time: 87 ms | Memory: 256 KB | Status: SUCCESS
 [PERFORMANCE] 2026-01-20 10:15:30 | FAST | Method: REPOSITORY::PostRepository.save(..) | Execution Time: 45 ms | Memory: 128 KB | Status: SUCCESS
 [CRUD] Successfully completed operation: PostService.createPost(..) in 87 ms
 <== Successfully completed method: PostService.createPost(..) with result: PostResponseDTO
 [AUDIT] Method execution completed - Class: PostService, Method: PostService.createPost(..)
+```
+
+### Example 1b: Service Method with Sensitive Data
+
+When you call a method with sensitive data:
+
+```java
+UserService userService = context.getBean(UserService.class);
+userService.registerUser(registerDTO);
+```
+
+Sensitive fields are automatically masked:
+
+```
+==> Entering method: UserService.registerUser(..) with arguments: [RegisterUserDTO{username="john_doe", email="john@example.com", password=***MASKED***}]
+[CRUD] Starting operation: UserService.registerUser(..)
+[PERFORMANCE] 2026-01-20 10:15:31 | FAST | Method: SERVICE::UserService.registerUser(..) | Execution Time: 120 ms | Memory: 384 KB | Status: SUCCESS
+[CRUD] Successfully completed operation: UserService.registerUser(..) in 120 ms
+<== Successfully completed method: UserService.registerUser(..) with result: UserResponseDTO
+[AUDIT] Method execution completed - Class: UserService, Method: UserService.registerUser(..)
 ```
 
 ### Example 2: Exception Handling
@@ -160,10 +196,10 @@ try {
 }
 ```
 
-AOP logs:
+AOP logs (with sensitive data masked):
 
 ```
-==> Entering method: UserService.registerUser(..) with arguments: [RegisterUserDTO(...)]
+==> Entering method: UserService.registerUser(..) with arguments: [RegisterUserDTO{username="john_doe", email="john@example.com", password=***MASKED***}]
 <!> Exception in method: UserService.registerUser(..) - Exception type: BadRequestException - Message: Username is taken
 [AUDIT] Method execution completed - Class: UserService, Method: UserService.registerUser(..)
 ```

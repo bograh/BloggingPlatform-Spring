@@ -30,16 +30,18 @@
 
 #### LoggingAspect.java
 - **Location:** `src/main/java/org/amalitech/bloggingplatformspring/aop/LoggingAspect.java`
-- **Lines of Code:** 140+
+- **Lines of Code:** 280+
 - **Advice Types:** @Before, @After, @AfterReturning, @AfterThrowing, @Around
 - **Features:**
   - Method execution logging
-  - Input argument capture
+  - Input argument capture with **automatic sensitive data masking**
   - Return value logging
   - Exception logging
   - CRUD operation logging with timing
   - Analytics operation logging with timing
   - Audit logging
+  - **Security:** Reflection-based masking of passwords, tokens, API keys, etc.
+  - **String truncation:** Prevents log flooding (max 200 chars)
 
 #### PerformanceMonitoringAspect.java
 - **Location:** `src/main/java/org/amalitech/bloggingplatformspring/aop/PerformanceMonitoringAspect.java`
@@ -142,13 +144,22 @@ LoggingAspect enabled
 PerformanceMonitoringAspect enabled
 Monitoring service layer, controllers, and repositories
 
-==> Entering method: PostService.createPost(..) with arguments: [CreatePostDTO(...)]
+==> Entering method: PostService.createPost(..) with arguments: [CreatePostDTO{title="My Post", body="Content...", authorId="123", tags=["tech", "java"]}]
 [CRUD] Starting operation: PostService.createPost(..)
 [PERFORMANCE] 2026-01-20 10:15:30 | FAST | Method: SERVICE::PostService.createPost(..) | Execution Time: 87 ms | Memory: 256 KB | Status: SUCCESS
 [PERFORMANCE] 2026-01-20 10:15:30 | FAST | Method: REPOSITORY::PostRepository.save(..) | Execution Time: 45 ms | Memory: 128 KB | Status: SUCCESS
 [CRUD] Successfully completed operation: PostService.createPost(..) in 87 ms
 <== Successfully completed method: PostService.createPost(..) with result: PostResponseDTO
 [AUDIT] Method execution completed - Class: PostService, Method: PostService.createPost(..)
+```
+
+### Sensitive Data Masking
+```
+==> Entering method: UserService.registerUser(..) with arguments: [RegisterUserDTO{username="john_doe", email="john@example.com", password=***MASKED***}]
+[CRUD] Starting operation: UserService.registerUser(..)
+[PERFORMANCE] 2026-01-20 10:15:31 | FAST | Method: SERVICE::UserService.registerUser(..) | Execution Time: 120 ms | Memory: 384 KB | Status: SUCCESS
+[CRUD] Successfully completed operation: UserService.registerUser(..) in 120 ms
+<== Successfully completed method: UserService.registerUser(..) with result: UserResponseDTO
 ```
 
 ### Performance Warning
@@ -199,6 +210,8 @@ mvn test
 - ✅ Configurable log levels
 - ✅ Detailed execution context
 - ✅ Exception tracking via @AfterThrowing
+- ✅ **Automatic sensitive data masking** (passwords, tokens, API keys, etc.)
+- ✅ **String truncation** to prevent log flooding
 
 ### 2. Performance Monitoring
 - ✅ Automatic execution time measurement
