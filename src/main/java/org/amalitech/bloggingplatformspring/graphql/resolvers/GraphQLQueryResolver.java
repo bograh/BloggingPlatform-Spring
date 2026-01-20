@@ -164,7 +164,6 @@ public class GraphQLQueryResolver {
                 comment.getId(),
                 comment.getPostId(),
                 comment.getAuthor(),
-                comment.getAuthor(),
                 comment.getContent(),
                 createdAt);
     }
