@@ -6,6 +6,7 @@ import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
 import org.amalitech.bloggingplatformspring.entity.Post;
 import org.amalitech.bloggingplatformspring.entity.User;
 import org.amalitech.bloggingplatformspring.exceptions.*;
+import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +33,9 @@ public class PostServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private CommentRepository commentRepository;
+
     @InjectMocks
     private PostService postService;
 
@@ -57,8 +61,7 @@ public class PostServiceTest {
                 "Test Body",
                 userId,
                 LocalDateTime.now(),
-                LocalDateTime.now()
-        );
+                LocalDateTime.now());
 
         createPostDTO = new CreatePostDTO();
         createPostDTO.setAuthorId(userId.toString());
@@ -130,8 +133,7 @@ public class PostServiceTest {
                 1,
                 10,
                 "createdAt",
-                1
-        );
+                1);
 
         when(postRepository.getAllPosts(pageRequest, filterRequest)).thenReturn(expectedResponse);
 
@@ -150,15 +152,13 @@ public class PostServiceTest {
         PostFilterRequest filterRequest = new PostFilterRequest(
                 "testuser",
                 "test search",
-                Arrays.asList("tag1", "tag2")
-        );
+                Arrays.asList("tag1", "tag2"));
         PageResponse<PostResponseDTO> expectedResponse = new PageResponse<>(
                 Collections.singletonList(postResponseDTO),
                 1,
                 10,
                 "title",
-                1
-        );
+                1);
 
         when(postRepository.getAllPosts(pageRequest, filterRequest)).thenReturn(expectedResponse);
 
@@ -236,6 +236,7 @@ public class PostServiceTest {
     void updatePost_Success() throws SQLException {
         when(postRepository.findPostById(1)).thenReturn(Optional.of(post));
         when(userRepository.findUserById(userId)).thenReturn(Optional.of(user));
+        when(commentRepository.getTotalCommentsByPostId(1)).thenReturn(0L);
         doNothing().when(postRepository).updatePost(any(Post.class), anyList());
 
         PostResponseDTO result = postService.updatePost(1, updatePostDTO);
@@ -255,6 +256,7 @@ public class PostServiceTest {
         when(postRepository.findPostById(1)).thenReturn(Optional.of(post));
         when(userRepository.findUserById(userId)).thenReturn(Optional.of(user));
         when(postRepository.getTagsByPostId(1)).thenReturn(Arrays.asList("tag1", "tag2"));
+        when(commentRepository.getTotalCommentsByPostId(1)).thenReturn(0L);
         doNothing().when(postRepository).updatePost(any(Post.class), anyList());
 
         PostResponseDTO result = postService.updatePost(1, partialUpdate);
@@ -320,13 +322,13 @@ public class PostServiceTest {
 
         when(postRepository.findPostById(1)).thenReturn(Optional.of(post));
         when(userRepository.findUserById(userId)).thenReturn(Optional.of(user));
+        when(commentRepository.getTotalCommentsByPostId(1)).thenReturn(0L);
         doNothing().when(postRepository).updatePost(any(Post.class), anyList());
 
         postService.updatePost(1, updatePostDTO);
 
-        verify(postRepository).updatePost(any(Post.class), argThat(tags ->
-                tags.size() == 3 && new HashSet<>(tags).size() == 3
-        ));
+        verify(postRepository).updatePost(any(Post.class),
+                argThat(tags -> tags.size() == 3 && new HashSet<>(tags).size() == 3));
     }
 
     @Test

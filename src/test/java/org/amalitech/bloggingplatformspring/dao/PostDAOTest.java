@@ -1,6 +1,5 @@
 package org.amalitech.bloggingplatformspring.dao;
 
-
 import org.amalitech.bloggingplatformspring.config.ConnectionProvider;
 import org.amalitech.bloggingplatformspring.dtos.requests.CreatePostDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.PageRequest;
@@ -33,6 +32,9 @@ class PostDAOTest {
 
     @Mock
     private TagRepository tagRepository;
+
+    @Mock
+    private CommentDAO commentRepository;
 
     @Mock
     private Connection connection;
@@ -94,7 +96,7 @@ class PostDAOTest {
         when(tagRepository.findOrCreate(eq("java"), eq(connection))).thenReturn(1);
         when(tagRepository.findOrCreate(eq("spring"), eq(connection))).thenReturn(2);
         doNothing().when(tagStmt).addBatch();
-        when(tagStmt.executeBatch()).thenReturn(new int[]{1, 1});
+        when(tagStmt.executeBatch()).thenReturn(new int[] { 1, 1 });
 
         Post result = postDAO.savePost(createPostDTO);
 
@@ -194,6 +196,7 @@ class PostDAOTest {
         when(connection.prepareStatement(anyString())).thenReturn(stmt);
         when(stmt.executeQuery()).thenReturn(rs);
         when(rs.next()).thenReturn(true, true, false);
+        when(commentRepository.getTotalCommentsByPostId(anyInt())).thenReturn(0L);
 
         when(rs.getInt("id")).thenReturn(1, 2);
         when(rs.getString("title")).thenReturn("Post 1", "Post 2");
@@ -202,7 +205,7 @@ class PostDAOTest {
                 .thenReturn(Timestamp.valueOf(updatedAt), Timestamp.valueOf(updatedAt));
         when(rs.getString("author")).thenReturn("author1", "author2");
         when(rs.getArray("tags")).thenReturn(tagsArray);
-        when(tagsArray.getArray()).thenReturn(new String[]{"java", "spring"});
+        when(tagsArray.getArray()).thenReturn(new String[] { "java", "spring" });
 
         List<PostResponseDTO> result = postDAO.getAllPosts();
 
@@ -227,6 +230,7 @@ class PostDAOTest {
         when(connection.prepareStatement(anyString())).thenReturn(stmt);
         when(stmt.executeQuery()).thenReturn(rs);
         when(rs.next()).thenReturn(true, false);
+        when(commentRepository.getTotalCommentsByPostId(anyInt())).thenReturn(0L);
 
         when(rs.getInt("id")).thenReturn(1);
         when(rs.getString("title")).thenReturn("Post 1");
@@ -234,7 +238,7 @@ class PostDAOTest {
         when(rs.getTimestamp("updated_at")).thenReturn(Timestamp.valueOf(updatedAt));
         when(rs.getString("author")).thenReturn("author1");
         when(rs.getArray("tags")).thenReturn(tagsArray);
-        when(tagsArray.getArray()).thenReturn(new String[]{"java"});
+        when(tagsArray.getArray()).thenReturn(new String[] { "java" });
         when(rs.getInt("total_count")).thenReturn(1);
 
         PageResponse<PostResponseDTO> result = postDAO.getAllPosts(pageRequest, filterRequest);
@@ -304,13 +308,14 @@ class PostDAOTest {
         when(connection.prepareStatement(anyString())).thenReturn(stmt);
         when(stmt.executeQuery()).thenReturn(rs);
         when(rs.next()).thenReturn(true);
+        when(commentRepository.getTotalCommentsByPostId(anyInt())).thenReturn(0L);
         when(rs.getInt("id")).thenReturn(postId);
         when(rs.getString("title")).thenReturn(title);
         when(rs.getString("body")).thenReturn(body);
         when(rs.getTimestamp("updated_at")).thenReturn(Timestamp.valueOf(updatedAt));
         when(rs.getString("author")).thenReturn("author1");
         when(rs.getArray("tags")).thenReturn(tagsArray);
-        when(tagsArray.getArray()).thenReturn(new String[]{"java", "spring"});
+        when(tagsArray.getArray()).thenReturn(new String[] { "java", "spring" });
 
         Optional<PostResponseDTO> result = postDAO.getPostResponseById(postId);
 
@@ -351,7 +356,7 @@ class PostDAOTest {
                 .thenReturn(insertStmt);
         when(tagRepository.findOrCreate(anyString(), eq(connection))).thenReturn(1);
         doNothing().when(insertStmt).addBatch();
-        when(insertStmt.executeBatch()).thenReturn(new int[]{1, 1});
+        when(insertStmt.executeBatch()).thenReturn(new int[] { 1, 1 });
 
         postDAO.updatePost(post, tags);
 
@@ -386,8 +391,7 @@ class PostDAOTest {
 
         ForbiddenException exception = assertThrows(
                 ForbiddenException.class,
-                () -> postDAO.updatePost(post, List.of("java"))
-        );
+                () -> postDAO.updatePost(post, List.of("java")));
 
         assertEquals("You are not permitted to update this post", exception.getMessage());
         verify(updateStmt).executeUpdate();
