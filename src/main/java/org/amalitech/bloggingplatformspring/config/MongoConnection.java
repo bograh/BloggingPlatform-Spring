@@ -11,15 +11,21 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class MongoConnection {
 
+    private final MongoDBConfig mongoDBConfig;
+
+    public MongoConnection(MongoDBConfig mongoDBConfig) {
+        this.mongoDBConfig = mongoDBConfig;
+    }
+
     @Bean
     public MongoClient mongoClient() {
-        return MongoClients.create(MongoDBConfig.CONNECTION_STRING);
+        return MongoClients.create(mongoDBConfig.getConnectionString());
     }
 
     @Bean
     public MongoDatabase mongoDatabase(MongoClient mongoClient) {
         log.info("Mongo DB Connection Established");
-        return mongoClient.getDatabase(MongoDBConfig.DATABASE_NAME);
+        return mongoClient.getDatabase(mongoDBConfig.getDatabaseName());
     }
 
 }
