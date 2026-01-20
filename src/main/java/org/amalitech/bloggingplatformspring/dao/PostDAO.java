@@ -2,10 +2,18 @@ package org.amalitech.bloggingplatformspring.dao;
 
 import lombok.extern.slf4j.Slf4j;
 import org.amalitech.bloggingplatformspring.config.ConnectionProvider;
+import org.amalitech.bloggingplatformspring.dao.helpers.DAOHelperMethods;
+import org.amalitech.bloggingplatformspring.dao.helpers.FilterClause;
 import org.amalitech.bloggingplatformspring.dtos.requests.CreatePostDTO;
+import org.amalitech.bloggingplatformspring.dtos.requests.PageRequest;
+import org.amalitech.bloggingplatformspring.dtos.requests.PostFilterRequest;
+import org.amalitech.bloggingplatformspring.dtos.responses.PageResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
 import org.amalitech.bloggingplatformspring.entity.Post;
+import org.amalitech.bloggingplatformspring.enums.PostSortField;
+import org.amalitech.bloggingplatformspring.enums.SortDirection;
 import org.amalitech.bloggingplatformspring.exceptions.ForbiddenException;
+import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.TagRepository;
 import org.amalitech.bloggingplatformspring.utils.PostUtils;
@@ -27,11 +35,15 @@ public class PostDAO implements PostRepository {
     private final ConnectionProvider connectionProvider;
     private final TagRepository tagRepository;
     private final PostUtils postUtils;
+    private final DAOHelperMethods helperMethods;
+    private final CommentRepository commentRepository;
 
-    public PostDAO(ConnectionProvider connectionProvider, TagRepository tagRepository) {
+    public PostDAO(ConnectionProvider connectionProvider, TagRepository tagRepository, CommentDAO commentRepository) {
         this.connectionProvider = connectionProvider;
         this.tagRepository = tagRepository;
         this.postUtils = new PostUtils();
+        helperMethods = new DAOHelperMethods();
+        this.commentRepository = commentRepository;
     }
 
     private Connection getConnection() throws SQLException {
@@ -98,11 +110,86 @@ public class PostDAO implements PostRepository {
              ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
-                posts.add(postUtils.mapRowToPostResponse(rs));
+                long totalComments = commentRepository.getTotalCommentsByPostId(rs.getInt("id"));
+                posts.add(postUtils.mapRowToPostResponse(rs, totalComments));
             }
         }
 
         return posts;
+    }
+
+    public PageResponse<PostResponseDTO> getAllPosts(PageRequest pageRequest, PostFilterRequest postFilterRequest) throws SQLException {
+        if (pageRequest == null) {
+            throw new IllegalArgumentException("PageRequest cannot be null");
+        }
+
+        int size = pageRequest.size();
+        int page = pageRequest.page();
+        int offset = page * size;
+
+        PostSortField sortField = helperMethods.matchSortByToEntityField(pageRequest.sortBy());
+        SortDirection direction = helperMethods.getSortDirection(pageRequest.sortDirection());
+        String orderByClause = helperMethods.buildOrderByClause(sortField, direction);
+        FilterClause filterClause = helperMethods.buildFilterClause(postFilterRequest);
+        String whereClause = filterClause.whereClause();
+
+        String query = """
+                SELECT
+                    p.id,
+                    p.title,
+                    p.body,
+                    p.updated_at,
+                    u.username AS author,
+                    COALESCE(
+                        ARRAY_AGG(t.name ORDER BY t.name)
+                        FILTER (WHERE t.name IS NOT NULL),
+                        '{}'
+                    ) AS tags,
+                    COUNT(*) OVER() AS total_count
+                FROM posts p
+                JOIN users u ON u.id = p.author_id
+                LEFT JOIN post_tags pt ON pt.post_id = p.id
+                LEFT JOIN tags t ON t.id = pt.tag_id
+                %s
+                GROUP BY
+                    p.id, p.title, p.body, p.updated_at, u.username
+                ORDER BY %s
+                LIMIT ? OFFSET ?
+                """.formatted(whereClause, orderByClause);
+
+        List<PostResponseDTO> posts = new ArrayList<>();
+        int totalElements = 0;
+
+        try (Connection conn = getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            int paramIndex = 1;
+            for (Object param : filterClause.parameters()) {
+                stmt.setObject(paramIndex++, param);
+            }
+
+            stmt.setInt(paramIndex++, size);
+            stmt.setInt(paramIndex, offset);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    if (totalElements == 0) {
+                        totalElements = rs.getInt("total_count");
+                    }
+                    long totalComments = commentRepository.getTotalCommentsByPostId(rs.getInt("id"));
+                    posts.add(postUtils.mapRowToPostResponse(rs, totalComments));
+                }
+            }
+        }
+
+        String sort = String.format("%s : %s", sortField.name().toLowerCase(), direction.name());
+        return new PageResponse<>(
+                posts,
+                page,
+                size,
+                sort,
+                totalElements
+        );
     }
 
     @Override
@@ -150,7 +237,8 @@ public class PostDAO implements PostRepository {
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next()) {
-                return Optional.ofNullable(postUtils.mapRowToPostResponse(rs));
+                long totalComments = commentRepository.getTotalCommentsByPostId(id);
+                return Optional.ofNullable(postUtils.mapRowToPostResponse(rs, totalComments));
             }
         }
         return Optional.empty();
@@ -247,4 +335,5 @@ public class PostDAO implements PostRepository {
             }
         }
     }
+
 }

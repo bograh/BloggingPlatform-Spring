@@ -1,10 +1,9 @@
 package org.amalitech.bloggingplatformspring.controllers;
 
 import jakarta.validation.Valid;
-import org.amalitech.bloggingplatformspring.dtos.requests.CreatePostDTO;
-import org.amalitech.bloggingplatformspring.dtos.requests.DeletePostRequestDTO;
-import org.amalitech.bloggingplatformspring.dtos.requests.UpdatePostDTO;
+import org.amalitech.bloggingplatformspring.dtos.requests.*;
 import org.amalitech.bloggingplatformspring.dtos.responses.ApiResponse;
+import org.amalitech.bloggingplatformspring.dtos.responses.PageResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
 import org.amalitech.bloggingplatformspring.services.PostService;
 import org.springframework.http.HttpStatus;
@@ -32,9 +31,20 @@ public class PostController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<PostResponseDTO>>> getAllPosts() {
-        List<PostResponseDTO> posts = postService.getAllPosts();
-        ApiResponse<List<PostResponseDTO>> response =
+    public ResponseEntity<ApiResponse<PageResponse<PostResponseDTO>>> getAllPosts(
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size,
+            @RequestParam(name = "sort", defaultValue = "lastUpdated") String sortBy,
+            @RequestParam(name = "order", defaultValue = "DESC") String sortDirection,
+            @RequestParam(required = false) String author,
+            @RequestParam(required = false) List<String> tags,
+            @RequestParam(required = false) String search
+    ) {
+        PageRequest pageRequest = new PageRequest(page, Math.min(50, size), sortBy, sortDirection);
+        PostFilterRequest filterRequest = new PostFilterRequest(author, search, tags);
+
+        PageResponse<PostResponseDTO> posts = postService.getPaginatedPosts(pageRequest, filterRequest);
+        ApiResponse<PageResponse<PostResponseDTO>> response =
                 ApiResponse.success("Posts retrieved successfully", posts);
         return ResponseEntity.ok(response);
     }

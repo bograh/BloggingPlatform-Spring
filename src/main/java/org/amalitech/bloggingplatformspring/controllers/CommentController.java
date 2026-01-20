@@ -1,5 +1,6 @@
 package org.amalitech.bloggingplatformspring.controllers;
 
+import jakarta.validation.Valid;
 import org.amalitech.bloggingplatformspring.dtos.requests.CreateCommentDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.DeleteCommentRequestDTO;
 import org.amalitech.bloggingplatformspring.dtos.responses.ApiResponse;
@@ -22,7 +23,7 @@ public class CommentController {
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<CommentDocument>> addCommentToPost(CreateCommentDTO newComment) {
+    public ResponseEntity<ApiResponse<CommentDocument>> addCommentToPost(@Valid @RequestBody CreateCommentDTO newComment) {
         CommentDocument commentDocument = commentService.addCommentToPost(newComment);
         ApiResponse<CommentDocument> response = ApiResponse.success(
                 "Comment added to post successfully",
@@ -31,8 +32,8 @@ public class CommentController {
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<CommentDocument>>> getAllCommentsByPostId(int postId) {
+    @GetMapping("/post/{postId}")
+    public ResponseEntity<ApiResponse<List<CommentDocument>>> getAllCommentsByPostId(@PathVariable int postId) {
         List<CommentDocument> comments = commentService.getAllCommentsByPostId(postId);
         ApiResponse<List<CommentDocument>> response = ApiResponse.success(
                 "Comments for post retrieved successfully",

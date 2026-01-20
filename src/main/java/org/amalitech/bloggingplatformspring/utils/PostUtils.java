@@ -28,7 +28,7 @@ public class PostUtils {
         );
     }
 
-    public PostResponseDTO mapRowToPostResponse(ResultSet rs) throws SQLException {
+    public PostResponseDTO mapRowToPostResponse(ResultSet rs, Long totalComments) throws SQLException {
         int id = rs.getInt("id");
         String title = rs.getString("title");
         String body = rs.getString("body");
@@ -42,13 +42,13 @@ public class PostUtils {
 
         return new PostResponseDTO(
                 id, title, body,
-                author, tags, formatDate(updatedAt)
+                author, tags, formatDate(updatedAt), totalComments
         );
     }
 
-    public PostResponseDTO createResponseFromPostAndTags(Post post, String authorName, List<String> tags) {
+    public PostResponseDTO createResponseFromPostAndTags(Post post, String authorName, List<String> tags, Long totalComments) {
         return new PostResponseDTO(
-                post.getId(), post.getTitle(), post.getBody(), authorName, tags, formatDate(post.getUpdatedAt())
+                post.getId(), post.getTitle(), post.getBody(), authorName, tags, formatDate(post.getUpdatedAt()), totalComments
         );
     }
 

@@ -1,13 +1,13 @@
 package org.amalitech.bloggingplatformspring.services;
 
 import lombok.extern.slf4j.Slf4j;
-import org.amalitech.bloggingplatformspring.dtos.requests.CreatePostDTO;
-import org.amalitech.bloggingplatformspring.dtos.requests.DeletePostRequestDTO;
-import org.amalitech.bloggingplatformspring.dtos.requests.UpdatePostDTO;
+import org.amalitech.bloggingplatformspring.dtos.requests.*;
+import org.amalitech.bloggingplatformspring.dtos.responses.PageResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
 import org.amalitech.bloggingplatformspring.entity.Post;
 import org.amalitech.bloggingplatformspring.entity.User;
 import org.amalitech.bloggingplatformspring.exceptions.*;
+import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.amalitech.bloggingplatformspring.utils.PostUtils;
@@ -26,30 +26,47 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final UserRepository userRepository;
+    private final CommentRepository commentRepository;
     private final PostUtils postUtils;
 
-    public PostService(PostRepository postRepository, UserRepository userRepository) {
+    public PostService(PostRepository postRepository, UserRepository userRepository, CommentRepository commentRepository) {
         this.postRepository = postRepository;
         this.userRepository = userRepository;
+        this.commentRepository = commentRepository;
         this.postUtils = new PostUtils();
     }
 
     public PostResponseDTO createPost(CreatePostDTO createPostDTO) {
+        UUID userId;
         try {
-            UUID userId = UUID.fromString(createPostDTO.getAuthorId());
+            userId = UUID.fromString(createPostDTO.getAuthorId());
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Invalid authorId UUID");
+        }
 
-            userRepository.findUserById(userId).orElseThrow(
-                    () -> new ResourceNotFoundException("User not found with ID: " + userId)
-            );
-
+        User user;
+        try {
+            user = userRepository.findUserById(userId)
+                    .orElseThrow(() ->
+                            new ResourceNotFoundException("User not found with ID: " + userId));
             Post post = postRepository.savePost(createPostDTO);
-            List<String> tagNames = createPostDTO.getTags();
-            String authorName = userRepository.getUsernameById(post.getAuthorId());
 
-            return postUtils.createResponseFromPostAndTags(post, authorName, tagNames);
-
+            return postUtils.createResponseFromPostAndTags(
+                    post,
+                    user.getUsername(),
+                    createPostDTO.getTags(),
+                    0L
+            );
         } catch (SQLException e) {
             throw new SQLQueryException("Failed to create post: " + e.getMessage());
+        }
+    }
+
+    public PageResponse<PostResponseDTO> getPaginatedPosts(PageRequest pageRequest, PostFilterRequest postFilterRequest) {
+        try {
+            return postRepository.getAllPosts(pageRequest, postFilterRequest);
+        } catch (SQLException e) {
+            throw new SQLQueryException("Error occurred while fetching posts: " + e.getMessage());
         }
     }
 
@@ -115,7 +132,8 @@ public class PostService {
             );
 
             postRepository.updatePost(updatedPost, updatedTags);
-            return postUtils.createResponseFromPostAndTags(updatedPost, user.getUsername(), updatedTags);
+            long totalComments = commentRepository.getTotalCommentsByPostId(post.getId());
+            return postUtils.createResponseFromPostAndTags(updatedPost, user.getUsername(), updatedTags, totalComments);
 
         } catch (IllegalArgumentException e) {
             throw new InvalidUserIdFormatException("Invalid user ID format: " + e.getMessage());
@@ -147,6 +165,4 @@ public class PostService {
             throw new SQLQueryException("Error occurred while deleting post: " + e.getMessage());
         }
     }
-
-
 }

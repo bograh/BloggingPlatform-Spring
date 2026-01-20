@@ -3,7 +3,7 @@ package org.amalitech.bloggingplatformspring.dao;
 import org.amalitech.bloggingplatformspring.config.ConnectionProvider;
 import org.amalitech.bloggingplatformspring.entity.User;
 import org.amalitech.bloggingplatformspring.exceptions.BadRequestException;
-import org.amalitech.bloggingplatformspring.exceptions.ForbiddenException;
+import org.amalitech.bloggingplatformspring.exceptions.UnauthorizedException;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.amalitech.bloggingplatformspring.utils.UserUtils;
 import org.springframework.stereotype.Repository;
@@ -82,7 +82,7 @@ public class UserDAO implements UserRepository {
                 return userUtils.mapRowToUser(rs);
             }
         }
-        throw new ForbiddenException("Invalid email or password");
+        throw new UnauthorizedException("Invalid email or password");
     }
 
     @Override

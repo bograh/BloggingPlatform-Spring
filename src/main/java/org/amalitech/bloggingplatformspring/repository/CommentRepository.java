@@ -16,4 +16,6 @@ public interface CommentRepository {
 
     void deleteComment(String commentId, String authorId);
 
+    long getTotalCommentsByPostId(int postId);
+
 }

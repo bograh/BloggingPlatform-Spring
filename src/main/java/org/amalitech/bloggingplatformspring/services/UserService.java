@@ -28,7 +28,7 @@ public class UserService {
         String email = registerUserDTO.getEmail();
         String password = registerUserDTO.getPassword();
 
-        if (password.toLowerCase().contains(username)) {
+        if (password.toLowerCase().contains(username.toLowerCase())) {
             throw new BadRequestException("Password must not contain username");
         }
 
