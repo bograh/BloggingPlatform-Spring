@@ -6,9 +6,11 @@ import org.amalitech.bloggingplatformspring.dtos.requests.PostFilterRequest;
 import org.amalitech.bloggingplatformspring.dtos.responses.PageResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
 import org.amalitech.bloggingplatformspring.entity.CommentDocument;
+import org.amalitech.bloggingplatformspring.entity.Post;
 import org.amalitech.bloggingplatformspring.entity.Tag;
 import org.amalitech.bloggingplatformspring.entity.User;
 import org.amalitech.bloggingplatformspring.graphql.types.*;
+import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.TagRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.amalitech.bloggingplatformspring.services.CommentService;
@@ -35,6 +37,7 @@ public class GraphQLQueryResolver {
     private final CommentService commentService;
     private final UserRepository userRepository;
     private final TagRepository tagRepository;
+    private final PostRepository postRepository;
 
     @QueryMapping
     public GraphQLUser getUser(@Argument UUID userId) throws SQLException {
@@ -64,8 +67,11 @@ public class GraphQLQueryResolver {
 
         int page = (pageRequest != null && pageRequest.getPage() != null) ? pageRequest.getPage() : 0;
         int size = (pageRequest != null && pageRequest.getSize() != null) ? pageRequest.getSize() : 10;
-        String sortBy = (pageRequest != null && pageRequest.getSortBy() != null) ? pageRequest.getSortBy() : "createdAt";
-        String sortDirection = (pageRequest != null && pageRequest.getSortDirection() != null) ? pageRequest.getSortDirection() : "DESC";
+        String sortBy = (pageRequest != null && pageRequest.getSortBy() != null) ? pageRequest.getSortBy()
+                : "createdAt";
+        String sortDirection = (pageRequest != null && pageRequest.getSortDirection() != null)
+                ? pageRequest.getSortDirection()
+                : "DESC";
 
         PageRequest pr = new PageRequest(page, size, sortBy, sortDirection);
 
@@ -122,25 +128,33 @@ public class GraphQLQueryResolver {
         return new GraphQLUser(
                 user.getId(),
                 user.getUsername(),
-                user.getEmail()
-        );
+                user.getEmail());
     }
 
-    private GraphQLPost mapToGraphQLPost(PostResponseDTO post) {
-        List<GraphQLTag> tags = post.getTags().stream()
+    private GraphQLPost mapToGraphQLPost(PostResponseDTO postResponse) {
+        List<GraphQLTag> tags = postResponse.getTags().stream()
                 .map(tagName -> new GraphQLTag(null, tagName))
                 .collect(Collectors.toList());
 
-        LocalDateTime updatedAt = LocalDateTime.parse(post.getLastUpdated(), FORMATTER);
+        LocalDateTime updatedAt = LocalDateTime.parse(postResponse.getLastUpdated(), FORMATTER);
 
-        return new GraphQLPost(
-                post.getId(),
-                post.getTitle(),
-                post.getBody(),
-                post.getAuthor(),
-                tags,
-                updatedAt
-        );
+        // Fetch the Post entity to get authorId and createdAt
+        try {
+            Post post = postRepository.findPostById(postResponse.getId())
+                    .orElseThrow(() -> new RuntimeException("Post not found"));
+
+            return new GraphQLPost(
+                    postResponse.getId(),
+                    postResponse.getTitle(),
+                    postResponse.getBody(),
+                    post.getAuthorId().toString(),
+                    postResponse.getAuthor(),
+                    tags,
+                    post.getCreatedAt(),
+                    updatedAt);
+        } catch (SQLException e) {
+            throw new RuntimeException("Error fetching post details", e);
+        }
     }
 
     private GraphQLComment mapToGraphQLComment(CommentDocument comment) {
@@ -152,7 +166,6 @@ public class GraphQLQueryResolver {
                 comment.getAuthor(),
                 comment.getAuthor(),
                 comment.getContent(),
-                createdAt
-        );
+                createdAt);
     }
 }
