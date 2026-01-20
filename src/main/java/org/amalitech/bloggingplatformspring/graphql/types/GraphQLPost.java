@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
@@ -14,7 +15,9 @@ public class GraphQLPost {
     private Integer id;
     private String title;
     private String body;
+    private String authorId;
     private String author;
     private List<GraphQLTag> tags;
+    private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
