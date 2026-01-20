@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 public class GraphQLComment {
     private String id;
     private Integer postId;
-    private String author;
+    private String authorId;
     private String authorUsername;
     private String content;
     private LocalDateTime createdAt;
