@@ -3,6 +3,7 @@
 ## ✅ What Was Implemented
 
 ### Core Components
+
 ```
 📦 GraphQL Integration
 ├── 📄 Schema Definition (schema.graphqls)
@@ -16,23 +17,23 @@
 
 ### Files Created
 
-| File | Purpose |
-|------|---------|
-| `src/main/resources/graphql/schema.graphqls` | GraphQL schema definition |
-| `src/main/java/.../graphql/types/*` | GraphQL response types |
-| `src/main/java/.../graphql/resolvers/GraphQLQueryResolver.java` | Query handler |
-| `src/main/java/.../graphql/resolvers/GraphQLMutationResolver.java` | Mutation handler |
-| `src/main/java/.../graphql/config/GraphQLScalarConfig.java` | Custom scalar types |
-| `src/test/java/.../graphql/GraphQLIntegrationTest.java` | Integration tests |
+| File                                                               | Purpose                   |
+|--------------------------------------------------------------------|---------------------------|
+| `src/main/resources/graphql/schema.graphqls`                       | GraphQL schema definition |
+| `src/main/java/.../graphql/types/*`                                | GraphQL response types    |
+| `src/main/java/.../graphql/resolvers/GraphQLQueryResolver.java`    | Query handler             |
+| `src/main/java/.../graphql/resolvers/GraphQLMutationResolver.java` | Mutation handler          |
+| `src/main/java/.../graphql/config/GraphQLScalarConfig.java`        | Custom scalar types       |
+| `src/test/java/.../graphql/GraphQLIntegrationTest.java`            | Integration tests         |
 
 ### Documentation Created
 
-| File | Content |
-|------|---------|
-| `GRAPHQL_GUIDE.md` | Complete integration guide with examples |
-| `GRAPHQL_TEST_QUERIES.md` | Ready-to-use test queries |
-| `GRAPHQL_IMPLEMENTATION_SUMMARY.md` | Implementation summary |
-| `README_GRAPHQL.md` | This quick start guide |
+| File                                | Content                                  |
+|-------------------------------------|------------------------------------------|
+| `GRAPHQL_GUIDE.md`                  | Complete integration guide with examples |
+| `GRAPHQL_TEST_QUERIES.md`           | Ready-to-use test queries                |
+| `GRAPHQL_IMPLEMENTATION_SUMMARY.md` | Implementation summary                   |
+| `README_GRAPHQL.md`                 | This quick start guide                   |
 
 ## 🎯 Endpoints
 
@@ -45,16 +46,19 @@ GraphiQL UI:  http://localhost:8080/graphiql  👈 Start here!
 ## 🏃 Quick Start
 
 ### 1. Start Application
+
 ```bash
 mvn spring-boot:run
 ```
 
 ### 2. Open GraphiQL
+
 ```
 http://localhost:8080/graphiql
 ```
 
 ### 3. Try Your First Query
+
 ```graphql
 query {
   getAllPosts {
@@ -66,6 +70,7 @@ query {
 ```
 
 ### 4. Try Your First Mutation
+
 ```graphql
 mutation {
   registerUser(input: {
@@ -83,6 +88,7 @@ mutation {
 ## 📊 Available Operations
 
 ### Queries (Read Data)
+
 - ✅ `getUser` - Fetch user by ID
 - ✅ `getPost` - Fetch post with author and tags
 - ✅ `getAllPosts` - Fetch all posts
@@ -92,6 +98,7 @@ mutation {
 - ✅ `getAllTags` - Fetch all tags
 
 ### Mutations (Modify Data)
+
 - ✅ `registerUser` - Create new user
 - ✅ `signInUser` - Authenticate user
 - ✅ `createPost` - Create post with tags
@@ -103,7 +110,9 @@ mutation {
 ## 🎨 Key Features
 
 ### Flexible Data Fetching
+
 Request only what you need:
+
 ```graphql
 query {
   getPost(postId: 1) {
@@ -113,7 +122,9 @@ query {
 ```
 
 ### Nested Queries
+
 Get related data in one request:
+
 ```graphql
 query {
   getPost(postId: 1) {
@@ -130,7 +141,9 @@ query {
 ```
 
 ### Pagination
+
 Built-in pagination support:
+
 ```graphql
 query {
   getPaginatedPosts(
@@ -145,16 +158,17 @@ query {
 
 ## ✅ Acceptance Criteria Met
 
-| Criteria | Status | Details |
-|----------|--------|---------|
-| Schema defined for key entities | ✅ Complete | User, Post, Comment, Tag |
-| Queries and mutations implemented | ✅ Complete | 8 queries, 7 mutations |
-| REST and GraphQL coexist | ✅ Complete | Both APIs work simultaneously |
-| Tested through GraphiQL | ✅ Complete | GraphiQL enabled at /graphiql |
+| Criteria                          | Status     | Details                       |
+|-----------------------------------|------------|-------------------------------|
+| Schema defined for key entities   | ✅ Complete | User, Post, Comment, Tag      |
+| Queries and mutations implemented | ✅ Complete | 8 queries, 7 mutations        |
+| REST and GraphQL coexist          | ✅ Complete | Both APIs work simultaneously |
+| Tested through GraphiQL           | ✅ Complete | GraphiQL enabled at /graphiql |
 
 ## 🔍 Verify Installation
 
 ### Check Schema
+
 ```graphql
 {
   __schema {
@@ -166,6 +180,7 @@ query {
 ```
 
 ### Check Available Queries
+
 ```graphql
 {
   __schema {
@@ -187,16 +202,19 @@ query {
 ## 🛠️ Build & Test
 
 ### Build
+
 ```bash
 mvn clean install
 ```
 
 ### Run Tests
+
 ```bash
 mvn test -Dtest=GraphQLIntegrationTest
 ```
 
 ### Package
+
 ```bash
 mvn clean package
 ```

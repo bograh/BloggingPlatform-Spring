@@ -1,9 +1,16 @@
 package org.amalitech.bloggingplatformspring.config;
 
+import lombok.Getter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+@Getter
 @Component
 public class MongoDBConfig {
-    public static final String CONNECTION_STRING = "mongodb://localhost:27017";
-    public static final String DATABASE_NAME = "blog_db";
+
+    @Value("${app.mongo.conn.string}")
+    private String connectionString;
+
+    @Value("${app.mongo.database}")
+    private String databaseName;
 }

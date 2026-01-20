@@ -34,6 +34,6 @@ public class UserController {
     public ResponseEntity<ApiResponse<UserResponseDTO>> signInUser(@Valid @RequestBody SignInUserDTO signInUserDTO) {
         UserResponseDTO userResponse = userService.signInUser(signInUserDTO);
         ApiResponse<UserResponseDTO> response = ApiResponse.success("User sign in successful", userResponse);
-        return new ResponseEntity<>(response, HttpStatus.CREATED);
+        return new ResponseEntity<>(response, HttpStatus.OK);
     }
 }
