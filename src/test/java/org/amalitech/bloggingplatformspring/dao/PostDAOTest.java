@@ -96,7 +96,7 @@ class PostDAOTest {
         when(tagRepository.findOrCreate(eq("java"), eq(connection))).thenReturn(1);
         when(tagRepository.findOrCreate(eq("spring"), eq(connection))).thenReturn(2);
         doNothing().when(tagStmt).addBatch();
-        when(tagStmt.executeBatch()).thenReturn(new int[] { 1, 1 });
+        when(tagStmt.executeBatch()).thenReturn(new int[]{1, 1});
 
         Post result = postDAO.savePost(createPostDTO);
 
@@ -205,7 +205,7 @@ class PostDAOTest {
                 .thenReturn(Timestamp.valueOf(updatedAt), Timestamp.valueOf(updatedAt));
         when(rs.getString("author")).thenReturn("author1", "author2");
         when(rs.getArray("tags")).thenReturn(tagsArray);
-        when(tagsArray.getArray()).thenReturn(new String[] { "java", "spring" });
+        when(tagsArray.getArray()).thenReturn(new String[]{"java", "spring"});
 
         List<PostResponseDTO> result = postDAO.getAllPosts();
 
@@ -238,7 +238,7 @@ class PostDAOTest {
         when(rs.getTimestamp("updated_at")).thenReturn(Timestamp.valueOf(updatedAt));
         when(rs.getString("author")).thenReturn("author1");
         when(rs.getArray("tags")).thenReturn(tagsArray);
-        when(tagsArray.getArray()).thenReturn(new String[] { "java" });
+        when(tagsArray.getArray()).thenReturn(new String[]{"java"});
         when(rs.getInt("total_count")).thenReturn(1);
 
         PageResponse<PostResponseDTO> result = postDAO.getAllPosts(pageRequest, filterRequest);
@@ -315,7 +315,7 @@ class PostDAOTest {
         when(rs.getTimestamp("updated_at")).thenReturn(Timestamp.valueOf(updatedAt));
         when(rs.getString("author")).thenReturn("author1");
         when(rs.getArray("tags")).thenReturn(tagsArray);
-        when(tagsArray.getArray()).thenReturn(new String[] { "java", "spring" });
+        when(tagsArray.getArray()).thenReturn(new String[]{"java", "spring"});
 
         Optional<PostResponseDTO> result = postDAO.getPostResponseById(postId);
 
@@ -356,7 +356,7 @@ class PostDAOTest {
                 .thenReturn(insertStmt);
         when(tagRepository.findOrCreate(anyString(), eq(connection))).thenReturn(1);
         doNothing().when(insertStmt).addBatch();
-        when(insertStmt.executeBatch()).thenReturn(new int[] { 1, 1 });
+        when(insertStmt.executeBatch()).thenReturn(new int[]{1, 1});
 
         postDAO.updatePost(post, tags);
 
@@ -432,7 +432,7 @@ class PostDAOTest {
 
         assertNotNull(result);
         assertEquals(2, result.size());
-        assertEquals("java", result.get(0));
+        assertEquals("java", result.getFirst());
         assertEquals("spring", result.get(1));
         verify(stmt).setInt(1, postId);
     }
