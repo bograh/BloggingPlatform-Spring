@@ -8,14 +8,19 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Aspect for performance monitoring and metrics collection.
- * Tracks execution times, call counts, and performance thresholds.
+ * Tracks execution times, call counts, percentiles, and performance thresholds.
  */
 @Slf4j
 @Aspect
@@ -125,9 +130,12 @@ public class PerformanceMonitoringAspect {
      * Get performance level based on execution time
      */
     private String getPerformanceLevel(long executionTime) {
-        if (executionTime < 100) return "FAST";
-        if (executionTime < 500) return "NORMAL";
-        if (executionTime < 1000) return "SLOW";
+        if (executionTime < 100)
+            return "FAST";
+        if (executionTime < 500)
+            return "NORMAL";
+        if (executionTime < 1000)
+            return "SLOW";
         return "CRITICAL";
     }
 
@@ -154,23 +162,70 @@ public class PerformanceMonitoringAspect {
     }
 
     /**
-     * Print performance summary
+     * Export performance summary
      */
-    public void printPerformanceSummary() {
-        log.info("=".repeat(80));
-        log.info("PERFORMANCE METRICS SUMMARY");
-        log.info("=".repeat(80));
+    public void exportPerformanceSummary() {
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
+        Path logFilePath = Paths.get("logs", timestamp + "-export.log");
 
-        metricsMap.forEach((methodName, metrics) -> {
-            log.info("Method: {}", methodName);
-            log.info("  Total Calls: {}", metrics.getTotalCalls());
-            log.info("  Successful: {}", metrics.getSuccessfulCalls());
-            log.info("  Failed: {}", metrics.getFailedCalls());
-            log.info("  Avg Execution Time: {} ms", metrics.getAverageExecutionTime());
-            log.info("  Min Execution Time: {} ms", metrics.getMinExecutionTime());
-            log.info("  Max Execution Time: {} ms", metrics.getMaxExecutionTime());
-            log.info("-".repeat(80));
-        });
+        try {
+            // Create logs directory if it doesn't exist
+            Files.createDirectories(logFilePath.getParent());
+
+            StringBuilder content = new StringBuilder();
+            content.append("=".repeat(80)).append("\n");
+            content.append("PERFORMANCE METRICS SUMMARY").append("\n");
+            content.append("=".repeat(80)).append("\n");
+
+            metricsMap.forEach((methodName, metrics) -> {
+                content.append("Method: ").append(methodName).append("\n");
+                content.append("  Total Calls: ").append(metrics.getTotalCalls()).append("\n");
+                content.append("  Successful: ").append(metrics.getSuccessfulCalls()).append("\n");
+                content.append("  Failed: ").append(metrics.getFailedCalls()).append("\n");
+                content.append("  Avg Execution Time: ").append(metrics.getAverageExecutionTime()).append(" ms\n");
+                content.append("  Min Execution Time: ").append(metrics.getMinExecutionTime()).append(" ms\n");
+                content.append("  Max Execution Time: ").append(metrics.getMaxExecutionTime()).append(" ms\n");
+                content.append("  P50 (Median): ").append(metrics.getPercentile(50)).append(" ms\n");
+                content.append("  P95: ").append(metrics.getPercentile(95)).append(" ms\n");
+                content.append("  P99: ").append(metrics.getPercentile(99)).append(" ms\n");
+                content.append("-".repeat(80)).append("\n");
+            });
+
+            Files.writeString(logFilePath, content.toString());
+            log.info("Performance summary exported to: {}", logFilePath.toAbsolutePath());
+        } catch (IOException e) {
+            log.error("Failed to export performance summary to file", e);
+        }
+    }
+
+    /**
+     * Reset all metrics
+     */
+    public void resetMetrics() {
+        metricsMap.clear();
+        log.info("All performance metrics have been reset");
+    }
+
+    /**
+     * Get metrics summary statistics
+     */
+    public Map<String, Object> getMetricsSummary() {
+        Map<String, Object> summary = new HashMap<>();
+        summary.put("totalMethodsMonitored", metricsMap.size());
+        summary.put("totalExecutions", metricsMap.values().stream()
+                .mapToLong(MethodMetrics::getTotalCalls)
+                .sum());
+        summary.put("totalFailures", metricsMap.values().stream()
+                .mapToLong(MethodMetrics::getFailedCalls)
+                .sum());
+
+        OptionalDouble avgExecTime = metricsMap.values().stream()
+                .mapToLong(MethodMetrics::getAverageExecutionTime)
+                .average();
+        summary.put("overallAverageExecutionTime",
+                String.format("%.2f ms", avgExecTime.orElse(0.0)));
+
+        return summary;
     }
 
     /**
@@ -183,6 +238,8 @@ public class PerformanceMonitoringAspect {
         private final AtomicLong successfulCalls = new AtomicLong(0);
         private final AtomicLong failedCalls = new AtomicLong(0);
         private final AtomicLong totalExecutionTime = new AtomicLong(0);
+        private final List<Long> executionTimes = Collections.synchronizedList(new ArrayList<>());
+        private final int maxSampleSize = 1000;
         private volatile long minExecutionTime = Long.MAX_VALUE;
         @Getter
         private volatile long maxExecutionTime = 0;
@@ -206,6 +263,14 @@ public class PerformanceMonitoringAspect {
             if (executionTime > maxExecutionTime) {
                 maxExecutionTime = executionTime;
             }
+
+            // Store execution time for percentile calculation
+            executionTimes.add(executionTime);
+
+            // Keep only the last maxSampleSize executions to prevent memory issues
+            if (executionTimes.size() > maxSampleSize) {
+                executionTimes.removeFirst();
+            }
         }
 
         public long getTotalCalls() {
@@ -227,6 +292,56 @@ public class PerformanceMonitoringAspect {
 
         public long getMinExecutionTime() {
             return minExecutionTime == Long.MAX_VALUE ? 0 : minExecutionTime;
+        }
+
+        /**
+         * Calculate percentile value
+         * 
+         * @param percentile Percentile to calculate (e.g., 50, 95, 99)
+         * @return Execution time at the given percentile
+         */
+        public long getPercentile(int percentile) {
+            if (executionTimes.isEmpty()) {
+                return 0;
+            }
+
+            List<Long> sortedTimes;
+            synchronized (executionTimes) {
+                sortedTimes = new ArrayList<>(executionTimes);
+            }
+            Collections.sort(sortedTimes);
+
+            int index = (int) Math.ceil(percentile / 100.0 * sortedTimes.size()) - 1;
+            index = Math.max(0, Math.min(index, sortedTimes.size() - 1));
+            return sortedTimes.get(index);
+        }
+
+        /**
+         * Get failure rate as a percentage
+         */
+        public double getFailureRate() {
+            long total = totalCalls.get();
+            return total > 0 ? (failedCalls.get() * 100.0) / total : 0.0;
+        }
+
+        /**
+         * Get standard deviation of execution times
+         */
+        public double getStandardDeviation() {
+            if (executionTimes.size() < 2) {
+                return 0;
+            }
+
+            double mean = getAverageExecutionTime();
+            double sumSquaredDiff;
+
+            synchronized (executionTimes) {
+                sumSquaredDiff = executionTimes.stream()
+                        .mapToDouble(time -> Math.pow(time - mean, 2))
+                        .sum();
+            }
+
+            return Math.sqrt(sumSquaredDiff / executionTimes.size());
         }
 
     }
