@@ -5,31 +5,31 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class ApiResponse<T> {
+public class ApiResponseGeneric<T> {
     private String status;
     private String message;
     private T data;
 
-    public ApiResponse(String status, String message, T data) {
+    public ApiResponseGeneric(String status, String message, T data) {
         this.status = status;
         this.message = message;
         this.data = data;
     }
 
-    public ApiResponse(String status, String message) {
+    public ApiResponseGeneric(String status, String message) {
         this.status = status;
         this.message = message;
     }
 
-    public static <T> ApiResponse<T> success(String message, T data) {
-        return new ApiResponse<>("success", message, data);
+    public static <T> ApiResponseGeneric<T> success(String message, T data) {
+        return new ApiResponseGeneric<>("success", message, data);
     }
 
-    public static <T> ApiResponse<T> success(String message) {
-        return new ApiResponse<>("success", message);
+    public static <T> ApiResponseGeneric<T> success(String message) {
+        return new ApiResponseGeneric<>("success", message);
     }
 
-    public static <T> ApiResponse<T> error(String message) {
-        return new ApiResponse<>("error", message, null);
+    public static <T> ApiResponseGeneric<T> error(String message) {
+        return new ApiResponseGeneric<>("error", message, null);
     }
 }
