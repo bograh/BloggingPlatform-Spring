@@ -8,8 +8,9 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 public class CommentResponseDTO {
-    private int commentId;
-    private String comment;
+    private String id;
+    private int postId;
     private String author;
-    private String commentedAt;
+    private String content;
+    private String createdAt;
 }

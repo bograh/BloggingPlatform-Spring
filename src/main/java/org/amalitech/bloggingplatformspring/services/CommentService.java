@@ -2,19 +2,17 @@ package org.amalitech.bloggingplatformspring.services;
 
 import org.amalitech.bloggingplatformspring.dtos.requests.CreateCommentDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.DeleteCommentRequestDTO;
+import org.amalitech.bloggingplatformspring.dtos.responses.CommentResponse;
 import org.amalitech.bloggingplatformspring.entity.Comment;
-import org.amalitech.bloggingplatformspring.entity.CommentDocument;
-import org.amalitech.bloggingplatformspring.entity.Post;
 import org.amalitech.bloggingplatformspring.entity.User;
 import org.amalitech.bloggingplatformspring.exceptions.InvalidUserIdFormatException;
 import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
-import org.amalitech.bloggingplatformspring.exceptions.SQLQueryException;
 import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
+import org.amalitech.bloggingplatformspring.utils.CommentUtils;
 import org.springframework.stereotype.Service;
 
-import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -25,72 +23,71 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
     private final PostRepository postRepository;
+    private final CommentUtils commentUtils;
 
     public CommentService(CommentRepository commentRepository, UserRepository userRepository, PostRepository postRepository) {
         this.commentRepository = commentRepository;
         this.userRepository = userRepository;
         this.postRepository = postRepository;
+        this.commentUtils = new CommentUtils();
     }
 
-    public CommentDocument addCommentToPost(CreateCommentDTO newComment) {
+    public CommentResponse addCommentToPost(CreateCommentDTO newComment) {
         String authorId = newComment.getAuthorId();
-        Comment comment = new Comment(
-                newComment.getPostId(),
-                authorId,
-                newComment.getCommentContent(),
-                LocalDateTime.now()
-        );
+        Comment comment = new Comment();
+        comment.setContent(newComment.getCommentContent());
+        comment.setPostId(newComment.getPostId());
+        comment.setCommentedAt(LocalDateTime.now());
 
         try {
-            User user = userRepository.findUserById(UUID.fromString(authorId)).orElseThrow(
+            User user = userRepository.findById(UUID.fromString(authorId)).orElseThrow(
                     () -> new ResourceNotFoundException("User not found")
             );
 
-            return commentRepository.createComment(comment, user.getUsername());
+            comment.setAuthorId(String.valueOf(user.getId()));
+            comment.setAuthor(user.getUsername());
+
+            commentRepository.save(comment);
+
+            return commentUtils.createCommentResponseFromComment(comment);
 
         } catch (IllegalArgumentException ex) {
             throw new InvalidUserIdFormatException("User ID format is invalid: " + ex.getMessage());
-        } catch (SQLException e) {
-            throw new SQLQueryException("Failed to create comment: " + e.getMessage());
         }
     }
 
-    public List<CommentDocument> getAllCommentsByPostId(int postId) {
-        try {
-            Post post = postRepository.findPostById(postId).orElseThrow(
-                    () -> new ResourceNotFoundException("Post not found with ID: " + postId)
-            );
+    public List<CommentResponse> getAllCommentsByPostId(Long postId) {
+        postRepository.findPostById(postId).orElseThrow(
+                () -> new ResourceNotFoundException("Post not found with ID: " + postId)
+        );
+        List<Comment> comments = commentRepository.findByPostIdOrderByCommentedAtDesc(postId);
 
-            List<CommentDocument> commentDocuments = commentRepository.getAllCommentsByPostId(post.getId());
-
-            return commentDocuments.isEmpty() ? List.of() : commentDocuments;
-
-        } catch (SQLException e) {
-            throw new SQLQueryException("Failed to find comment: " + e.getMessage());
-        }
+        return comments.stream()
+                .map(commentUtils::createCommentResponseFromComment)
+                .toList();
     }
 
-    public CommentDocument getCommentById(String commentId) {
+    public CommentResponse getCommentById(String commentId) {
 
-        return commentRepository.getCommentById(commentId).orElseThrow(
+        Comment comment = commentRepository.findById(commentId).orElseThrow(
                 () -> new ResourceNotFoundException("Comment not found with id: " + commentId)
         );
+
+        return commentUtils.createCommentResponseFromComment(comment);
     }
 
     public void deleteComment(String commentId, DeleteCommentRequestDTO deleteCommentRequestDTO) {
         try {
             String authorId = deleteCommentRequestDTO.getAuthorId();
             UUID userId = UUID.fromString(authorId);
-            userRepository.findUserById(userId).orElseThrow(
+            userRepository.findById(userId).orElseThrow(
                     () -> new ResourceNotFoundException("User not found")
             );
 
-            commentRepository.deleteComment(commentId, authorId);
+            commentRepository.deleteCommentById(commentId);
 
         } catch (IllegalArgumentException ex) {
             throw new InvalidUserIdFormatException("User ID format is invalid: " + ex.getMessage());
-        } catch (SQLException e) {
-            throw new SQLQueryException("Failed to delete comment: " + e.getMessage());
         }
     }
 

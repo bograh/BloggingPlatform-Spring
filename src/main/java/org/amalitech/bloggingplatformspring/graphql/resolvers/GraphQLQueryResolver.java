@@ -102,7 +102,7 @@ public class GraphQLQueryResolver {
     }
 
     @QueryMapping
-    public List<GraphQLComment> getCommentsByPost(@Argument Integer postId) {
+    public List<GraphQLComment> getCommentsByPost(@Argument Long postId) {
         List<CommentResponse> comments = commentService.getAllCommentsByPostId(postId);
         return comments.stream()
                 .map(this::mapToGraphQLComment)

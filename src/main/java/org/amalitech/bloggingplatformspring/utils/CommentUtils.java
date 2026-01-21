@@ -1,6 +1,7 @@
 package org.amalitech.bloggingplatformspring.utils;
 
-import org.amalitech.bloggingplatformspring.entity.CommentDocument;
+import org.amalitech.bloggingplatformspring.dtos.responses.CommentResponse;
+import org.amalitech.bloggingplatformspring.entity.Comment;
 import org.bson.Document;
 
 import java.time.LocalDateTime;
@@ -10,13 +11,24 @@ import java.util.Date;
 
 public class CommentUtils {
 
-    public CommentDocument mapDocumentToComment(Document document) {
-        return new CommentDocument(
+    public CommentResponse mapDocumentToComment(Document document) {
+        return new CommentResponse(
                 document.getObjectId("_id").toHexString(),
-                document.getInteger("postId"),
+                (long) document.getInteger("postId"),
                 document.getString("author"),
                 document.getString("content"),
                 formatCommentedAt(document.getDate("commentedAt"))
+        );
+    }
+
+    public CommentResponse createCommentResponseFromComment(Comment comment) {
+        return new CommentResponse(
+                comment.getId(),
+                comment.getPostId(),
+                comment.getAuthor(),
+                comment.getContent(),
+                comment.getCommentedAt()
+                        .format(DateTimeFormatter.ofPattern(Constants.DateTimeFormatPattern))
         );
     }
 

@@ -1,21 +1,17 @@
 package org.amalitech.bloggingplatformspring.repository;
 
 import org.amalitech.bloggingplatformspring.entity.Comment;
-import org.amalitech.bloggingplatformspring.entity.CommentDocument;
+import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.Optional;
 
-public interface CommentRepository {
+@Repository
+public interface CommentRepository extends MongoRepository<Comment, String> {
 
-    CommentDocument createComment(Comment comment, String author);
+    List<Comment> findByPostIdOrderByCommentedAtDesc(Long postId);
 
-    List<CommentDocument> getAllCommentsByPostId(int postId);
+    Long countByPostId(Long postId);
 
-    Optional<CommentDocument> getCommentById(String commentId);
-
-    void deleteComment(String commentId, String authorId);
-
-    long getTotalCommentsByPostId(int postId);
-
+    void deleteCommentById(String commentId);
 }
