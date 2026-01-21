@@ -1,15 +1,15 @@
 package org.amalitech.bloggingplatformspring.graphql.resolvers;
 
 import lombok.RequiredArgsConstructor;
-import org.amalitech.bloggingplatformspring.dtos.requests.PageRequest;
-import org.amalitech.bloggingplatformspring.dtos.requests.PostFilterRequest;
-import org.amalitech.bloggingplatformspring.dtos.responses.PageResponse;
+import org.amalitech.bloggingplatformspring.dtos.responses.CommentResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
-import org.amalitech.bloggingplatformspring.entity.CommentDocument;
 import org.amalitech.bloggingplatformspring.entity.Post;
 import org.amalitech.bloggingplatformspring.entity.Tag;
 import org.amalitech.bloggingplatformspring.entity.User;
-import org.amalitech.bloggingplatformspring.graphql.types.*;
+import org.amalitech.bloggingplatformspring.graphql.types.GraphQLComment;
+import org.amalitech.bloggingplatformspring.graphql.types.GraphQLPost;
+import org.amalitech.bloggingplatformspring.graphql.types.GraphQLTag;
+import org.amalitech.bloggingplatformspring.graphql.types.GraphQLUser;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.TagRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
@@ -41,13 +41,13 @@ public class GraphQLQueryResolver {
 
     @QueryMapping
     public GraphQLUser getUser(@Argument UUID userId) throws SQLException {
-        return userRepository.findUserById(userId)
+        return userRepository.findById(userId)
                 .map(this::mapToGraphQLUser)
                 .orElse(null);
     }
 
     @QueryMapping
-    public GraphQLPost getPost(@Argument Integer postId) {
+    public GraphQLPost getPost(@Argument Long postId) {
         PostResponseDTO post = postService.getPostById(postId);
         return mapToGraphQLPost(post);
     }
@@ -60,7 +60,7 @@ public class GraphQLQueryResolver {
                 .collect(Collectors.toList());
     }
 
-    @QueryMapping
+    /*@QueryMapping
     public GraphQLPostPage getPaginatedPosts(
             @Argument PageRequestInput pageRequest,
             @Argument PostFilterInput filter) {
@@ -93,17 +93,17 @@ public class GraphQLQueryResolver {
         page2.setTotalPages((int) Math.ceil((double) response.totalElements() / response.size()));
 
         return page2;
-    }
+    }*/
 
     @QueryMapping
     public GraphQLComment getComment(@Argument String commentId) {
-        CommentDocument comment = commentService.getCommentById(commentId);
+        CommentResponse comment = commentService.getCommentById(commentId);
         return mapToGraphQLComment(comment);
     }
 
     @QueryMapping
     public List<GraphQLComment> getCommentsByPost(@Argument Integer postId) {
-        List<CommentDocument> comments = commentService.getAllCommentsByPostId(postId);
+        List<CommentResponse> comments = commentService.getAllCommentsByPostId(postId);
         return comments.stream()
                 .map(this::mapToGraphQLComment)
                 .collect(Collectors.toList());
@@ -111,7 +111,7 @@ public class GraphQLQueryResolver {
 
     @QueryMapping
     public List<GraphQLTag> getAllTags() throws SQLException {
-        List<Tag> tags = tagRepository.getAllTags();
+        List<Tag> tags = tagRepository.findAll();
         return tags.stream()
                 .map(tag -> new GraphQLTag(tag.getId(), tag.getName()))
                 .collect(Collectors.toList());
@@ -139,25 +139,22 @@ public class GraphQLQueryResolver {
         LocalDateTime updatedAt = LocalDateTime.parse(postResponse.getLastUpdated(), FORMATTER);
 
         // Fetch the Post entity to get authorId and createdAt
-        try {
-            Post post = postRepository.findPostById(postResponse.getId())
-                    .orElseThrow(() -> new RuntimeException("Post not found"));
+        Post post = postRepository.findPostById(postResponse.getId())
+                .orElseThrow(() -> new RuntimeException("Post not found"));
 
-            return new GraphQLPost(
-                    postResponse.getId(),
-                    postResponse.getTitle(),
-                    postResponse.getBody(),
-                    post.getAuthorId().toString(),
-                    postResponse.getAuthor(),
-                    tags,
-                    post.getCreatedAt(),
-                    updatedAt);
-        } catch (SQLException e) {
-            throw new RuntimeException("Error fetching post details", e);
-        }
+        return new GraphQLPost(
+                postResponse.getId(),
+                postResponse.getTitle(),
+                postResponse.getBody(),
+                String.valueOf(post.getAuthor().getId()),
+                postResponse.getAuthor(),
+                tags,
+                post.getPostedAt(),
+                updatedAt);
+
     }
 
-    private GraphQLComment mapToGraphQLComment(CommentDocument comment) {
+    private GraphQLComment mapToGraphQLComment(CommentResponse comment) {
         LocalDateTime createdAt = LocalDateTime.parse(comment.getCreatedAt(), FORMATTER);
 
         return new GraphQLComment(
