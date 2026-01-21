@@ -83,7 +83,6 @@ class PostControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
-
     @Test
     void getAllPosts_Success_Returns200() throws Exception {
         PageResponse<PostResponseDTO> pageResponse =
@@ -117,10 +116,6 @@ class PostControllerTest {
                 .andExpect(jsonPath("$.data.content[0].title").value("Post title"));
     }
 
-    // =========================
-    // Get Post By ID
-    // =========================
-
     @Test
     void getPostById_Success_Returns200() throws Exception {
         PostResponseDTO responseDTO = new PostResponseDTO(
@@ -141,10 +136,6 @@ class PostControllerTest {
                 .andExpect(jsonPath("$.data.id").value(1));
     }
 
-    // =========================
-    // Update Post
-    // =========================
-
     @Test
     void updatePost_Success_Returns200() throws Exception {
         UpdatePostDTO request = new UpdatePostDTO(
@@ -156,8 +147,8 @@ class PostControllerTest {
 
         PostResponseDTO responseDTO = new PostResponseDTO(
                 1,
-                "Post title",
-                "Post content",
+                "Updated title",
+                "Updated content",
                 "testuser",
                 List.of("java", "spring"),
                 LocalDateTime.now().toString(),
