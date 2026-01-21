@@ -2,6 +2,7 @@ package org.amalitech.bloggingplatformspring.utils;
 
 import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
 import org.amalitech.bloggingplatformspring.entity.Post;
+import org.amalitech.bloggingplatformspring.entity.Tag;
 
 import java.sql.Array;
 import java.sql.ResultSet;
@@ -23,8 +24,8 @@ public class PostUtils {
         UUID authorId = (UUID) rs.getObject("author_id");
 
         return new Post(
-                id, title, body,
-                authorId, createdAt, updatedAt
+                (long) id, title, body,
+                null, createdAt, updatedAt, null
         );
     }
 
@@ -41,7 +42,7 @@ public class PostUtils {
                 : Arrays.asList((String[]) tagsArray.getArray());
 
         return new PostResponseDTO(
-                id, title, body,
+                (long) id, title, body,
                 author, tags, formatDate(updatedAt), totalComments
         );
     }
@@ -52,10 +53,25 @@ public class PostUtils {
         );
     }
 
+    public PostResponseDTO createPostResponseFromPost(Post post, Long totalComments) {
+        return new PostResponseDTO(
+                post.getId(),
+                post.getTitle(),
+                post.getBody(),
+                post.getAuthor().getUsername(),
+                post.getTags().stream()
+                        .map(Tag::getName)
+                        .toList(),
+                formatDate(post.getUpdatedAt()),
+                totalComments
+        );
+    }
+
     private String formatDate(LocalDateTime localDateTime) {
         return localDateTime.format(
                 DateTimeFormatter.ofPattern(Constants.DateTimeFormatPattern)
         );
     }
+
 
 }

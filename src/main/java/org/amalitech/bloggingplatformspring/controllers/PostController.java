@@ -8,17 +8,16 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.amalitech.bloggingplatformspring.dtos.requests.*;
+import org.amalitech.bloggingplatformspring.dtos.requests.CreatePostDTO;
+import org.amalitech.bloggingplatformspring.dtos.requests.DeletePostRequestDTO;
+import org.amalitech.bloggingplatformspring.dtos.requests.UpdatePostDTO;
 import org.amalitech.bloggingplatformspring.dtos.responses.ApiResponseGeneric;
-import org.amalitech.bloggingplatformspring.dtos.responses.PageResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
 import org.amalitech.bloggingplatformspring.exceptions.ErrorResponse;
 import org.amalitech.bloggingplatformspring.services.PostService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/posts")
@@ -46,7 +45,7 @@ public class PostController {
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
-    @GetMapping
+    /*@GetMapping
     @Operation(summary = "Get all blog posts with pagination", description = "Retrieves a paginated list of blog posts with optional filtering by author, tags, and search term. Supports sorting by various fields.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Posts successfully retrieved", content = @Content(schema = @Schema(implementation = PageResponse.class))),
@@ -67,7 +66,7 @@ public class PostController {
         ApiResponseGeneric<PageResponse<PostResponseDTO>> response = ApiResponseGeneric
                 .success("Posts retrieved successfully", posts);
         return ResponseEntity.ok(response);
-    }
+    }*/
 
     @GetMapping("/{postId}")
     @Operation(summary = "Get a post by ID", description = "Retrieves a single blog post by its unique identifier")
@@ -76,7 +75,7 @@ public class PostController {
             @ApiResponse(responseCode = "404", description = "Post not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<ApiResponseGeneric<PostResponseDTO>> getPostById(
-            @Parameter(description = "Post ID", example = "1") @PathVariable int postId) {
+            @Parameter(description = "Post ID", example = "1") @PathVariable Long postId) {
         PostResponseDTO post = postService.getPostById(postId);
         ApiResponseGeneric<PostResponseDTO> response = ApiResponseGeneric.success("Post retrieved successfully", post);
         return ResponseEntity.ok(response);
@@ -91,7 +90,7 @@ public class PostController {
             @ApiResponse(responseCode = "404", description = "Post not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<ApiResponseGeneric<PostResponseDTO>> updatePost(
-            @Parameter(description = "Post ID", example = "1") @PathVariable int postId,
+            @Parameter(description = "Post ID", example = "1") @PathVariable Long postId,
             @Valid @RequestBody UpdatePostDTO updatePostDTO) {
         PostResponseDTO post = postService.updatePost(postId, updatePostDTO);
         ApiResponseGeneric<PostResponseDTO> response = ApiResponseGeneric.success("Post updated successfully", post);
@@ -106,7 +105,7 @@ public class PostController {
             @ApiResponse(responseCode = "404", description = "Post not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<ApiResponseGeneric<Void>> deletePost(
-            @Parameter(description = "Post ID", example = "1") @PathVariable int postId,
+            @Parameter(description = "Post ID", example = "1") @PathVariable Long postId,
             @RequestBody DeletePostRequestDTO deletePostRequestDTO) {
         postService.deletePost(postId, deletePostRequestDTO);
         ApiResponseGeneric<Void> response = ApiResponseGeneric.success("Post deleted successfully.");
