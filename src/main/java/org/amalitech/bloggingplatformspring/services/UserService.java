@@ -5,12 +5,12 @@ import org.amalitech.bloggingplatformspring.dtos.requests.SignInUserDTO;
 import org.amalitech.bloggingplatformspring.dtos.responses.UserResponseDTO;
 import org.amalitech.bloggingplatformspring.entity.User;
 import org.amalitech.bloggingplatformspring.exceptions.BadRequestException;
-import org.amalitech.bloggingplatformspring.exceptions.SQLQueryException;
+import org.amalitech.bloggingplatformspring.exceptions.UnauthorizedException;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.amalitech.bloggingplatformspring.utils.UserUtils;
 import org.springframework.stereotype.Service;
 
-import java.sql.SQLException;
+import java.util.UUID;
 
 @Service
 public class UserService {
@@ -32,32 +32,32 @@ public class UserService {
             throw new BadRequestException("Password must not contain username");
         }
 
-        try {
-
-            if (userRepository.userExistsByUsername(username)) {
-                throw new BadRequestException("Username is taken");
-            }
-
-            if (userRepository.userExistsByEmail(email)) {
-                throw new BadRequestException("Email is taken");
-            }
-
-            User user = userRepository.saveUser(username, email, password);
-            return userUtils.mapUserToUserResponse(user);
-
-        } catch (SQLException e) {
-            throw new SQLQueryException("Failed to register user");
+        if (userRepository.existsByUsername(username)) {
+            throw new BadRequestException("Username is taken");
         }
+
+        if (userRepository.existsByUsername(email)) {
+            throw new BadRequestException("Email is taken");
+        }
+
+        User user = new User();
+        user.setId(UUID.randomUUID());
+        user.setUsername(username);
+        user.setEmail(email);
+        user.setPassword(password);
+        userRepository.save(user);
+
+        return userUtils.mapUserToUserResponse(user);
     }
 
     public UserResponseDTO signInUser(SignInUserDTO signInUserDTO) {
-        try {
 
-            User user = userRepository.findUserByEmailAndPassword(signInUserDTO.getEmail(), signInUserDTO.getPassword());
-            return userUtils.mapUserToUserResponse(user);
-
-        } catch (SQLException e) {
-            throw new SQLQueryException("Failed to sign user");
+        if (!userRepository.existsByEmail(signInUserDTO.getEmail())) {
+            throw new UnauthorizedException("Invalid email or password");
         }
+
+        User user = userRepository.findUserByEmailAndPassword(signInUserDTO.getEmail(), signInUserDTO.getPassword());
+        return userUtils.mapUserToUserResponse(user);
+
     }
 }
