@@ -1,8 +1,12 @@
 package org.amalitech.bloggingplatformspring.utils;
 
+import org.amalitech.bloggingplatformspring.dtos.responses.PageResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
 import org.amalitech.bloggingplatformspring.entity.Post;
 import org.amalitech.bloggingplatformspring.entity.Tag;
+import org.amalitech.bloggingplatformspring.enums.PostSortField;
+import org.amalitech.bloggingplatformspring.repository.CommentRepository;
+import org.springframework.data.domain.Page;
 
 import java.sql.Array;
 import java.sql.ResultSet;
@@ -65,6 +69,49 @@ public class PostUtils {
                 formatDate(post.getUpdatedAt()),
                 totalComments
         );
+    }
+
+    public PageResponse<PostResponseDTO> mapPostPageToPostResponsePage(Page<Post> postPage, CommentRepository commentRepository) {
+        List<PostResponseDTO> postsResponse = postPage.getContent().stream()
+                .map(post -> {
+                    Long totalComments = commentRepository.countByPostId(post.getId());
+                    return createPostResponseFromPost(post, totalComments);
+                })
+                .toList();
+
+        return new PageResponse<>(
+                postsResponse,
+                postPage.getPageable().getPageNumber(),
+                postPage.getSize(),
+                postPage.getSort().toString(),
+                postPage.getTotalElements()
+        );
+    }
+
+
+    public String mapSortField(String sortBy) {
+        if (sortBy == null || sortBy.isBlank()) {
+            return PostSortField.UPDATED_AT.sqlName();
+        }
+
+        return switch (sortBy.toLowerCase().trim()) {
+            case "id" -> PostSortField.ID.sqlName();
+            case "title" -> PostSortField.TITLE.sqlName();
+            case "body" -> PostSortField.BODY.sqlName();
+            case "author" -> PostSortField.AUTHOR.sqlName();
+            default -> PostSortField.UPDATED_AT.sqlName();
+        };
+    }
+
+    public String mapOrderField(String order) {
+        if (order == null || order.isBlank()) {
+            return "DESC";
+        }
+
+        if (order.trim().equalsIgnoreCase("asc"))
+            return "ASC";
+
+        return "DESC";
     }
 
     private String formatDate(LocalDateTime localDateTime) {

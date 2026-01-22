@@ -7,6 +7,6 @@ public record PageResponse<T>(
         int page,
         int size,
         String sort,
-        int totalElements
+        long totalElements
 ) {
 }

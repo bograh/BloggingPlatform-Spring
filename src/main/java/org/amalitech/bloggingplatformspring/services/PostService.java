@@ -3,7 +3,9 @@ package org.amalitech.bloggingplatformspring.services;
 import lombok.extern.slf4j.Slf4j;
 import org.amalitech.bloggingplatformspring.dtos.requests.CreatePostDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.DeletePostRequestDTO;
+import org.amalitech.bloggingplatformspring.dtos.requests.PostFilterRequest;
 import org.amalitech.bloggingplatformspring.dtos.requests.UpdatePostDTO;
+import org.amalitech.bloggingplatformspring.dtos.responses.PageResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
 import org.amalitech.bloggingplatformspring.entity.Post;
 import org.amalitech.bloggingplatformspring.entity.Tag;
@@ -17,6 +19,10 @@ import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.TagRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.amalitech.bloggingplatformspring.utils.PostUtils;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
@@ -72,14 +78,48 @@ public class PostService {
 
     }
 
-    public List<PostResponseDTO> getAllPosts() {
-        List<Post> posts = postRepository.findAll();
-        return posts.stream()
+    public PageResponse<PostResponseDTO> getAllPosts(int page, int size, String sortBy, String order, PostFilterRequest postFilterRequest) {
+        size = Math.min(size, 30);
+        String entitySortField = postUtils.mapSortField(sortBy);
+        String orderBy = postUtils.mapOrderField(order);
+        Sort sort = Sort.by(Sort.Direction.fromString(orderBy), entitySortField);
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Page<Post> postPage;
+
+        if (postFilterRequest.author() != null) {
+            postPage = postRepository.findByAuthor_UsernameIgnoreCase(postFilterRequest.author(), pageable);
+            return postUtils.mapPostPageToPostResponsePage(postPage, commentRepository);
+        }
+
+        if (postFilterRequest.search() != null) {
+            postPage = postRepository.search(postFilterRequest.search(), pageable);
+            return postUtils.mapPostPageToPostResponsePage(postPage, commentRepository);
+        }
+
+        if (!postFilterRequest.tags().isEmpty()) {
+            // TODO: Change this to iterate the tags List in the query
+            postPage = postRepository.search(postFilterRequest.tags().getFirst(), pageable);
+            return postUtils.mapPostPageToPostResponsePage(postPage, commentRepository);
+        }
+
+        postPage = postRepository.findAll(pageable);
+        List<Post> posts = postPage.getContent();
+
+        List<PostResponseDTO> postsResponse = posts.stream()
                 .map(post -> {
                     Long totalComments = commentRepository.countByPostId(post.getId());
                     return postUtils.createPostResponseFromPost(post, totalComments);
                 })
                 .toList();
+
+        return new PageResponse<>(
+                postsResponse,
+                page,
+                size,
+                sort.toString(),
+                postPage.getTotalElements()
+        );
     }
 
     public PostResponseDTO getPostById(Long postId) {
