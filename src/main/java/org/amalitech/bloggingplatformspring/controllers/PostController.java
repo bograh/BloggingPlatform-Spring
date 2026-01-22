@@ -19,6 +19,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/v1/posts")
 @Tag(name = "Post Management", description = "APIs for creating, reading, updating, and deleting blog posts")
@@ -45,28 +47,17 @@ public class PostController {
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
-    /*@GetMapping
-    @Operation(summary = "Get all blog posts with pagination", description = "Retrieves a paginated list of blog posts with optional filtering by author, tags, and search term. Supports sorting by various fields.")
+    @GetMapping
+    @Operation(summary = "Get all blog posts", description = "Retrieves a list of blog posts.")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Posts successfully retrieved", content = @Content(schema = @Schema(implementation = PageResponse.class))),
+            @ApiResponse(responseCode = "200", description = "Posts successfully retrieved", content = @Content(schema = @Schema(implementation = List.class))),
             @ApiResponse(responseCode = "400", description = "Invalid pagination or sort parameters", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    public ResponseEntity<ApiResponseGeneric<PageResponse<PostResponseDTO>>> getAllPosts(
-            @Parameter(description = "Page number (0-indexed)", example = "0") @RequestParam(name = "page", defaultValue = "0") int page,
-            @Parameter(description = "Page size (max 50)", example = "10") @RequestParam(name = "size", defaultValue = "10") int size,
-            @Parameter(description = "Sort field (id, createdAt, lastUpdated, title)", example = "lastUpdated") @RequestParam(name = "sort", defaultValue = "lastUpdated") String sortBy,
-            @Parameter(description = "Sort order (ASC or DESC)", example = "DESC") @RequestParam(name = "order", defaultValue = "DESC") String sortDirection,
-            @Parameter(description = "Filter by author name") @RequestParam(required = false) String author,
-            @Parameter(description = "Filter by tag names") @RequestParam(required = false) List<String> tags,
-            @Parameter(description = "Search in title and content") @RequestParam(required = false) String search) {
-        PageRequest pageRequest = new PageRequest(page, Math.min(50, size), sortBy, sortDirection);
-        PostFilterRequest filterRequest = new PostFilterRequest(author, search, tags);
-
-        PageResponse<PostResponseDTO> posts = postService.getPaginatedPosts(pageRequest, filterRequest);
-        ApiResponseGeneric<PageResponse<PostResponseDTO>> response = ApiResponseGeneric
-                .success("Posts retrieved successfully", posts);
+    public ResponseEntity<ApiResponseGeneric<List<PostResponseDTO>>> getAllPosts() {
+        List<PostResponseDTO> posts = postService.getAllPosts();
+        ApiResponseGeneric<List<PostResponseDTO>> response = ApiResponseGeneric.success("Posts retrieved successfully", posts);
         return ResponseEntity.ok(response);
-    }*/
+    }
 
     @GetMapping("/{postId}")
     @Operation(summary = "Get a post by ID", description = "Retrieves a single blog post by its unique identifier")
