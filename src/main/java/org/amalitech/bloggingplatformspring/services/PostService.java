@@ -16,17 +16,16 @@ import org.amalitech.bloggingplatformspring.exceptions.InvalidUserIdFormatExcept
 import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
 import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
-import org.amalitech.bloggingplatformspring.repository.TagRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.amalitech.bloggingplatformspring.utils.PostUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -37,15 +36,13 @@ public class PostService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final CommentRepository commentRepository;
-    private final TagRepository tagRepository;
     private final PostUtils postUtils;
     private final TagService tagService;
 
-    public PostService(PostRepository postRepository, UserRepository userRepository, CommentRepository commentRepository, TagRepository tagRepository, TagService tagService) {
+    public PostService(PostRepository postRepository, UserRepository userRepository, CommentRepository commentRepository, TagService tagService) {
         this.postRepository = postRepository;
         this.userRepository = userRepository;
         this.commentRepository = commentRepository;
-        this.tagRepository = tagRepository;
         this.postUtils = new PostUtils();
         this.tagService = tagService;
     }
@@ -66,8 +63,16 @@ public class PostService {
         post.setTitle(createPostDTO.getTitle());
         post.setBody(createPostDTO.getBody());
         post.setAuthor(user);
-        post.setTags(new HashSet<>());
+
+        if (createPostDTO.getTags() != null && !createPostDTO.getTags().isEmpty()) {
+            Set<Tag> tags = tagService.getOrCreateTags(createPostDTO.getTags());
+            post.setTags(tags);
+        } else {
+            post.setTags(new HashSet<>());
+        }
+
         postRepository.save(post);
+
 
         return postUtils.createResponseFromPostAndTags(
                 post,
@@ -85,41 +90,10 @@ public class PostService {
         Sort sort = Sort.by(Sort.Direction.fromString(orderBy), entitySortField);
         Pageable pageable = PageRequest.of(page, size, sort);
 
-        Page<Post> postPage;
+        Specification<Post> spec = postUtils.buildSpecification(postFilterRequest);
 
-        if (postFilterRequest.author() != null) {
-            postPage = postRepository.findByAuthor_UsernameIgnoreCase(postFilterRequest.author(), pageable);
-            return postUtils.mapPostPageToPostResponsePage(postPage, commentRepository);
-        }
-
-        if (postFilterRequest.search() != null) {
-            postPage = postRepository.search(postFilterRequest.search(), pageable);
-            return postUtils.mapPostPageToPostResponsePage(postPage, commentRepository);
-        }
-
-        if (!postFilterRequest.tags().isEmpty()) {
-            // TODO: Change this to iterate the tags List in the query
-            postPage = postRepository.search(postFilterRequest.tags().getFirst(), pageable);
-            return postUtils.mapPostPageToPostResponsePage(postPage, commentRepository);
-        }
-
-        postPage = postRepository.findAll(pageable);
-        List<Post> posts = postPage.getContent();
-
-        List<PostResponseDTO> postsResponse = posts.stream()
-                .map(post -> {
-                    Long totalComments = commentRepository.countByPostId(post.getId());
-                    return postUtils.createPostResponseFromPost(post, totalComments);
-                })
-                .toList();
-
-        return new PageResponse<>(
-                postsResponse,
-                page,
-                size,
-                sort.toString(),
-                postPage.getTotalElements()
-        );
+        Page<Post> postPage = postRepository.findAll(spec, pageable);
+        return postUtils.mapPostPageToPostResponsePage(postPage, commentRepository);
     }
 
     public PostResponseDTO getPostById(Long postId) {

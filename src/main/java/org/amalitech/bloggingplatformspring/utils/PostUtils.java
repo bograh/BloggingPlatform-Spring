@@ -1,5 +1,7 @@
 package org.amalitech.bloggingplatformspring.utils;
 
+import org.amalitech.bloggingplatformspring.dtos.requests.PostFilterRequest;
+import org.amalitech.bloggingplatformspring.dtos.requests.PostSpecifications;
 import org.amalitech.bloggingplatformspring.dtos.responses.PageResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
 import org.amalitech.bloggingplatformspring.entity.Post;
@@ -7,6 +9,7 @@ import org.amalitech.bloggingplatformspring.entity.Tag;
 import org.amalitech.bloggingplatformspring.enums.PostSortField;
 import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.springframework.data.domain.Page;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.sql.Array;
 import java.sql.ResultSet;
@@ -88,18 +91,25 @@ public class PostUtils {
         );
     }
 
+    public Specification<Post> buildSpecification(PostFilterRequest filter) {
+        return Specification.allOf(
+                filter.author() != null ? PostSpecifications.hasAuthor(filter.author()) : null,
+                filter.search() != null ? PostSpecifications.searchByContent(filter.search()) : null,
+                filter.tags() != null && !filter.tags().isEmpty() ? PostSpecifications.hasTags(filter.tags()) : null
+        ).and(Specification.allOf());
+    }
 
     public String mapSortField(String sortBy) {
         if (sortBy == null || sortBy.isBlank()) {
-            return PostSortField.UPDATED_AT.sqlName();
+            return PostSortField.UPDATED_AT.getPropertyName();
         }
 
         return switch (sortBy.toLowerCase().trim()) {
-            case "id" -> PostSortField.ID.sqlName();
-            case "title" -> PostSortField.TITLE.sqlName();
-            case "body" -> PostSortField.BODY.sqlName();
-            case "author" -> PostSortField.AUTHOR.sqlName();
-            default -> PostSortField.UPDATED_AT.sqlName();
+            case "id" -> PostSortField.ID.getPropertyName();
+            case "title" -> PostSortField.TITLE.getPropertyName();
+            case "body" -> PostSortField.BODY.getPropertyName();
+            case "author" -> PostSortField.AUTHOR.getPropertyName();
+            default -> PostSortField.UPDATED_AT.getPropertyName();
         };
     }
 
