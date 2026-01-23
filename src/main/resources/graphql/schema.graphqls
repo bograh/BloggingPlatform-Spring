@@ -82,19 +82,6 @@ input DeleteCommentInput {
     authorId: String!
 }
 
-input PostFilterInput {
-    tag: String
-    authorId: String
-    keyword: String
-}
-
-input PageRequestInput {
-    page: Int = 0
-    size: Int = 10
-    sortBy: String = "createdAt"
-    sortDirection: String = "DESC"
-}
-
 # Query Type
 type Query {
     # User Queries
@@ -102,8 +89,15 @@ type Query {
 
     # Post Queries
     getPost(postId: Int!): Post
-    getAllPosts: [Post!]!
-    getPaginatedPosts(pageRequest: PageRequestInput, filter: PostFilterInput): PostPage!
+    getAllPosts(
+        page: Int = 0
+        size: Int = 10
+        sortBy: String = "updatedAt"
+        sortDirection: String = "desc"
+        author: String
+        tags: [String!]
+        search: String
+    ): PostPage!
 
     # Comment Queries
     getComment(commentId: String!): Comment
