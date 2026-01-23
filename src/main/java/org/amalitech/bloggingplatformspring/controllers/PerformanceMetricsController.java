@@ -19,7 +19,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/metrics/performance")
 @RequiredArgsConstructor
-@Tag(name = "Performance Metrics", description = "APIs for monitoring application performance and method execution statistics")
+@Tag(name = "4. Performance Metrics", description = "APIs for monitoring application performance and method execution statistics")
 public class PerformanceMetricsController {
 
     private final PerformanceMetricsService metricsService;
