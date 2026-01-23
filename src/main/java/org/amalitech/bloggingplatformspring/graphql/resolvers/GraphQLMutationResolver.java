@@ -5,9 +5,8 @@ import org.amalitech.bloggingplatformspring.dtos.requests.*;
 import org.amalitech.bloggingplatformspring.dtos.responses.CommentResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
 import org.amalitech.bloggingplatformspring.dtos.responses.UserResponseDTO;
-import org.amalitech.bloggingplatformspring.entity.Post;
 import org.amalitech.bloggingplatformspring.graphql.types.*;
-import org.amalitech.bloggingplatformspring.repository.PostRepository;
+import org.amalitech.bloggingplatformspring.graphql.utils.GraphQLUtils;
 import org.amalitech.bloggingplatformspring.services.CommentService;
 import org.amalitech.bloggingplatformspring.services.PostService;
 import org.amalitech.bloggingplatformspring.services.UserService;
@@ -16,11 +15,8 @@ import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.stereotype.Controller;
 
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Controller
 @RequiredArgsConstructor
@@ -31,7 +27,7 @@ public class GraphQLMutationResolver {
     private final UserService userService;
     private final PostService postService;
     private final CommentService commentService;
-    private final PostRepository postRepository;
+    private final GraphQLUtils graphQLUtils = new GraphQLUtils();
 
     @MutationMapping
     public GraphQLUser registerUser(@Argument RegisterUserInput input) {
@@ -69,7 +65,7 @@ public class GraphQLMutationResolver {
                 input.getTags());
 
         PostResponseDTO post = postService.createPost(dto);
-        return mapToGraphQLPost(post);
+        return graphQLUtils.mapPostResponseToGraphQLPost(post);
     }
 
     @MutationMapping
@@ -81,7 +77,7 @@ public class GraphQLMutationResolver {
                 input.getTags());
 
         PostResponseDTO post = postService.updatePost(postId, dto);
-        return mapToGraphQLPost(post);
+        return graphQLUtils.mapPostResponseToGraphQLPost(post);
     }
 
     @MutationMapping
@@ -99,7 +95,7 @@ public class GraphQLMutationResolver {
                 input.getCommentContent());
 
         CommentResponse comment = commentService.addCommentToPost(dto);
-        return mapToGraphQLComment(comment);
+        return graphQLUtils.mapCommentResponseToGraphQLComment(comment);
     }
 
     @MutationMapping
@@ -109,36 +105,4 @@ public class GraphQLMutationResolver {
         return true;
     }
 
-    private GraphQLPost mapToGraphQLPost(PostResponseDTO postResponse) {
-        List<GraphQLTag> tags = postResponse.getTags().stream()
-                .map(tagName -> new GraphQLTag(null, tagName))
-                .collect(Collectors.toList());
-
-        LocalDateTime updatedAt = LocalDateTime.parse(postResponse.getLastUpdated(), FORMATTER);
-
-        // Fetch the Post entity to get authorId and createdAt
-        Post post = postRepository.findPostById(postResponse.getId())
-                .orElseThrow(() -> new RuntimeException("Post not found"));
-
-        return new GraphQLPost(
-                postResponse.getId(),
-                postResponse.getTitle(),
-                postResponse.getBody(),
-                String.valueOf(post.getAuthor().getId()),
-                postResponse.getAuthor(),
-                tags,
-                post.getPostedAt(),
-                updatedAt);
-    }
-
-    private GraphQLComment mapToGraphQLComment(CommentResponse comment) {
-        LocalDateTime createdAt = LocalDateTime.parse(comment.getCreatedAt(), FORMATTER);
-
-        return new GraphQLComment(
-                comment.getId(),
-                comment.getPostId(),
-                comment.getAuthor(),
-                comment.getContent(),
-                createdAt);
-    }
 }
