@@ -24,6 +24,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -47,6 +49,7 @@ public class PostService {
         this.tagService = tagService;
     }
 
+    @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public PostResponseDTO createPost(CreatePostDTO createPostDTO) {
         UUID userId;
         try {
@@ -109,6 +112,7 @@ public class PostService {
         return postUtils.createPostResponseFromPost(post, totalComments);
     }
 
+    @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public PostResponseDTO updatePost(Long postId, UpdatePostDTO updatePostDTO) {
         try {
             UUID userID = UUID.fromString(updatePostDTO.getAuthorId());
@@ -125,17 +129,17 @@ public class PostService {
                 throw new ForbiddenException("You are not permitted to edit this post.");
             }
 
-            if (updatePostDTO.getTitle() != null) {
+            if (!updatePostDTO.getTitle().isBlank()) {
                 post.setTitle(updatePostDTO.getTitle());
             }
 
-            if (updatePostDTO.getBody() != null) {
+            if (!updatePostDTO.getBody().isBlank()) {
                 post.setBody(updatePostDTO.getBody());
             }
 
-            if (updatePostDTO.getTags() != null) {
+            if (!updatePostDTO.getTags().isEmpty()) {
                 Set<Tag> updatedTags = tagService.getOrCreateTags(updatePostDTO.getTags());
-                post.setTags(updatedTags);
+                post.getTags().addAll(updatedTags);
             }
 
             Post savedPost = postRepository.save(post);
@@ -148,6 +152,7 @@ public class PostService {
         }
     }
 
+    @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public void deletePost(Long postId, DeletePostRequestDTO deletePostRequestDTO) {
         try {
             UUID userID = UUID.fromString(deletePostRequestDTO.getAuthorId());

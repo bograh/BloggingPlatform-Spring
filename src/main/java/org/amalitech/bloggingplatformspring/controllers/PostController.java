@@ -25,7 +25,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/posts")
-@Tag(name = "Post Management", description = "APIs for creating, reading, updating, and deleting blog posts")
+@Tag(name = "2. Post Management", description = "APIs for creating, reading, updating, and deleting blog posts")
 public class PostController {
 
     private final PostService postService;

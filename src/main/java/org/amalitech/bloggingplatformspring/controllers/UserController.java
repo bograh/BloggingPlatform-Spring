@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/users")
-@Tag(name = "User Management", description = "APIs for user registration and authentication")
+@Tag(name = "1. User Management", description = "APIs for user registration and authentication")
 public class UserController {
 
     private final UserService userService;

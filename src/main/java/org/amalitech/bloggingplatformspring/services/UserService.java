@@ -9,18 +9,21 @@ import org.amalitech.bloggingplatformspring.exceptions.UnauthorizedException;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.amalitech.bloggingplatformspring.utils.UserUtils;
 import org.springframework.stereotype.Service;
-
-import java.util.UUID;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UserService {
 
     private final UserRepository userRepository;
+    private final UserUtils userUtils;
 
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, UserUtils userUtils) {
         this.userRepository = userRepository;
+        this.userUtils = userUtils;
     }
 
+    @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public UserResponseDTO registerUser(RegisterUserDTO registerUserDTO) {
         String username = registerUserDTO.getUsername();
         String email = registerUserDTO.getEmail();
@@ -39,13 +42,13 @@ public class UserService {
         }
 
         User user = new User();
-        user.setId(UUID.randomUUID());
         user.setUsername(username);
         user.setEmail(email);
         user.setPassword(password);
+
         userRepository.save(user);
 
-        return UserUtils.mapUserToUserResponse(user);
+        return userUtils.mapUserToUserResponse(user);
     }
 
     public UserResponseDTO signInUser(SignInUserDTO signInUserDTO) {
@@ -55,7 +58,7 @@ public class UserService {
         User user = userRepository.findUserByEmailAndPassword(email, password).orElseThrow(
                 () -> new UnauthorizedException("Invalid email or password")
         );
-        return UserUtils.mapUserToUserResponse(user);
 
+        return userUtils.mapUserToUserResponse(user);
     }
 }

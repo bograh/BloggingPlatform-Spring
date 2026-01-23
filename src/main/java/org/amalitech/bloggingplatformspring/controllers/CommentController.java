@@ -22,7 +22,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/comments")
-@Tag(name = "Comment Management", description = "APIs for managing comments on blog posts (MongoDB-backed)")
+@Tag(name = "3. Comment Management", description = "APIs for managing comments on blog posts (MongoDB-backed)")
 public class CommentController {
 
     private final CommentService commentService;
