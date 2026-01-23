@@ -16,11 +16,9 @@ import java.util.UUID;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final UserUtils userUtils;
 
     public UserService(UserRepository userRepository) {
         this.userRepository = userRepository;
-        this.userUtils = new UserUtils();
     }
 
     public UserResponseDTO registerUser(RegisterUserDTO registerUserDTO) {
@@ -36,7 +34,7 @@ public class UserService {
             throw new BadRequestException("Username is taken");
         }
 
-        if (userRepository.existsByUsername(email)) {
+        if (userRepository.existsByEmail(email)) {
             throw new BadRequestException("Email is taken");
         }
 
@@ -47,17 +45,17 @@ public class UserService {
         user.setPassword(password);
         userRepository.save(user);
 
-        return userUtils.mapUserToUserResponse(user);
+        return UserUtils.mapUserToUserResponse(user);
     }
 
     public UserResponseDTO signInUser(SignInUserDTO signInUserDTO) {
+        String email = signInUserDTO.getEmail();
+        String password = signInUserDTO.getPassword();
 
-        if (!userRepository.existsByEmail(signInUserDTO.getEmail())) {
-            throw new UnauthorizedException("Invalid email or password");
-        }
-
-        User user = userRepository.findUserByEmailAndPassword(signInUserDTO.getEmail(), signInUserDTO.getPassword());
-        return userUtils.mapUserToUserResponse(user);
+        User user = userRepository.findUserByEmailAndPassword(email, password).orElseThrow(
+                () -> new UnauthorizedException("Invalid email or password")
+        );
+        return UserUtils.mapUserToUserResponse(user);
 
     }
 }

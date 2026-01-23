@@ -23,13 +23,11 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
     private final PostRepository postRepository;
-    private final CommentUtils commentUtils;
 
     public CommentService(CommentRepository commentRepository, UserRepository userRepository, PostRepository postRepository) {
         this.commentRepository = commentRepository;
         this.userRepository = userRepository;
         this.postRepository = postRepository;
-        this.commentUtils = new CommentUtils();
     }
 
     public CommentResponse addCommentToPost(CreateCommentDTO newComment) {
@@ -49,7 +47,7 @@ public class CommentService {
 
             commentRepository.save(comment);
 
-            return commentUtils.createCommentResponseFromComment(comment);
+            return CommentUtils.createCommentResponseFromComment(comment);
 
         } catch (IllegalArgumentException ex) {
             throw new InvalidUserIdFormatException("User ID format is invalid: " + ex.getMessage());
@@ -63,7 +61,7 @@ public class CommentService {
         List<Comment> comments = commentRepository.findByPostIdOrderByCommentedAtDesc(postId);
 
         return comments.stream()
-                .map(commentUtils::createCommentResponseFromComment)
+                .map(CommentUtils::createCommentResponseFromComment)
                 .toList();
     }
 
@@ -73,7 +71,7 @@ public class CommentService {
                 () -> new ResourceNotFoundException("Comment not found with id: " + commentId)
         );
 
-        return commentUtils.createCommentResponseFromComment(comment);
+        return CommentUtils.createCommentResponseFromComment(comment);
     }
 
     public void deleteComment(String commentId, DeleteCommentRequestDTO deleteCommentRequestDTO) {

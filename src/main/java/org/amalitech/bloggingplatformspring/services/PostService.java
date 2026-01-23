@@ -39,11 +39,11 @@ public class PostService {
     private final PostUtils postUtils;
     private final TagService tagService;
 
-    public PostService(PostRepository postRepository, UserRepository userRepository, CommentRepository commentRepository, TagService tagService) {
+    public PostService(PostRepository postRepository, UserRepository userRepository, CommentRepository commentRepository, PostUtils postUtils, TagService tagService) {
         this.postRepository = postRepository;
         this.userRepository = userRepository;
         this.commentRepository = commentRepository;
-        this.postUtils = new PostUtils();
+        this.postUtils = postUtils;
         this.tagService = tagService;
     }
 
@@ -93,7 +93,7 @@ public class PostService {
         Specification<Post> spec = postUtils.buildSpecification(postFilterRequest);
 
         Page<Post> postPage = postRepository.findAll(spec, pageable);
-        return postUtils.mapPostPageToPostResponsePage(postPage, commentRepository);
+        return postUtils.mapPostPageToPostResponsePage(postPage);
     }
 
     public PostResponseDTO getPostById(Long postId) {
