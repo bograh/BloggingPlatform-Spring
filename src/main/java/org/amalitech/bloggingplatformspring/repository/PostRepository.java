@@ -9,7 +9,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -25,11 +24,5 @@ public interface PostRepository extends JpaRepository<Post, Long>, JpaSpecificat
                    OR LOWER(p.body)  LIKE LOWER(CONCAT('%', :query, '%'))
             """)
     Page<Post> search(@Param("query") String query, Pageable pageable);
-
-    Page<Post> findByAuthor_UsernameIgnoreCase(String authorUsername, Pageable pageable);
-
-    @Query("SELECT DISTINCT p FROM Post p JOIN p.tags t WHERE t.name IN :tags")
-    Page<Post> findByTagsNames(@Param("tags") List<String> tags, Pageable pageable);
-
 
 }
