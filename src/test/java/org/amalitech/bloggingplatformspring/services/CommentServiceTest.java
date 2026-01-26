@@ -2,25 +2,24 @@ package org.amalitech.bloggingplatformspring.services;
 
 import org.amalitech.bloggingplatformspring.dtos.requests.CreateCommentDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.DeleteCommentRequestDTO;
+import org.amalitech.bloggingplatformspring.dtos.responses.CommentResponse;
 import org.amalitech.bloggingplatformspring.entity.Comment;
-import org.amalitech.bloggingplatformspring.entity.CommentDocument;
 import org.amalitech.bloggingplatformspring.entity.Post;
 import org.amalitech.bloggingplatformspring.entity.User;
 import org.amalitech.bloggingplatformspring.exceptions.InvalidUserIdFormatException;
 import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
-import org.amalitech.bloggingplatformspring.exceptions.SQLQueryException;
 import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
+import org.amalitech.bloggingplatformspring.utils.CommentUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -29,7 +28,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class CommentServiceTest {
+class CommentServiceTest {
 
     @Mock
     private CommentRepository commentRepository;
@@ -46,9 +45,10 @@ public class CommentServiceTest {
     private UUID userId;
     private User user;
     private Post post;
-    private CommentDocument commentDocument;
+    private Comment comment;
     private CreateCommentDTO createCommentDTO;
     private DeleteCommentRequestDTO deleteCommentRequestDTO;
+    private CommentResponse commentResponse;
 
     @BeforeEach
     void setUp() {
@@ -59,449 +59,313 @@ public class CommentServiceTest {
         user.setUsername("testuser");
         user.setEmail("test@example.com");
 
-        post = new Post(
-                1,
-                "Test Post",
-                "Test Body",
-                userId,
-                LocalDateTime.now(),
-                LocalDateTime.now()
-        );
+        post = new Post();
+        post.setId(1L);
+        post.setTitle("Test Post");
+        post.setBody("Test Body");
+        post.setAuthor(user);
 
-        Comment comment = new Comment(
-                1,
-                userId.toString(),
-                "This is a test comment",
-                LocalDateTime.now()
-        );
-
-        commentDocument = new CommentDocument();
-        commentDocument.setId("commentId123");
-        commentDocument.setPostId(1);
-        commentDocument.setAuthor("testuser");
-        commentDocument.setContent("This is a test comment");
-        commentDocument.setCreatedAt(LocalDateTime.now().toString());
+        comment = new Comment();
+        comment.setId("comment-123");
+        comment.setContent("Test comment content");
+        comment.setPostId(1L);
+        comment.setAuthorId(userId.toString());
+        comment.setAuthor("testuser");
+        comment.setCommentedAt(LocalDateTime.now());
 
         createCommentDTO = new CreateCommentDTO();
-        createCommentDTO.setPostId(1);
         createCommentDTO.setAuthorId(userId.toString());
-        createCommentDTO.setCommentContent("This is a test comment");
+        createCommentDTO.setPostId(1L);
+        createCommentDTO.setCommentContent("Test comment content");
 
         deleteCommentRequestDTO = new DeleteCommentRequestDTO();
         deleteCommentRequestDTO.setAuthorId(userId.toString());
+
+        commentResponse = new CommentResponse();
+        commentResponse.setId("comment-123");
+        commentResponse.setContent("Test comment content");
+        commentResponse.setPostId(1L);
+        commentResponse.setAuthor("testuser");
+        commentResponse.setCreatedAt(String.valueOf(LocalDateTime.now()));
+    }
+
+
+    @Test
+    void addCommentToPost_WithValidData_ShouldReturnCommentResponse() {
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(commentRepository.save(any(Comment.class))).thenReturn(comment);
+
+        try (MockedStatic<CommentUtils> commentUtilsMock = mockStatic(CommentUtils.class)) {
+            commentUtilsMock.when(() -> CommentUtils.createCommentResponseFromComment(any(Comment.class)))
+                    .thenReturn(commentResponse);
+
+            CommentResponse result = commentService.addCommentToPost(createCommentDTO);
+
+            assertNotNull(result);
+            assertEquals(commentResponse.getId(), result.getId());
+            assertEquals(commentResponse.getContent(), result.getContent());
+            assertEquals(commentResponse.getAuthor(), result.getAuthor());
+
+            verify(userRepository).findById(userId);
+            verify(commentRepository).save(argThat(c ->
+                    c.getContent().equals("Test comment content") &&
+                            c.getPostId().equals(1L) &&
+                            c.getAuthorId().equals(userId.toString()) &&
+                            c.getAuthor().equals("testuser") &&
+                            c.getCommentedAt() != null
+            ));
+            commentUtilsMock.verify(() -> CommentUtils.createCommentResponseFromComment(any(Comment.class)));
+        }
     }
 
     @Test
-    void addCommentToPost_Success() throws SQLException {
-        when(userRepository.findUserById(userId)).thenReturn(Optional.of(user));
-        when(commentRepository.createComment(any(Comment.class), eq("testuser")))
-                .thenReturn(commentDocument);
+    void addCommentToPost_WithNonExistentUser_ShouldThrowResourceNotFoundException() {
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
-        CommentDocument result = commentService.addCommentToPost(createCommentDTO);
-
-        assertNotNull(result);
-        assertEquals("commentId123", result.getId());
-        assertEquals(1, result.getPostId());
-        assertEquals("testuser", result.getAuthor());
-        assertEquals("This is a test comment", result.getContent());
-
-        verify(userRepository).findUserById(userId);
-        verify(commentRepository).createComment(any(Comment.class), eq("testuser"));
-    }
-
-    @Test
-    void addCommentToPost_VerifyCommentObjectCreation() throws SQLException {
-        ArgumentCaptor<Comment> commentCaptor = ArgumentCaptor.forClass(Comment.class);
-
-        when(userRepository.findUserById(userId)).thenReturn(Optional.of(user));
-        when(commentRepository.createComment(any(Comment.class), eq("testuser")))
-                .thenReturn(commentDocument);
-
-        commentService.addCommentToPost(createCommentDTO);
-
-        verify(commentRepository).createComment(commentCaptor.capture(), eq("testuser"));
-
-        Comment capturedComment = commentCaptor.getValue();
-        assertEquals(1, capturedComment.getPostId());
-        assertEquals(userId.toString(), capturedComment.getAuthorId());
-        assertEquals("This is a test comment", capturedComment.getContent());
-        assertNotNull(capturedComment.getCreatedAt());
-    }
-
-    @Test
-    void addCommentToPost_UserNotFound_ThrowsResourceNotFoundException() throws SQLException {
-        when(userRepository.findUserById(userId)).thenReturn(Optional.empty());
-
-        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
-                () -> commentService.addCommentToPost(createCommentDTO));
+        ResourceNotFoundException exception = assertThrows(
+                ResourceNotFoundException.class,
+                () -> commentService.addCommentToPost(createCommentDTO)
+        );
 
         assertEquals("User not found", exception.getMessage());
-        verify(userRepository).findUserById(userId);
-        verify(commentRepository, never()).createComment(any(Comment.class), anyString());
+        verify(userRepository).findById(userId);
+        verify(commentRepository, never()).save(any());
     }
 
     @Test
-    void addCommentToPost_InvalidUserIdFormat_ThrowsInvalidUserIdFormatException() throws SQLException {
+    void addCommentToPost_WithInvalidUUID_ShouldThrowInvalidUserIdFormatException() {
         createCommentDTO.setAuthorId("invalid-uuid");
 
-        InvalidUserIdFormatException exception = assertThrows(InvalidUserIdFormatException.class,
-                () -> commentService.addCommentToPost(createCommentDTO));
+        InvalidUserIdFormatException exception = assertThrows(
+                InvalidUserIdFormatException.class,
+                () -> commentService.addCommentToPost(createCommentDTO)
+        );
 
         assertTrue(exception.getMessage().contains("User ID format is invalid"));
-        verify(userRepository, never()).findUserById(any());
-        verify(commentRepository, never()).createComment(any(Comment.class), anyString());
+        verify(userRepository, never()).findById(any());
+        verify(commentRepository, never()).save(any());
     }
 
     @Test
-    void addCommentToPost_UserRepositoryThrowsSQLException_ThrowsSQLQueryException() throws SQLException {
-        when(userRepository.findUserById(userId))
-                .thenThrow(new SQLException("Database connection error"));
+    void addCommentToPost_ShouldSetCurrentTimestamp() {
+        LocalDateTime beforeCall = LocalDateTime.now().minusSeconds(1);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(commentRepository.save(any(Comment.class))).thenReturn(comment);
 
-        SQLQueryException exception = assertThrows(SQLQueryException.class,
-                () -> commentService.addCommentToPost(createCommentDTO));
+        try (MockedStatic<CommentUtils> commentUtilsMock = mockStatic(CommentUtils.class)) {
+            commentUtilsMock.when(() -> CommentUtils.createCommentResponseFromComment(any(Comment.class)))
+                    .thenReturn(commentResponse);
 
-        assertEquals("Failed to create comment: Database connection error", exception.getMessage());
-        verify(commentRepository, never()).createComment(any(Comment.class), anyString());
+            commentService.addCommentToPost(createCommentDTO);
+            LocalDateTime afterCall = LocalDateTime.now().plusSeconds(1);
+
+            verify(commentRepository).save(argThat(c ->
+                    c.getCommentedAt() != null &&
+                            c.getCommentedAt().isAfter(beforeCall) &&
+                            c.getCommentedAt().isBefore(afterCall)
+            ));
+        }
     }
 
-    @Test
-    void addCommentToPost_EmptyCommentContent_StillCreatesComment() throws SQLException {
-        createCommentDTO.setCommentContent("");
-
-        when(userRepository.findUserById(userId)).thenReturn(Optional.of(user));
-        when(commentRepository.createComment(any(Comment.class), eq("testuser")))
-                .thenReturn(commentDocument);
-
-        CommentDocument result = commentService.addCommentToPost(createCommentDTO);
-
-        assertNotNull(result);
-        verify(commentRepository).createComment(any(Comment.class), eq("testuser"));
-    }
 
     @Test
-    void addCommentToPost_DifferentUser_Success() throws SQLException {
-        UUID differentUserId = UUID.randomUUID();
-        User differentUser = new User();
-        differentUser.setId(differentUserId);
-        differentUser.setUsername("differentuser");
-
-        createCommentDTO.setAuthorId(differentUserId.toString());
-
-        CommentDocument differentCommentDoc = new CommentDocument();
-        differentCommentDoc.setId("comment456");
-        differentCommentDoc.setAuthor("differentuser");
-        differentCommentDoc.setContent("Different comment");
-
-        when(userRepository.findUserById(differentUserId)).thenReturn(Optional.of(differentUser));
-        when(commentRepository.createComment(any(Comment.class), eq("differentuser")))
-                .thenReturn(differentCommentDoc);
-
-        CommentDocument result = commentService.addCommentToPost(createCommentDTO);
-
-        assertNotNull(result);
-        assertEquals("differentuser", result.getAuthor());
-        verify(userRepository).findUserById(differentUserId);
-    }
-
-    @Test
-    void getAllCommentsByPostId_Success_ReturnsComments() throws SQLException {
-        List<CommentDocument> comments = Collections.singletonList(commentDocument);
-
-        when(postRepository.findPostById(1)).thenReturn(Optional.of(post));
-        when(commentRepository.getAllCommentsByPostId(1)).thenReturn(comments);
-
-        List<CommentDocument> result = commentService.getAllCommentsByPostId(1);
-
-        assertNotNull(result);
-        assertEquals(1, result.size());
-        assertEquals("commentId123", result.getFirst().getId());
-        assertEquals("This is a test comment", result.getFirst().getContent());
-        verify(postRepository).findPostById(1);
-        verify(commentRepository).getAllCommentsByPostId(1);
-    }
-
-    @Test
-    void getAllCommentsByPostId_Success_ReturnsMultipleComments() throws SQLException {
-        CommentDocument comment2 = new CommentDocument();
-        comment2.setId("commentId456");
-        comment2.setPostId(1);
-        comment2.setAuthor("anotheruser");
+    void getAllCommentsByPostId_WithValidPostId_ShouldReturnCommentList() {
+        Long postId = 1L;
+        Comment comment2 = new Comment();
+        comment2.setId("comment-456");
         comment2.setContent("Second comment");
-        comment2.setCreatedAt(LocalDateTime.now().toString());
+        comment2.setPostId(postId);
+        comment2.setAuthorId(userId.toString());
+        comment2.setAuthor("testuser");
+        comment2.setCommentedAt(LocalDateTime.now());
 
-        List<CommentDocument> comments = Arrays.asList(commentDocument, comment2);
+        List<Comment> comments = Arrays.asList(comment, comment2);
 
-        when(postRepository.findPostById(1)).thenReturn(Optional.of(post));
-        when(commentRepository.getAllCommentsByPostId(1)).thenReturn(comments);
+        CommentResponse commentResponse2 = new CommentResponse();
+        commentResponse2.setId("comment-456");
+        commentResponse2.setContent("Second comment");
 
-        List<CommentDocument> result = commentService.getAllCommentsByPostId(1);
+        when(postRepository.findPostById(postId)).thenReturn(Optional.of(post));
+        when(commentRepository.findByPostIdOrderByCommentedAtDesc(postId)).thenReturn(comments);
 
-        assertNotNull(result);
-        assertEquals(2, result.size());
-        assertEquals("commentId123", result.getFirst().getId());
-        assertEquals("commentId456", result.get(1).getId());
-        verify(commentRepository).getAllCommentsByPostId(1);
+        try (MockedStatic<CommentUtils> commentUtilsMock = mockStatic(CommentUtils.class)) {
+            commentUtilsMock.when(() -> CommentUtils.createCommentResponseFromComment(comment))
+                    .thenReturn(commentResponse);
+            commentUtilsMock.when(() -> CommentUtils.createCommentResponseFromComment(comment2))
+                    .thenReturn(commentResponse2);
+
+            List<CommentResponse> result = commentService.getAllCommentsByPostId(postId);
+
+            assertNotNull(result);
+            assertEquals(2, result.size());
+            assertEquals(commentResponse.getId(), result.get(0).getId());
+            assertEquals(commentResponse2.getId(), result.get(1).getId());
+
+            verify(postRepository).findPostById(postId);
+            verify(commentRepository).findByPostIdOrderByCommentedAtDesc(postId);
+            commentUtilsMock.verify(() -> CommentUtils.createCommentResponseFromComment(any(Comment.class)), times(2));
+        }
     }
 
     @Test
-    void getAllCommentsByPostId_NoComments_ReturnsEmptyList() throws SQLException {
-        when(postRepository.findPostById(1)).thenReturn(Optional.of(post));
-        when(commentRepository.getAllCommentsByPostId(1)).thenReturn(Collections.emptyList());
+    void getAllCommentsByPostId_WithNoComments_ShouldReturnEmptyList() {
+        Long postId = 1L;
+        when(postRepository.findPostById(postId)).thenReturn(Optional.of(post));
+        when(commentRepository.findByPostIdOrderByCommentedAtDesc(postId)).thenReturn(Collections.emptyList());
 
-        List<CommentDocument> result = commentService.getAllCommentsByPostId(1);
+        List<CommentResponse> result = commentService.getAllCommentsByPostId(postId);
 
         assertNotNull(result);
         assertTrue(result.isEmpty());
-        verify(postRepository).findPostById(1);
-        verify(commentRepository).getAllCommentsByPostId(1);
+
+        verify(postRepository).findPostById(postId);
+        verify(commentRepository).findByPostIdOrderByCommentedAtDesc(postId);
     }
 
     @Test
-    void getAllCommentsByPostId_PostNotFound_ThrowsResourceNotFoundException() throws SQLException {
-        when(postRepository.findPostById(999)).thenReturn(Optional.empty());
+    void getAllCommentsByPostId_WithNonExistentPost_ShouldThrowResourceNotFoundException() {
+        Long postId = 999L;
+        when(postRepository.findPostById(postId)).thenReturn(Optional.empty());
 
-        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
-                () -> commentService.getAllCommentsByPostId(999));
-
-        assertEquals("Post not found with ID: 999", exception.getMessage());
-        verify(postRepository).findPostById(999);
-        verify(commentRepository, never()).getAllCommentsByPostId(anyInt());
-    }
-
-    @Test
-    void getAllCommentsByPostId_PostRepositoryThrowsSQLException_ThrowsSQLQueryException() throws SQLException {
-        when(postRepository.findPostById(1))
-                .thenThrow(new SQLException("Database error"));
-
-        SQLQueryException exception = assertThrows(SQLQueryException.class,
-                () -> commentService.getAllCommentsByPostId(1));
-
-        assertEquals("Failed to find comment: Database error", exception.getMessage());
-        verify(postRepository).findPostById(1);
-        verify(commentRepository, never()).getAllCommentsByPostId(anyInt());
-    }
-
-    @Test
-    void getAllCommentsByPostId_DifferentPostId_Success() throws SQLException {
-        Post differentPost = new Post(
-                5,
-                "Different Post",
-                "Different Body",
-                userId,
-                LocalDateTime.now(),
-                LocalDateTime.now()
+        ResourceNotFoundException exception = assertThrows(
+                ResourceNotFoundException.class,
+                () -> commentService.getAllCommentsByPostId(postId)
         );
 
-        CommentDocument comment = new CommentDocument();
-        comment.setId("comment789");
-        comment.setPostId(5);
-        comment.setAuthor("testuser");
-        comment.setContent("Comment on different post");
-
-        when(postRepository.findPostById(5)).thenReturn(Optional.of(differentPost));
-        when(commentRepository.getAllCommentsByPostId(5)).thenReturn(List.of(comment));
-
-        List<CommentDocument> result = commentService.getAllCommentsByPostId(5);
-
-        assertNotNull(result);
-        assertEquals(1, result.size());
-        assertEquals(5, result.getFirst().getPostId());
+        assertTrue(exception.getMessage().contains("Post not found with ID"));
+        verify(postRepository).findPostById(postId);
+        verify(commentRepository, never()).findByPostIdOrderByCommentedAtDesc(anyLong());
     }
 
     @Test
-    void getCommentById_Success() {
-        when(commentRepository.getCommentById("commentId123"))
-                .thenReturn(Optional.of(commentDocument));
+    void getAllCommentsByPostId_ShouldReturnCommentsOrderedByDateDesc() {
+        Long postId = 1L;
+        List<Comment> comments = Collections.singletonList(comment);
 
-        CommentDocument result = commentService.getCommentById("commentId123");
+        when(postRepository.findPostById(postId)).thenReturn(Optional.of(post));
+        when(commentRepository.findByPostIdOrderByCommentedAtDesc(postId)).thenReturn(comments);
 
-        assertNotNull(result);
-        assertEquals("commentId123", result.getId());
-        assertEquals("This is a test comment", result.getContent());
-        assertEquals("testuser", result.getAuthor());
-        verify(commentRepository).getCommentById("commentId123");
+        try (MockedStatic<CommentUtils> commentUtilsMock = mockStatic(CommentUtils.class)) {
+            commentUtilsMock.when(() -> CommentUtils.createCommentResponseFromComment(any(Comment.class)))
+                    .thenReturn(commentResponse);
+
+            commentService.getAllCommentsByPostId(postId);
+
+            verify(commentRepository).findByPostIdOrderByCommentedAtDesc(postId);
+        }
+    }
+
+
+    @Test
+    void getCommentById_WithValidId_ShouldReturnCommentResponse() {
+        String commentId = "comment-123";
+        when(commentRepository.findById(commentId)).thenReturn(Optional.of(comment));
+
+        try (MockedStatic<CommentUtils> commentUtilsMock = mockStatic(CommentUtils.class)) {
+            commentUtilsMock.when(() -> CommentUtils.createCommentResponseFromComment(comment))
+                    .thenReturn(commentResponse);
+
+            CommentResponse result = commentService.getCommentById(commentId);
+
+            assertNotNull(result);
+            assertEquals(commentResponse.getId(), result.getId());
+            assertEquals(commentResponse.getContent(), result.getContent());
+
+            verify(commentRepository).findById(commentId);
+            commentUtilsMock.verify(() -> CommentUtils.createCommentResponseFromComment(comment));
+        }
     }
 
     @Test
-    void getCommentById_CommentNotFound_ThrowsResourceNotFoundException() {
-        when(commentRepository.getCommentById("nonexistent"))
-                .thenReturn(Optional.empty());
+    void getCommentById_WithNonExistentId_ShouldThrowResourceNotFoundException() {
+        String commentId = "non-existent-id";
+        when(commentRepository.findById(commentId)).thenReturn(Optional.empty());
 
-        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
-                () -> commentService.getCommentById("nonexistent"));
+        ResourceNotFoundException exception = assertThrows(
+                ResourceNotFoundException.class,
+                () -> commentService.getCommentById(commentId)
+        );
 
-        assertEquals("Comment not found with id: nonexistent", exception.getMessage());
-        verify(commentRepository).getCommentById("nonexistent");
+        assertTrue(exception.getMessage().contains("Comment not found with id"));
+        verify(commentRepository).findById(commentId);
     }
 
     @Test
-    void getCommentById_WithDifferentCommentId_Success() {
-        CommentDocument differentComment = new CommentDocument();
-        differentComment.setId("differentId");
-        differentComment.setAuthor("anotheruser");
-        differentComment.setContent("Different comment");
-        differentComment.setPostId(2);
+    void getCommentById_WithEmptyString_ShouldAttemptToFind() {
+        String commentId = "";
+        when(commentRepository.findById(commentId)).thenReturn(Optional.empty());
 
-        when(commentRepository.getCommentById("differentId"))
-                .thenReturn(Optional.of(differentComment));
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> commentService.getCommentById(commentId)
+        );
 
-        CommentDocument result = commentService.getCommentById("differentId");
+        verify(commentRepository).findById(commentId);
+    }
 
-        assertNotNull(result);
-        assertEquals("differentId", result.getId());
-        assertEquals("Different comment", result.getContent());
-        assertEquals("anotheruser", result.getAuthor());
+
+    @Test
+    void deleteComment_WithValidData_ShouldDeleteComment() {
+        String commentId = "comment-123";
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        doNothing().when(commentRepository).deleteCommentById(commentId);
+
+        commentService.deleteComment(commentId, deleteCommentRequestDTO);
+
+        verify(userRepository).findById(userId);
+        verify(commentRepository).deleteCommentById(commentId);
     }
 
     @Test
-    void getCommentById_EmptyStringId_ThrowsResourceNotFoundException() {
-        when(commentRepository.getCommentById(""))
-                .thenReturn(Optional.empty());
+    void deleteComment_WithNonExistentUser_ShouldThrowResourceNotFoundException() {
+        String commentId = "comment-123";
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
-        assertThrows(ResourceNotFoundException.class,
-                () -> commentService.getCommentById(""));
-
-        verify(commentRepository).getCommentById("");
-    }
-
-    @Test
-    void deleteComment_Success() throws SQLException {
-        when(userRepository.findUserById(userId)).thenReturn(Optional.of(user));
-        doNothing().when(commentRepository).deleteComment("commentId123", userId.toString());
-
-        assertDoesNotThrow(() ->
-                commentService.deleteComment("commentId123", deleteCommentRequestDTO));
-
-        verify(userRepository).findUserById(userId);
-        verify(commentRepository).deleteComment("commentId123", userId.toString());
-    }
-
-    @Test
-    void deleteComment_UserNotFound_ThrowsResourceNotFoundException() throws SQLException {
-        when(userRepository.findUserById(userId)).thenReturn(Optional.empty());
-
-        ResourceNotFoundException exception = assertThrows(ResourceNotFoundException.class,
-                () -> commentService.deleteComment("commentId123", deleteCommentRequestDTO));
+        ResourceNotFoundException exception = assertThrows(
+                ResourceNotFoundException.class,
+                () -> commentService.deleteComment(commentId, deleteCommentRequestDTO)
+        );
 
         assertEquals("User not found", exception.getMessage());
-        verify(userRepository).findUserById(userId);
-        verify(commentRepository, never()).deleteComment(anyString(), anyString());
+        verify(userRepository).findById(userId);
+        verify(commentRepository, never()).deleteCommentById(anyString());
     }
 
     @Test
-    void deleteComment_InvalidUserIdFormat_ThrowsInvalidUserIdFormatException() throws SQLException {
+    void deleteComment_WithInvalidUUID_ShouldThrowInvalidUserIdFormatException() {
+        String commentId = "comment-123";
         deleteCommentRequestDTO.setAuthorId("invalid-uuid");
 
-        InvalidUserIdFormatException exception = assertThrows(InvalidUserIdFormatException.class,
-                () -> commentService.deleteComment("commentId123", deleteCommentRequestDTO));
+        InvalidUserIdFormatException exception = assertThrows(
+                InvalidUserIdFormatException.class,
+                () -> commentService.deleteComment(commentId, deleteCommentRequestDTO)
+        );
 
         assertTrue(exception.getMessage().contains("User ID format is invalid"));
-        verify(userRepository, never()).findUserById(any());
-        verify(commentRepository, never()).deleteComment(anyString(), anyString());
+        verify(userRepository, never()).findById(any());
+        verify(commentRepository, never()).deleteCommentById(anyString());
     }
 
     @Test
-    void deleteComment_UserRepositoryThrowsSQLException_ThrowsSQLQueryException() throws SQLException {
-        when(userRepository.findUserById(userId))
-                .thenThrow(new SQLException("Database connection error"));
+    void deleteComment_WithEmptyCommentId_ShouldCallDelete() {
+        String commentId = "";
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        doNothing().when(commentRepository).deleteCommentById(commentId);
 
-        SQLQueryException exception = assertThrows(SQLQueryException.class,
-                () -> commentService.deleteComment("commentId123", deleteCommentRequestDTO));
+        commentService.deleteComment(commentId, deleteCommentRequestDTO);
 
-        assertEquals("Failed to delete comment: Database connection error", exception.getMessage());
-        verify(commentRepository, never()).deleteComment(anyString(), anyString());
+        verify(userRepository).findById(userId);
+        verify(commentRepository).deleteCommentById(commentId);
     }
 
     @Test
-    void deleteComment_DifferentCommentId_Success() throws SQLException {
-        when(userRepository.findUserById(userId)).thenReturn(Optional.of(user));
-        doNothing().when(commentRepository).deleteComment("differentCommentId", userId.toString());
+    void deleteComment_ShouldVerifyUserExistsBeforeDeletion() {
+        String commentId = "comment-123";
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
-        assertDoesNotThrow(() ->
-                commentService.deleteComment("differentCommentId", deleteCommentRequestDTO));
+        commentService.deleteComment(commentId, deleteCommentRequestDTO);
 
-        verify(commentRepository).deleteComment("differentCommentId", userId.toString());
-    }
-
-    @Test
-    void deleteComment_DifferentUser_Success() throws SQLException {
-        UUID differentUserId = UUID.randomUUID();
-        User differentUser = new User();
-        differentUser.setId(differentUserId);
-        differentUser.setUsername("differentuser");
-
-        deleteCommentRequestDTO.setAuthorId(differentUserId.toString());
-
-        when(userRepository.findUserById(differentUserId)).thenReturn(Optional.of(differentUser));
-        doNothing().when(commentRepository).deleteComment("commentId123", differentUserId.toString());
-
-        assertDoesNotThrow(() ->
-                commentService.deleteComment("commentId123", deleteCommentRequestDTO));
-
-        verify(userRepository).findUserById(differentUserId);
-        verify(commentRepository).deleteComment("commentId123", differentUserId.toString());
-    }
-
-    @Test
-    void deleteComment_EmptyCommentId_StillCallsRepository() throws SQLException {
-        when(userRepository.findUserById(userId)).thenReturn(Optional.of(user));
-        doNothing().when(commentRepository).deleteComment("", userId.toString());
-
-        assertDoesNotThrow(() ->
-                commentService.deleteComment("", deleteCommentRequestDTO));
-
-        verify(commentRepository).deleteComment("", userId.toString());
-    }
-
-    @Test
-    void addCommentToPost_NullAuthorId_ThrowsException() {
-        createCommentDTO.setAuthorId(null);
-
-        assertThrows(Exception.class,
-                () -> commentService.addCommentToPost(createCommentDTO));
-
-        verify(commentRepository, never()).createComment(any(Comment.class), anyString());
-    }
-
-    @Test
-    void getAllCommentsByPostId_NegativePostId_ThrowsResourceNotFoundException() throws SQLException {
-        when(postRepository.findPostById(-1)).thenReturn(Optional.empty());
-
-        assertThrows(ResourceNotFoundException.class,
-                () -> commentService.getAllCommentsByPostId(-1));
-
-        verify(postRepository).findPostById(-1);
-    }
-
-    @Test
-    void deleteComment_VerifyCorrectParametersPassedToRepository() throws SQLException {
-        String specificCommentId = "specificComment123";
-        String specificAuthorId = UUID.randomUUID().toString();
-
-        deleteCommentRequestDTO.setAuthorId(specificAuthorId);
-        UUID specificUserId = UUID.fromString(specificAuthorId);
-
-        User specificUser = new User();
-        specificUser.setId(specificUserId);
-        specificUser.setUsername("specificuser");
-
-        when(userRepository.findUserById(specificUserId)).thenReturn(Optional.of(specificUser));
-        doNothing().when(commentRepository).deleteComment(specificCommentId, specificAuthorId);
-
-        commentService.deleteComment(specificCommentId, deleteCommentRequestDTO);
-
-        verify(commentRepository).deleteComment(specificCommentId, specificAuthorId);
-    }
-
-    @Test
-    void getAllCommentsByPostId_VerifyEmptyListNotNull() throws SQLException {
-        when(postRepository.findPostById(1)).thenReturn(Optional.of(post));
-        when(commentRepository.getAllCommentsByPostId(1)).thenReturn(new ArrayList<>());
-
-        List<CommentDocument> result = commentService.getAllCommentsByPostId(1);
-
-        assertNotNull(result);
-        assertEquals(0, result.size());
-        assertInstanceOf(List.class, result);
+        verify(userRepository).findById(userId);
+        verify(commentRepository).deleteCommentById(commentId);
     }
 }
