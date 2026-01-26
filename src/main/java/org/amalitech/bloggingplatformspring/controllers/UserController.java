@@ -64,7 +64,6 @@ public class UserController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))
             )
     })
-
     public ResponseEntity<ApiResponseGeneric<UserResponseDTO>> signInUser(
             @Valid @RequestBody SignInUserDTO signInUserDTO) {
         UserResponseDTO userResponse = userService.signInUser(signInUserDTO);
