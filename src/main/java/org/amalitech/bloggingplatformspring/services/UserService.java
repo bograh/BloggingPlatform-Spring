@@ -19,9 +19,9 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserUtils userUtils;
 
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, UserUtils userUtils) {
         this.userRepository = userRepository;
-        this.userUtils = new UserUtils();
+        this.userUtils = userUtils;
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
@@ -34,11 +34,11 @@ public class UserService {
             throw new BadRequestException("Password must not contain username");
         }
 
-        if (userRepository.existsByUsername(username)) {
+        if (userRepository.existsByUsernameIgnoreCase(username)) {
             throw new BadRequestException("Username is taken");
         }
 
-        if (userRepository.existsByUsername(email)) {
+        if (userRepository.existsByEmailIgnoreCase(email)) {
             throw new BadRequestException("Email is taken");
         }
 
@@ -57,7 +57,7 @@ public class UserService {
         String email = signInUserDTO.getEmail();
         String password = signInUserDTO.getPassword();
 
-        if (!userRepository.existsByEmail(email)) {
+        if (!userRepository.existsByEmailIgnoreCase(email)) {
             throw new UnauthorizedException("Invalid email or password");
         }
 
