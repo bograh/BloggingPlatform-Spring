@@ -208,7 +208,7 @@ class PostServiceTest {
                 postPage.getNumber(),
                 postPage.getNumberOfElements(),
                 postPage.getSort().toString(),
-                postPage.getTotalElements()
+                (int) postPage.getTotalElements()
         );
 
         when(postUtils.mapSortField(sortBy)).thenReturn("createdAt");
