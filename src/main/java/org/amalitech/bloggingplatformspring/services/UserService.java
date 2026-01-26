@@ -9,8 +9,8 @@ import org.amalitech.bloggingplatformspring.exceptions.UnauthorizedException;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.amalitech.bloggingplatformspring.utils.UserUtils;
 import org.springframework.stereotype.Service;
-
-import java.util.UUID;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UserService {
@@ -23,6 +23,7 @@ public class UserService {
         this.userUtils = new UserUtils();
     }
 
+    @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public UserResponseDTO registerUser(RegisterUserDTO registerUserDTO) {
         String username = registerUserDTO.getUsername();
         String email = registerUserDTO.getEmail();
@@ -41,7 +42,6 @@ public class UserService {
         }
 
         User user = new User();
-        user.setId(UUID.randomUUID());
         user.setUsername(username);
         user.setEmail(email);
         user.setPassword(password);
