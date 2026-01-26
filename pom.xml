@@ -137,7 +137,7 @@
                         <exclude>**/entity/**</exclude>
                         <exclude>**/enums/**</exclude>
                         <exclude>**/exceptions/**</exclude>
-                        <exclude>**/graphql/**</exclude>
+                        <!--<exclude>**/graphql/**</exclude>-->
                         <exclude>**/utils/**</exclude>
                     </excludes>
                 </configuration>
