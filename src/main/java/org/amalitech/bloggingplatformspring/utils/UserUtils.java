@@ -14,13 +14,14 @@ public class UserUtils {
         UUID id = (UUID) rs.getObject("id");
         String username = rs.getString("username");
         String email = rs.getString("email");
+        String hashedPassword = rs.getString("password");
         LocalDateTime createdAt = rs.getTimestamp("created_at").toLocalDateTime();
 
         return new User(
                 id,
                 username,
                 email,
-                null,
+                hashedPassword,
                 createdAt
         );
     }

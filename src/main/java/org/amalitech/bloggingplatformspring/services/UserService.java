@@ -1,11 +1,13 @@
 package org.amalitech.bloggingplatformspring.services;
 
+import at.favre.lib.crypto.bcrypt.BCrypt;
 import org.amalitech.bloggingplatformspring.dtos.requests.RegisterUserDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.SignInUserDTO;
 import org.amalitech.bloggingplatformspring.dtos.responses.UserResponseDTO;
 import org.amalitech.bloggingplatformspring.entity.User;
 import org.amalitech.bloggingplatformspring.exceptions.BadRequestException;
 import org.amalitech.bloggingplatformspring.exceptions.SQLQueryException;
+import org.amalitech.bloggingplatformspring.exceptions.UnauthorizedException;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.amalitech.bloggingplatformspring.utils.UserUtils;
 import org.springframework.stereotype.Service;
@@ -42,7 +44,12 @@ public class UserService {
                 throw new BadRequestException("Email is taken");
             }
 
-            User user = userRepository.saveUser(username, email, password);
+            String hashedPassword = BCrypt.withDefaults().hashToString(12, password.toCharArray());
+            User user = userRepository.saveUser(
+                    username,
+                    email,
+                    hashedPassword
+            );
             return userUtils.mapUserToUserResponse(user);
 
         } catch (SQLException e) {
@@ -53,7 +60,17 @@ public class UserService {
     public UserResponseDTO signInUser(SignInUserDTO signInUserDTO) {
         try {
 
-            User user = userRepository.findUserByEmailAndPassword(signInUserDTO.getEmail(), signInUserDTO.getPassword());
+            String email = signInUserDTO.getEmail();
+            String password = signInUserDTO.getPassword();
+
+            User user = userRepository.findUserByEmail(email);
+
+            BCrypt.Result hashedPassword = BCrypt.verifyer().verify(password.toCharArray(), user.getPassword());
+
+            if (!hashedPassword.verified) {
+                throw new UnauthorizedException("Invalid email or password");
+            }
+
             return userUtils.mapUserToUserResponse(user);
 
         } catch (SQLException e) {

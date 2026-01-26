@@ -67,16 +67,14 @@ public class UserDAO implements UserRepository {
         throw new SQLException("Failed to register user");
     }
 
-
     @Override
-    public User findUserByEmailAndPassword(String email, String password) throws SQLException {
+    public User findUserByEmail(String email) throws SQLException {
         UserUtils userUtils = new UserUtils();
-        String query = "SELECT * FROM users WHERE email = ? AND password = ?";
+        String query = "SELECT * FROM users WHERE email = ?";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
 
             stmt.setString(1, email);
-            stmt.setString(2, password);
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
                 return userUtils.mapRowToUser(rs);
