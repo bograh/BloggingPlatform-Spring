@@ -9,8 +9,8 @@ import org.amalitech.bloggingplatformspring.exceptions.UnauthorizedException;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.amalitech.bloggingplatformspring.utils.UserUtils;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
-import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 @Service
 public class UserService {
@@ -18,12 +18,11 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserUtils userUtils;
 
-    public UserService(UserRepository userRepository, UserUtils userUtils) {
+    public UserService(UserRepository userRepository) {
         this.userRepository = userRepository;
-        this.userUtils = userUtils;
+        this.userUtils = new UserUtils();
     }
 
-    @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public UserResponseDTO registerUser(RegisterUserDTO registerUserDTO) {
         String username = registerUserDTO.getUsername();
         String email = registerUserDTO.getEmail();
@@ -37,28 +36,28 @@ public class UserService {
             throw new BadRequestException("Username is taken");
         }
 
-        if (userRepository.existsByEmail(email)) {
+        if (userRepository.existsByUsername(email)) {
             throw new BadRequestException("Email is taken");
         }
 
         User user = new User();
+        user.setId(UUID.randomUUID());
         user.setUsername(username);
         user.setEmail(email);
         user.setPassword(password);
-
         userRepository.save(user);
 
         return userUtils.mapUserToUserResponse(user);
     }
 
     public UserResponseDTO signInUser(SignInUserDTO signInUserDTO) {
-        String email = signInUserDTO.getEmail();
-        String password = signInUserDTO.getPassword();
 
-        User user = userRepository.findUserByEmailAndPassword(email, password).orElseThrow(
-                () -> new UnauthorizedException("Invalid email or password")
-        );
+        if (!userRepository.existsByEmail(signInUserDTO.getEmail())) {
+            throw new UnauthorizedException("Invalid email or password");
+        }
 
+        User user = userRepository.findUserByEmailAndPassword(signInUserDTO.getEmail(), signInUserDTO.getPassword());
         return userUtils.mapUserToUserResponse(user);
+
     }
 }
