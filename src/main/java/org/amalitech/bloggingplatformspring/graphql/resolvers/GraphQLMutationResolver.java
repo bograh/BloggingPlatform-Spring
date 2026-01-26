@@ -87,8 +87,8 @@ public class GraphQLMutationResolver {
     public GraphQLComment createComment(@Argument CreateCommentInput input) {
         CreateCommentDTO dto = new CreateCommentDTO(
                 input.getPostId(),
-                input.getAuthorId(),
-                input.getCommentContent());
+                input.getCommentContent(),
+                input.getAuthorId());
 
         CommentResponse comment = commentService.addCommentToPost(dto);
         return graphQLUtils.mapCommentResponseToGraphQLComment(comment);
