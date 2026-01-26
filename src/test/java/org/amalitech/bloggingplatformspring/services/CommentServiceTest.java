@@ -303,16 +303,19 @@ class CommentServiceTest {
         verify(commentRepository).findById(commentId);
     }
 
-
     @Test
     void deleteComment_WithValidData_ShouldDeleteComment() {
         String commentId = "comment-123";
+
+        // Mock both user and comment repository calls
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(commentRepository.findById(commentId)).thenReturn(Optional.of(comment));
         doNothing().when(commentRepository).deleteCommentById(commentId);
 
         commentService.deleteComment(commentId, deleteCommentRequestDTO);
 
         verify(userRepository).findById(userId);
+        verify(commentRepository).findById(commentId);
         verify(commentRepository).deleteCommentById(commentId);
     }
 
@@ -349,23 +352,29 @@ class CommentServiceTest {
     @Test
     void deleteComment_WithEmptyCommentId_ShouldCallDelete() {
         String commentId = "";
+
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(commentRepository.findById(commentId)).thenReturn(Optional.of(comment));
         doNothing().when(commentRepository).deleteCommentById(commentId);
 
         commentService.deleteComment(commentId, deleteCommentRequestDTO);
 
         verify(userRepository).findById(userId);
+        verify(commentRepository).findById(commentId);
         verify(commentRepository).deleteCommentById(commentId);
     }
 
     @Test
     void deleteComment_ShouldVerifyUserExistsBeforeDeletion() {
         String commentId = "comment-123";
+
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(commentRepository.findById(commentId)).thenReturn(Optional.of(comment));
 
         commentService.deleteComment(commentId, deleteCommentRequestDTO);
 
         verify(userRepository).findById(userId);
+        verify(commentRepository).findById(commentId);
         verify(commentRepository).deleteCommentById(commentId);
     }
 }
