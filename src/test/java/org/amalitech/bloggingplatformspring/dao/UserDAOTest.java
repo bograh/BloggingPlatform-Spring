@@ -1,5 +1,6 @@
 package org.amalitech.bloggingplatformspring.dao;
 
+import at.favre.lib.crypto.bcrypt.BCrypt;
 import org.amalitech.bloggingplatformspring.config.ConnectionProvider;
 import org.amalitech.bloggingplatformspring.entity.User;
 import org.amalitech.bloggingplatformspring.exceptions.BadRequestException;
@@ -49,7 +50,7 @@ class UserDAOTest {
         userId = UUID.randomUUID();
         username = "testuser";
         email = "test@example.com";
-        password = "hashedPassword123";
+        password = BCrypt.withDefaults().hashToString(12, "hashedPassword123!".toCharArray());
         createdAt = LocalDateTime.now();
 
         when(connectionProvider.getConnection()).thenReturn(connection);
@@ -147,7 +148,7 @@ class UserDAOTest {
     }
 
     @Test
-    void findUserByEmailAndPassword_Success() throws SQLException {
+    void findUserByEmail_Success() throws SQLException {
         when(connection.prepareStatement(anyString())).thenReturn(preparedStatement);
         when(preparedStatement.executeQuery()).thenReturn(resultSet);
         when(resultSet.next()).thenReturn(true);
@@ -158,7 +159,7 @@ class UserDAOTest {
         when(resultSet.getString("email")).thenReturn(email);
         when(resultSet.getTimestamp("created_at")).thenReturn(timestamp);
 
-        User result = userDAO.findUserByEmailAndPassword(email, password);
+        User result = userDAO.findUserByEmail(email);
 
         assertNotNull(result);
         assertEquals(userId, result.getId());
@@ -166,29 +167,27 @@ class UserDAOTest {
         assertEquals(email, result.getEmail());
 
         verify(preparedStatement).setString(1, email);
-        verify(preparedStatement).setString(2, password);
     }
 
     @Test
-    void findUserByEmailAndPassword_InvalidCredentials_ThrowsForbiddenException() throws SQLException {
+    void findUserByEmail_InvalidCredentials_ThrowsForbiddenException() throws SQLException {
         when(connection.prepareStatement(anyString())).thenReturn(preparedStatement);
         when(preparedStatement.executeQuery()).thenReturn(resultSet);
         when(resultSet.next()).thenReturn(false);
 
         UnauthorizedException exception = assertThrows(UnauthorizedException.class,
-                () -> userDAO.findUserByEmailAndPassword(email, "wrongPassword"));
+                () -> userDAO.findUserByEmail(email));
 
         assertEquals("Invalid email or password", exception.getMessage());
         verify(preparedStatement).setString(1, email);
-        verify(preparedStatement).setString(2, "wrongPassword");
     }
 
     @Test
-    void findUserByEmailAndPassword_DatabaseError_ThrowsSQLException() throws SQLException {
+    void findUserByEmail_DatabaseError_ThrowsSQLException() throws SQLException {
         when(connection.prepareStatement(anyString())).thenThrow(new SQLException("Database error"));
 
         assertThrows(SQLException.class,
-                () -> userDAO.findUserByEmailAndPassword(email, password));
+                () -> userDAO.findUserByEmail(email));
     }
 
     @Test
@@ -377,7 +376,7 @@ class UserDAOTest {
     }
 
     @Test
-    void findUserByEmailAndPassword_WithWhitespace_Success() throws SQLException {
+    void findUserByEmail_WithWhitespace_Success() throws SQLException {
         String emailWithSpaces = "  test@example.com  ";
 
         when(connection.prepareStatement(anyString())).thenReturn(preparedStatement);
@@ -388,7 +387,7 @@ class UserDAOTest {
         when(resultSet.getObject("id")).thenReturn(userId);
         when(resultSet.getTimestamp("created_at")).thenReturn(timestamp);
 
-        User result = userDAO.findUserByEmailAndPassword(emailWithSpaces, password);
+        User result = userDAO.findUserByEmail(emailWithSpaces);
 
         assertNotNull(result);
         verify(preparedStatement).setString(1, emailWithSpaces);

@@ -1,11 +1,13 @@
 package org.amalitech.bloggingplatformspring.services;
 
+import at.favre.lib.crypto.bcrypt.BCrypt;
 import org.amalitech.bloggingplatformspring.dtos.requests.RegisterUserDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.SignInUserDTO;
 import org.amalitech.bloggingplatformspring.dtos.responses.UserResponseDTO;
 import org.amalitech.bloggingplatformspring.entity.User;
 import org.amalitech.bloggingplatformspring.exceptions.BadRequestException;
 import org.amalitech.bloggingplatformspring.exceptions.SQLQueryException;
+import org.amalitech.bloggingplatformspring.exceptions.UnauthorizedException;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,7 +45,7 @@ public class UserServiceTest {
         user.setId(userId);
         user.setUsername("testuser");
         user.setEmail("test@example.com");
-        user.setPassword("hashedPassword123");
+        user.setPassword(BCrypt.withDefaults().hashToString(12, "SecurePass123!".toCharArray()));
         user.setCreatedAt(LocalDateTime.now());
 
         registerUserDTO = new RegisterUserDTO();
@@ -65,7 +67,8 @@ public class UserServiceTest {
     void registerUser_Success() throws SQLException {
         when(userRepository.userExistsByUsername("testuser")).thenReturn(false);
         when(userRepository.userExistsByEmail("test@example.com")).thenReturn(false);
-        when(userRepository.saveUser("testuser", "test@example.com", "SecurePass123!"))
+        // The service now hashes the password, so we expect a hashed password to be passed
+        when(userRepository.saveUser(eq("testuser"), eq("test@example.com"), anyString()))
                 .thenReturn(user);
 
         UserResponseDTO result = userService.registerUser(registerUserDTO);
@@ -75,7 +78,7 @@ public class UserServiceTest {
         assertEquals("test@example.com", result.getEmail());
         verify(userRepository).userExistsByUsername("testuser");
         verify(userRepository).userExistsByEmail("test@example.com");
-        verify(userRepository).saveUser("testuser", "test@example.com", "SecurePass123!");
+        verify(userRepository).saveUser(eq("testuser"), eq("test@example.com"), anyString());
     }
 
     @Test
@@ -162,14 +165,14 @@ public class UserServiceTest {
     void registerUser_SaveUserThrowsSQLException_ThrowsSQLQueryException() throws SQLException {
         when(userRepository.userExistsByUsername("testuser")).thenReturn(false);
         when(userRepository.userExistsByEmail("test@example.com")).thenReturn(false);
-        when(userRepository.saveUser("testuser", "test@example.com", "SecurePass123!"))
+        when(userRepository.saveUser(eq("testuser"), eq("test@example.com"), anyString()))
                 .thenThrow(new SQLException("Insert failed"));
 
         SQLQueryException exception = assertThrows(SQLQueryException.class,
                 () -> userService.registerUser(registerUserDTO));
 
         assertEquals("Failed to register user", exception.getMessage());
-        verify(userRepository).saveUser("testuser", "test@example.com", "SecurePass123!");
+        verify(userRepository).saveUser(eq("testuser"), eq("test@example.com"), anyString());
     }
 
     @Test
@@ -179,13 +182,13 @@ public class UserServiceTest {
 
         when(userRepository.userExistsByUsername("john")).thenReturn(false);
         when(userRepository.userExistsByEmail("test@example.com")).thenReturn(false);
-        when(userRepository.saveUser("john", "test@example.com", "MySecurePassword123!"))
+        when(userRepository.saveUser(eq("john"), eq("test@example.com"), anyString()))
                 .thenReturn(user);
 
         UserResponseDTO result = userService.registerUser(registerUserDTO);
 
         assertNotNull(result);
-        verify(userRepository).saveUser("john", "test@example.com", "MySecurePassword123!");
+        verify(userRepository).saveUser(eq("john"), eq("test@example.com"), anyString());
     }
 
     @Test
@@ -201,7 +204,7 @@ public class UserServiceTest {
 
     @Test
     void signInUser_Success() throws SQLException {
-        when(userRepository.findUserByEmailAndPassword("test@example.com", "SecurePass123!"))
+        when(userRepository.findUserByEmail("test@example.com"))
                 .thenReturn(user);
 
         UserResponseDTO result = userService.signInUser(signInUserDTO);
@@ -209,61 +212,70 @@ public class UserServiceTest {
         assertNotNull(result);
         assertEquals("testuser", result.getUsername());
         assertEquals("test@example.com", result.getEmail());
-        verify(userRepository).findUserByEmailAndPassword("test@example.com", "SecurePass123!");
+        verify(userRepository).findUserByEmail("test@example.com");
     }
 
     @Test
     void signInUser_InvalidCredentials_ThrowsException() throws SQLException {
-        when(userRepository.findUserByEmailAndPassword("test@example.com", "WrongPassword"))
-                .thenThrow(new SQLException("User not found"));
+        // Mock user with a different password hash
+        User userWithDifferentPassword = new User();
+        userWithDifferentPassword.setId(UUID.randomUUID());
+        userWithDifferentPassword.setUsername("testuser");
+        userWithDifferentPassword.setEmail("test@example.com");
+        userWithDifferentPassword.setPassword(BCrypt.withDefaults().hashToString(12, "DifferentPassword".toCharArray()));
+
+        when(userRepository.findUserByEmail("test@example.com"))
+                .thenReturn(userWithDifferentPassword);
 
         signInUserDTO.setPassword("WrongPassword");
 
-        SQLQueryException exception = assertThrows(SQLQueryException.class,
+        UnauthorizedException exception = assertThrows(UnauthorizedException.class,
                 () -> userService.signInUser(signInUserDTO));
 
-        assertEquals("Failed to sign user", exception.getMessage());
-        verify(userRepository).findUserByEmailAndPassword("test@example.com", "WrongPassword");
+        assertEquals("Invalid email or password", exception.getMessage());
+        verify(userRepository).findUserByEmail("test@example.com");
     }
 
     @Test
     void signInUser_DatabaseError_ThrowsSQLQueryException() throws SQLException {
-        when(userRepository.findUserByEmailAndPassword("test@example.com", "SecurePass123!"))
+        when(userRepository.findUserByEmail("test@example.com"))
                 .thenThrow(new SQLException("Database connection error"));
 
         SQLQueryException exception = assertThrows(SQLQueryException.class,
                 () -> userService.signInUser(signInUserDTO));
 
         assertEquals("Failed to sign user", exception.getMessage());
-        verify(userRepository).findUserByEmailAndPassword("test@example.com", "SecurePass123!");
+        verify(userRepository).findUserByEmail("test@example.com");
     }
 
     @Test
     void signInUser_WithDifferentEmail_Success() throws SQLException {
         signInUserDTO.setEmail("different@example.com");
+
         User differentUser = new User();
         differentUser.setId(UUID.randomUUID());
         differentUser.setUsername("differentuser");
         differentUser.setEmail("different@example.com");
+        differentUser.setPassword(BCrypt.withDefaults().hashToString(12, "SecurePass123!".toCharArray()));
 
-        when(userRepository.findUserByEmailAndPassword("different@example.com", "SecurePass123!"))
+        when(userRepository.findUserByEmail("different@example.com"))
                 .thenReturn(differentUser);
 
         UserResponseDTO result = userService.signInUser(signInUserDTO);
 
         assertNotNull(result);
-        verify(userRepository).findUserByEmailAndPassword("different@example.com", "SecurePass123!");
+        verify(userRepository).findUserByEmail("different@example.com");
     }
 
     @Test
     void signInUser_NullReturnFromRepository_HandledProperly() throws SQLException {
-        when(userRepository.findUserByEmailAndPassword("test@example.com", "SecurePass123!"))
+        when(userRepository.findUserByEmail("test@example.com"))
                 .thenReturn(null);
 
         assertThrows(NullPointerException.class,
                 () -> userService.signInUser(signInUserDTO));
 
-        verify(userRepository).findUserByEmailAndPassword("test@example.com", "SecurePass123!");
+        verify(userRepository).findUserByEmail("test@example.com");
     }
 
     @Test
@@ -285,7 +297,7 @@ public class UserServiceTest {
             try {
                 when(userRepository.userExistsByUsername("testuser")).thenReturn(false);
                 when(userRepository.userExistsByEmail("test@example.com")).thenReturn(false);
-                when(userRepository.saveUser("testuser", "test@example.com", ""))
+                when(userRepository.saveUser(eq("testuser"), eq("test@example.com"), anyString()))
                         .thenReturn(user);
                 userService.registerUser(registerUserDTO);
             } catch (SQLException e) {
@@ -304,5 +316,4 @@ public class UserServiceTest {
 
         assertEquals("Password must not contain username", exception.getMessage());
     }
-
 }
