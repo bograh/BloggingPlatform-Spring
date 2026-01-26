@@ -20,7 +20,7 @@ public class PostSpecifications {
             String pattern = "%" + search.toLowerCase() + "%";
             return cb.or(
                     cb.like(cb.lower(root.get("title")), pattern),
-                    cb.like(cb.lower(root.get("content")), pattern)
+                    cb.like(cb.lower(root.get("body")), pattern)
             );
         };
     }

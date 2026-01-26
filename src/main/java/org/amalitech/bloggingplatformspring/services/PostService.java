@@ -27,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -141,6 +142,8 @@ public class PostService {
                 Set<Tag> updatedTags = tagService.getOrCreateTags(updatePostDTO.getTags());
                 post.getTags().addAll(updatedTags);
             }
+
+            post.setUpdatedAt(LocalDateTime.now());
 
             Post savedPost = postRepository.save(post);
             long totalComments = commentRepository.countByPostId(savedPost.getId());
