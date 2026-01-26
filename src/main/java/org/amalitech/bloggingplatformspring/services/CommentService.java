@@ -5,6 +5,7 @@ import org.amalitech.bloggingplatformspring.dtos.requests.DeleteCommentRequestDT
 import org.amalitech.bloggingplatformspring.dtos.responses.CommentResponse;
 import org.amalitech.bloggingplatformspring.entity.Comment;
 import org.amalitech.bloggingplatformspring.entity.User;
+import org.amalitech.bloggingplatformspring.exceptions.ForbiddenException;
 import org.amalitech.bloggingplatformspring.exceptions.InvalidUserIdFormatException;
 import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
 import org.amalitech.bloggingplatformspring.repository.CommentRepository;
@@ -78,9 +79,17 @@ public class CommentService {
         try {
             String authorId = deleteCommentRequestDTO.getAuthorId();
             UUID userId = UUID.fromString(authorId);
-            userRepository.findById(userId).orElseThrow(
+            User user = userRepository.findById(userId).orElseThrow(
                     () -> new ResourceNotFoundException("User not found")
             );
+
+            Comment comment = commentRepository.findById(commentId).orElseThrow(
+                    () -> new ResourceNotFoundException("Comment not found with id: " + commentId)
+            );
+
+            if (!comment.getAuthorId().equalsIgnoreCase(String.valueOf(user.getId()))) {
+                throw new ForbiddenException("You cannot delete this comment");
+            }
 
             commentRepository.deleteCommentById(commentId);
 
