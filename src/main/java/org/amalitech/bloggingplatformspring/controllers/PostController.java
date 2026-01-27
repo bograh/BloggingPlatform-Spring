@@ -57,7 +57,7 @@ public class PostController {
     })
     public ResponseEntity<ApiResponseGeneric<PageResponse<PostResponseDTO>>> getAllPosts(
             @Parameter(description = "Page number (0-indexed)", example = "0") @RequestParam(name = "page", defaultValue = "0") int page,
-            @Parameter(description = "Page size (max 50)", example = "10") @RequestParam(name = "size", defaultValue = "10") int size,
+            @Parameter(description = "Page size (max 50)", example = "12") @RequestParam(name = "size", defaultValue = "12") int size,
             @Parameter(description = "Sort field (id, createdAt, lastUpdated, title)", example = "lastUpdated") @RequestParam(name = "sort", defaultValue = "lastUpdated") String sortBy,
             @Parameter(description = "Sort order (ASC or DESC)", example = "DESC") @RequestParam(name = "order", defaultValue = "DESC") String sortDirection,
             @Parameter(description = "Filter by author name") @RequestParam(required = false) String author,

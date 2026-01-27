@@ -172,6 +172,7 @@ public class PostService {
             }
 
             postRepository.delete(post);
+            commentRepository.deleteCommentsByPostId(postId);
 
         } catch (IllegalArgumentException e) {
             throw new InvalidUserIdFormatException("Invalid user ID format: " + e.getMessage());
