@@ -166,10 +166,9 @@ public class PerformanceMonitoringAspect {
      */
     public void exportPerformanceSummary() {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
-        Path logFilePath = Paths.get("logs", timestamp + "-export.log");
+        Path logFilePath = Paths.get("metrics", timestamp + "-performance-summary.log");
 
         try {
-            // Create logs directory if it doesn't exist
             Files.createDirectories(logFilePath.getParent());
 
             StringBuilder content = new StringBuilder();
@@ -296,7 +295,7 @@ public class PerformanceMonitoringAspect {
 
         /**
          * Calculate percentile value
-         * 
+         *
          * @param percentile Percentile to calculate (e.g., 50, 95, 99)
          * @return Execution time at the given percentile
          */
