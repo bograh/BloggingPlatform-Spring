@@ -7,6 +7,7 @@ public record PageResponse<T>(
         int page,
         int size,
         String sort,
-        long totalElements
+        long totalElements,
+        boolean last
 ) {
 }
