@@ -10,7 +10,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class GraphQLUser {
-  private UUID id;
-  private String username;
-  private String email;
+    private UUID id;
+    private String username;
+    private String email;
 }
