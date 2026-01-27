@@ -15,7 +15,11 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "posts")
+@Table(name = "posts", indexes = {
+        @Index(name = "idx_author_id", columnList = "author_id"),
+        @Index(name = "idx_posted_at", columnList = "posted_at"),
+        @Index(name = "idx_author_posted", columnList = "author_id, posted_at")
+})
 public class Post {
 
     @Id

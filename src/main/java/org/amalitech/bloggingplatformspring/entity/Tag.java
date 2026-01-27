@@ -14,7 +14,9 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "tags")
+@Table(name = "tags", indexes = {
+        @Index(name = "idx_name", columnList = "name")
+})
 public class Tag {
 
     @Id
