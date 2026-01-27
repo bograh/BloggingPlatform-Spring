@@ -100,7 +100,7 @@ class PostControllerTest {
         PageResponse<PostResponseDTO> pageResponse = new PageResponse<>(
                 Arrays.asList(post1, post2),
                 0, 10,
-                Sort.by(Sort.Direction.DESC, "lastUpdated").toString(), 2
+                Sort.by(Sort.Direction.DESC, "lastUpdated").toString(), 2, true
         );
 
         when(postService.getAllPosts(anyInt(), anyInt(), anyString(), anyString(), any(PostFilterRequest.class)))
@@ -128,7 +128,7 @@ class PostControllerTest {
         PageResponse<PostResponseDTO> pageResponse = new PageResponse<>(
                 List.of(post),
                 1, 5,
-                Sort.by(Sort.Direction.DESC, "lastUpdated").toString(), 1
+                Sort.by(Sort.Direction.DESC, "lastUpdated").toString(), 1, true
         );
 
         when(postService.getAllPosts(anyInt(), anyInt(), anyString(), anyString(), any(PostFilterRequest.class)))

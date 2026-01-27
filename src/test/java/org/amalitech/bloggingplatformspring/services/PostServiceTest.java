@@ -208,7 +208,8 @@ class PostServiceTest {
                 postPage.getNumber(),
                 postPage.getNumberOfElements(),
                 postPage.getSort().toString(),
-                (int) postPage.getTotalElements()
+                (int) postPage.getTotalElements(),
+                postPage.isLast()
         );
 
         when(postUtils.mapSortField(sortBy)).thenReturn("createdAt");
@@ -238,7 +239,8 @@ class PostServiceTest {
         when(postUtils.buildSpecification(any())).thenReturn(Specification.unrestricted());
         when(postRepository.findAll(ArgumentMatchers.<Specification<Post>>any(), any(Pageable.class)))
                 .thenReturn(Page.empty());
-        when(postUtils.mapPostPageToPostResponsePage(any())).thenReturn(new PageResponse<>(List.of(), 0, 0, "", 0));
+        when(postUtils.mapPostPageToPostResponsePage(any())).thenReturn(
+                new PageResponse<>(List.of(), 0, 0, "", 0, true));
 
         postService.getAllPosts(page, size, "createdAt", "desc", filterRequest);
 
