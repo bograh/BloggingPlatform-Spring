@@ -1,6 +1,8 @@
 package org.amalitech.bloggingplatformspring.repository;
 
 import org.amalitech.bloggingplatformspring.entity.Post;
+import org.amalitech.bloggingplatformspring.entity.User;
+import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -9,6 +11,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -25,4 +28,7 @@ public interface PostRepository extends JpaRepository<Post, Long>, JpaSpecificat
             """)
     Page<Post> search(@Param("query") String query, Pageable pageable);
 
+    List<Post> findPostsByAuthorOrderByUpdatedAtDesc(User author, Limit limit);
+
+    Long countByAuthor(User user);
 }

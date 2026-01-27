@@ -3,25 +3,46 @@ package org.amalitech.bloggingplatformspring.services;
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import org.amalitech.bloggingplatformspring.dtos.requests.RegisterUserDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.SignInUserDTO;
+import org.amalitech.bloggingplatformspring.dtos.responses.CommentResponse;
+import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
+import org.amalitech.bloggingplatformspring.dtos.responses.UserProfileResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.UserResponseDTO;
+import org.amalitech.bloggingplatformspring.entity.Comment;
+import org.amalitech.bloggingplatformspring.entity.Post;
 import org.amalitech.bloggingplatformspring.entity.User;
 import org.amalitech.bloggingplatformspring.exceptions.BadRequestException;
+import org.amalitech.bloggingplatformspring.exceptions.InvalidUserIdFormatException;
+import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
 import org.amalitech.bloggingplatformspring.exceptions.UnauthorizedException;
+import org.amalitech.bloggingplatformspring.repository.CommentRepository;
+import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
+import org.amalitech.bloggingplatformspring.utils.CommentUtils;
+import org.amalitech.bloggingplatformspring.utils.PostUtils;
 import org.amalitech.bloggingplatformspring.utils.UserUtils;
+import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.UUID;
 
 @Service
 public class UserService {
 
     private final UserRepository userRepository;
     private final UserUtils userUtils;
+    private final PostRepository postRepository;
+    private final CommentRepository commentRepository;
+    private final PostUtils postUtils;
 
-    public UserService(UserRepository userRepository, UserUtils userUtils) {
+    public UserService(UserRepository userRepository, UserUtils userUtils, PostRepository postRepository, CommentRepository commentRepository, PostUtils postUtils) {
         this.userRepository = userRepository;
         this.userUtils = userUtils;
+        this.postRepository = postRepository;
+        this.commentRepository = commentRepository;
+        this.postUtils = postUtils;
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
@@ -71,6 +92,37 @@ public class UserService {
         }
 
         return userUtils.mapUserToUserResponse(user);
+
+    }
+
+    public UserProfileResponse getUserProfile(String userID) {
+        if (userID.isBlank())
+            throw new BadRequestException("User ID cannot be empty");
+
+        try {
+            UUID id = UUID.fromString(userID);
+            User user = userRepository.findById(id).orElseThrow(
+                    () -> new ResourceNotFoundException("User not found with id: " + id)
+            );
+            List<Post> recentPosts = postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(3));
+            List<PostResponseDTO> recentPostsResponse = recentPosts.stream()
+                    .map(post -> {
+                        Long totalComments = commentRepository.countByPostId(post.getId());
+                        return postUtils.createPostResponseFromPost(post, totalComments);
+                    }).toList();
+
+            List<Comment> recentComments = commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(3));
+            List<CommentResponse> recentCommentsResponse = recentComments.stream()
+                    .map(CommentUtils::createCommentResponseFromComment).toList();
+
+            Long totalPosts = postRepository.countByAuthor(user);
+            Long totalComments = commentRepository.countByAuthor(user.getUsername());
+
+            return userUtils.createUserProfileResponse(user, recentPostsResponse, recentCommentsResponse, totalPosts, totalComments);
+
+        } catch (IllegalArgumentException e) {
+            throw new InvalidUserIdFormatException("Invalid UUID format for userID");
+        }
 
     }
 }
