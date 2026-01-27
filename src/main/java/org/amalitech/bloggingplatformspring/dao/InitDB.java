@@ -5,6 +5,7 @@ import org.amalitech.bloggingplatformspring.config.ConnectionProvider;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -12,6 +13,7 @@ import java.sql.Statement;
 
 @Slf4j
 @Configuration
+@Profile("!test")
 public class InitDB {
 
     private final ConnectionProvider connectionProvider;
@@ -36,7 +38,7 @@ public class InitDB {
 
     private void createUsersTable() throws SQLException {
         try (Connection conn = getConnection();
-             Statement stmt = conn.createStatement()) {
+                Statement stmt = conn.createStatement()) {
 
             stmt.execute("""
                         CREATE TABLE IF NOT EXISTS users (
@@ -54,7 +56,7 @@ public class InitDB {
 
     private void createPostsTable() throws SQLException {
         try (Connection conn = getConnection();
-             Statement stmt = conn.createStatement()) {
+                Statement stmt = conn.createStatement()) {
 
             stmt.execute("""
                         CREATE TABLE IF NOT EXISTS posts (
@@ -73,7 +75,7 @@ public class InitDB {
 
     private void createTagsTable() throws SQLException {
         try (Connection conn = getConnection();
-             Statement stmt = conn.createStatement()) {
+                Statement stmt = conn.createStatement()) {
 
             stmt.execute("""
                         CREATE TABLE IF NOT EXISTS tags (
@@ -87,7 +89,7 @@ public class InitDB {
 
     private void createPostTagsTable() throws SQLException {
         try (Connection conn = getConnection();
-             Statement stmt = conn.createStatement()) {
+                Statement stmt = conn.createStatement()) {
 
             stmt.execute("""
                         CREATE TABLE IF NOT EXISTS post_tags (

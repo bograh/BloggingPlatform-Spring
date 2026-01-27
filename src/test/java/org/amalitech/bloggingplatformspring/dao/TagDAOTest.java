@@ -99,7 +99,7 @@ class TagDAOTest {
         List<Tag> result = tagDAO.getAllTags();
 
         assertEquals(3, result.size());
-        assertEquals("java", result.get(0).getName());
+        assertEquals("java", result.getFirst().getName());
         assertEquals("spring", result.get(1).getName());
         assertEquals("testing", result.get(2).getName());
     }

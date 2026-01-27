@@ -1,6 +1,5 @@
 package org.amalitech.bloggingplatformspring.dao;
 
-
 import org.amalitech.bloggingplatformspring.config.ConnectionProvider;
 import org.amalitech.bloggingplatformspring.dtos.requests.CreatePostDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.PageRequest;
@@ -33,6 +32,9 @@ class PostDAOTest {
 
     @Mock
     private TagRepository tagRepository;
+
+    @Mock
+    private CommentDAO commentRepository;
 
     @Mock
     private Connection connection;
@@ -194,6 +196,7 @@ class PostDAOTest {
         when(connection.prepareStatement(anyString())).thenReturn(stmt);
         when(stmt.executeQuery()).thenReturn(rs);
         when(rs.next()).thenReturn(true, true, false);
+        when(commentRepository.getTotalCommentsByPostId(anyInt())).thenReturn(0L);
 
         when(rs.getInt("id")).thenReturn(1, 2);
         when(rs.getString("title")).thenReturn("Post 1", "Post 2");
@@ -227,6 +230,7 @@ class PostDAOTest {
         when(connection.prepareStatement(anyString())).thenReturn(stmt);
         when(stmt.executeQuery()).thenReturn(rs);
         when(rs.next()).thenReturn(true, false);
+        when(commentRepository.getTotalCommentsByPostId(anyInt())).thenReturn(0L);
 
         when(rs.getInt("id")).thenReturn(1);
         when(rs.getString("title")).thenReturn("Post 1");
@@ -304,6 +308,7 @@ class PostDAOTest {
         when(connection.prepareStatement(anyString())).thenReturn(stmt);
         when(stmt.executeQuery()).thenReturn(rs);
         when(rs.next()).thenReturn(true);
+        when(commentRepository.getTotalCommentsByPostId(anyInt())).thenReturn(0L);
         when(rs.getInt("id")).thenReturn(postId);
         when(rs.getString("title")).thenReturn(title);
         when(rs.getString("body")).thenReturn(body);
@@ -386,8 +391,7 @@ class PostDAOTest {
 
         ForbiddenException exception = assertThrows(
                 ForbiddenException.class,
-                () -> postDAO.updatePost(post, List.of("java"))
-        );
+                () -> postDAO.updatePost(post, List.of("java")));
 
         assertEquals("You are not permitted to update this post", exception.getMessage());
         verify(updateStmt).executeUpdate();
@@ -428,7 +432,7 @@ class PostDAOTest {
 
         assertNotNull(result);
         assertEquals(2, result.size());
-        assertEquals("java", result.get(0));
+        assertEquals("java", result.getFirst());
         assertEquals("spring", result.get(1));
         verify(stmt).setInt(1, postId);
     }
