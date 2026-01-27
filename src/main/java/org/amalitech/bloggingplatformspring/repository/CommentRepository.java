@@ -19,4 +19,6 @@ public interface CommentRepository extends MongoRepository<Comment, String> {
     void deleteCommentById(String commentId);
 
     List<Comment> findCommentsByAuthorOrderByCommentedAtDesc(String author, Limit limit);
+
+    void deleteCommentsByPostId(Long postId);
 }

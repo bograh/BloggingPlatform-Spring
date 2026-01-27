@@ -68,7 +68,8 @@ public class PostUtils {
                 postPage.getPageable().getPageNumber(),
                 postPage.getSize(),
                 postPage.getSort().toString(),
-                postPage.getTotalElements()
+                postPage.getTotalElements(),
+                postPage.isLast()
         );
     }
 
