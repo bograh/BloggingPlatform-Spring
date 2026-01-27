@@ -1,9 +1,13 @@
 # Performance Metrics Viewing Guide
 
 ## Overview
-The Blogging Platform integrates comprehensive performance monitoring through AOP (Aspect-Oriented Programming) aspects that automatically track execution times, call counts, percentiles, and other metrics for all service and repository layer methods.
+
+The Blogging Platform integrates comprehensive performance monitoring through AOP (Aspect-Oriented Programming) aspects
+that automatically track execution times, call counts, percentiles, and other metrics for all service and repository
+layer methods.
 
 ## Table of Contents
+
 1. [Architecture](#architecture)
 2. [Viewing Metrics](#viewing-metrics)
 3. [API Endpoints](#api-endpoints)
@@ -19,17 +23,20 @@ The Blogging Platform integrates comprehensive performance monitoring through AO
 ### Components
 
 **PerformanceMonitoringAspect**: Core AOP aspect that intercepts method calls and collects metrics
+
 - Monitors service layer methods (`org.amalitech.bloggingplatformspring.services..*`)
 - Monitors repository layer methods (`org.amalitech.bloggingplatformspring.repository..*`)
 - Tracks execution times, memory usage, success/failure rates
 - Calculates percentiles (P50, P95, P99)
 
 **PerformanceMetricsService**: Service layer for aggregating and formatting metrics data
+
 - Provides formatted views of metrics
 - Filters and sorts metrics by various criteria
 - Calculates summary statistics
 
 **PerformanceMetricsController**: REST API for accessing metrics
+
 - Exposes endpoints for querying performance data
 - Provides various views: all metrics, by layer, slow methods, etc.
 
@@ -42,11 +49,13 @@ The Blogging Platform integrates comprehensive performance monitoring through AO
 All performance metrics are accessible via REST API at `/api/metrics/performance`
 
 #### Get All Metrics
+
 ```bash
 GET http://localhost:8080/api/metrics/performance
 ```
 
 **Response:**
+
 ```json
 {
   "totalMethods": 15,
@@ -73,6 +82,7 @@ GET http://localhost:8080/api/metrics/performance
 ```
 
 #### Get Metrics for Specific Method
+
 ```bash
 GET http://localhost:8080/api/metrics/performance/{layer}/{methodName}
 
@@ -81,11 +91,13 @@ GET http://localhost:8080/api/metrics/performance/SERVICE/PostServiceImpl.create
 ```
 
 #### Get Summary Statistics
+
 ```bash
 GET http://localhost:8080/api/metrics/performance/summary
 ```
 
 **Response:**
+
 ```json
 {
   "totalMethodsMonitored": 15,
@@ -96,6 +108,7 @@ GET http://localhost:8080/api/metrics/performance/summary
 ```
 
 #### Get Slow Methods
+
 ```bash
 GET http://localhost:8080/api/metrics/performance/slow?thresholdMs=500
 
@@ -103,6 +116,7 @@ GET http://localhost:8080/api/metrics/performance/slow?thresholdMs=500
 ```
 
 #### Get Top N Slowest Methods
+
 ```bash
 GET http://localhost:8080/api/metrics/performance/top?limit=10
 
@@ -110,17 +124,20 @@ GET http://localhost:8080/api/metrics/performance/top?limit=10
 ```
 
 #### Get Metrics by Layer
+
 ```bash
 GET http://localhost:8080/api/metrics/performance/layer/SERVICE
 GET http://localhost:8080/api/metrics/performance/layer/REPOSITORY
 ```
 
 #### Get Failure Statistics
+
 ```bash
 GET http://localhost:8080/api/metrics/performance/failures
 ```
 
 **Response:**
+
 ```json
 {
   "totalFailures": 12,
@@ -138,13 +155,15 @@ GET http://localhost:8080/api/metrics/performance/failures
 ```
 
 #### Reset Metrics
+
 ```bash
 DELETE http://localhost:8080/api/metrics/performance/reset
 ```
 
 #### Export Metrics to Log
+
 ```bash
-POST http://localhost:8080/api/metrics/performance/export/log
+POST http://localhost:8080/api/metrics/performance/export-log
 ```
 
 ---
@@ -160,6 +179,7 @@ Performance metrics are automatically logged with each method execution:
 ```
 
 **Log Files Location:**
+
 - `logs/blogging-platform.log` - Main application log with performance data
 
 ### 3. Viewing in Console
@@ -167,7 +187,7 @@ Performance metrics are automatically logged with each method execution:
 To print a comprehensive performance summary to the console/log:
 
 ```bash
-POST http://localhost:8080/api/metrics/performance/export/log
+POST http://localhost:8080/api/metrics/performance/export-log
 ```
 
 This will log a detailed summary:
@@ -207,16 +227,19 @@ Method: SERVICE::CommentServiceImpl.addComment(..)
 The application exposes standard Spring Boot Actuator endpoints:
 
 #### Health Check
+
 ```bash
 GET http://localhost:8080/actuator/health
 ```
 
 #### Metrics Overview
+
 ```bash
 GET http://localhost:8080/actuator/metrics
 ```
 
 #### Prometheus Format (for monitoring tools)
+
 ```bash
 GET http://localhost:8080/actuator/prometheus
 ```
@@ -226,23 +249,24 @@ GET http://localhost:8080/actuator/prometheus
 ## API Endpoints
 
 ### Base URL
+
 ```
 http://localhost:8080/api/metrics/performance
 ```
 
 ### Endpoint Summary
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/` | Get all metrics |
-| GET | `/{layer}/{methodName}` | Get specific method metrics |
-| GET | `/summary` | Get summary statistics |
-| GET | `/slow?thresholdMs={ms}` | Get slow methods |
-| GET | `/top?limit={n}` | Get top N slowest methods |
-| GET | `/layer/{layer}` | Get metrics by layer |
-| GET | `/failures` | Get failure statistics |
-| DELETE | `/reset` | Reset all metrics |
-| POST | `/export/log` | Export to application log |
+| Method | Endpoint                 | Description                 |
+|--------|--------------------------|-----------------------------|
+| GET    | `/`                      | Get all metrics             |
+| GET    | `/{layer}/{methodName}`  | Get specific method metrics |
+| GET    | `/summary`               | Get summary statistics      |
+| GET    | `/slow?thresholdMs={ms}` | Get slow methods            |
+| GET    | `/top?limit={n}`         | Get top N slowest methods   |
+| GET    | `/layer/{layer}`         | Get metrics by layer        |
+| GET    | `/failures`              | Get failure statistics      |
+| DELETE | `/reset`                 | Reset all metrics           |
+| POST   | `/export-log`            | Export to application log   |
 
 ---
 
@@ -253,12 +277,14 @@ http://localhost:8080/api/metrics/performance
 For each monitored method, the following metrics are tracked:
 
 **Call Statistics:**
+
 - `totalCalls`: Total number of method invocations
 - `successfulCalls`: Number of successful executions
 - `failedCalls`: Number of failed executions
 - `failureRate`: Percentage of failed calls
 
 **Execution Time:**
+
 - `avgExecutionTime`: Average execution time in milliseconds
 - `minExecutionTime`: Minimum execution time recorded
 - `maxExecutionTime`: Maximum execution time recorded
@@ -268,12 +294,14 @@ For each monitored method, the following metrics are tracked:
 - `stdDev`: Standard deviation of execution times
 
 **Performance Classification:**
+
 - `FAST`: < 100ms
 - `NORMAL`: 100ms - 500ms
 - `SLOW`: 500ms - 1000ms
 - `CRITICAL`: > 1000ms
 
 **Memory Usage:**
+
 - Memory consumption per method call (logged but not in API response)
 
 ---
@@ -297,18 +325,18 @@ management.prometheus.metrics.export.enabled=true
 ### Available Actuator Endpoints
 
 1. **Health**: `/actuator/health`
-   - Application health status
-   - Database connectivity
-   - Disk space
+    - Application health status
+    - Database connectivity
+    - Disk space
 
 2. **Metrics**: `/actuator/metrics`
-   - JVM metrics
-   - System metrics
-   - Application metrics
+    - JVM metrics
+    - System metrics
+    - Application metrics
 
 3. **Prometheus**: `/actuator/prometheus`
-   - Metrics in Prometheus format
-   - Can be scraped by Prometheus server
+    - Metrics in Prometheus format
+    - Can be scraped by Prometheus server
 
 ---
 
@@ -324,6 +352,7 @@ curl http://localhost:8080/api/metrics/performance/slow?thresholdMs=500
 ```
 
 **Analysis:**
+
 - Methods in the response need optimization
 - Check if the threshold is consistently exceeded
 - Review P95 and P99 to understand outliers
@@ -335,6 +364,7 @@ curl http://localhost:8080/api/metrics/performance/failures
 ```
 
 **Analysis:**
+
 - High failure rates indicate reliability issues
 - Check exception logs for failing methods
 - May indicate database issues, external service problems, or validation errors
@@ -348,6 +378,7 @@ curl http://localhost:8080/api/metrics/performance/layer/REPOSITORY
 ```
 
 **Analysis:**
+
 - Repository layer should generally be faster
 - Slow repository methods may indicate database query issues
 - Service layer includes business logic, so some overhead is expected
@@ -390,6 +421,7 @@ Large gaps between P50 and P99 indicate inconsistent performance.
 ### 3. Thresholds
 
 Current thresholds:
+
 - **Slow threshold**: 1000ms (configurable in `PerformanceMonitoringAspect`)
 - Adjust based on your application's SLA requirements
 
@@ -402,7 +434,8 @@ Current thresholds:
 
 ### 5. Memory Management
 
-The aspect stores the last 1000 execution times per method for percentile calculation. This is configurable in the `MethodMetrics` class (`maxSampleSize`).
+The aspect stores the last 1000 execution times per method for percentile calculation. This is configurable in the
+`MethodMetrics` class (`maxSampleSize`).
 
 ### 6. Log Analysis
 
@@ -413,6 +446,7 @@ The aspect stores the last 1000 execution times per method for percentile calcul
 ### 7. Integration with Monitoring Tools
 
 For production environments, integrate with:
+
 - **Prometheus**: Scrape `/actuator/prometheus`
 - **Grafana**: Create dashboards using Prometheus data
 - **Application Performance Monitoring (APM)**: New Relic, DataDog, etc.
@@ -427,7 +461,7 @@ For production environments, integrate with:
 
 ```bash
 # Before deployment - export baseline
-POST http://localhost:8080/api/metrics/performance/export/log
+POST http://localhost:8080/api/metrics/performance/export-log
 
 # After deployment - compare
 GET http://localhost:8080/api/metrics/performance/summary
@@ -479,6 +513,7 @@ GET http://localhost:8080/api/metrics/performance/slow?thresholdMs=1000
 
 **Cause**: Large number of method calls recorded
 **Solution**:
+
 - Reset metrics periodically
 - Reduce `maxSampleSize` in `MethodMetrics` class
 - Implement metric rotation
@@ -487,6 +522,7 @@ GET http://localhost:8080/api/metrics/performance/slow?thresholdMs=1000
 
 **Cause**: Logging level set too verbose
 **Solution**: Adjust logging level in `application.properties`:
+
 ```properties
 logging.level.org.amalitech.bloggingplatformspring.aop=WARN
 ```
@@ -530,6 +566,9 @@ public Object monitorControllerPerformance(ProceedingJoinPoint joinPoint) throws
 
 ## Conclusion
 
-The integrated AOP-based performance monitoring provides comprehensive insights into your application's performance. Regular monitoring and analysis of these metrics will help maintain optimal performance and quickly identify issues before they impact users.
+The integrated AOP-based performance monitoring provides comprehensive insights into your application's performance.
+Regular monitoring and analysis of these metrics will help maintain optimal performance and quickly identify issues
+before they impact users.
 
-For questions or issues, refer to the [AOP Implementation Guide](AOP_IMPLEMENTATION_GUIDE.md) or check the application logs.
+For questions or issues, refer to the [AOP Implementation Guide](AOP_IMPLEMENTATION_GUIDE.md) or check the application
+logs.

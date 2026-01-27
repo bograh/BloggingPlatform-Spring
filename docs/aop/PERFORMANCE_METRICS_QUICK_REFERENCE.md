@@ -3,53 +3,63 @@
 ## Quick Start
 
 ### 1. View All Metrics
+
 ```bash
 curl http://localhost:8080/api/metrics/performance
 ```
 
 ### 2. View Specific Method
+
 ```bash
 curl http://localhost:8080/api/metrics/performance/SERVICE/PostServiceImpl.createPost(..)
 ```
 
 ### 3. View Summary
+
 ```bash
 curl http://localhost:8080/api/metrics/performance/summary
 ```
 
 ### 4. Find Slow Methods (>1 second)
+
 ```bash
 curl http://localhost:8080/api/metrics/performance/slow
 ```
 
 ### 5. Top 10 Slowest Methods
+
 ```bash
 curl http://localhost:8080/api/metrics/performance/top?limit=10
 ```
 
 ### 6. Service Layer Only
+
 ```bash
 curl http://localhost:8080/api/metrics/performance/layer/SERVICE
 ```
 
 ### 7. Repository Layer Only
+
 ```bash
 curl http://localhost:8080/api/metrics/performance/layer/REPOSITORY
 ```
 
 ### 8. Failure Statistics
+
 ```bash
 curl http://localhost:8080/api/metrics/performance/failures
 ```
 
 ### 9. Reset All Metrics
+
 ```bash
 curl -X DELETE http://localhost:8080/api/metrics/performance/reset
 ```
 
 ### 10. Export to Logs
+
 ```bash
-curl -X POST http://localhost:8080/api/metrics/performance/export/log
+curl -X POST http://localhost:8080/api/metrics/performance/export-log
 ```
 
 ---
@@ -85,19 +95,19 @@ curl -X POST http://localhost:8080/api/metrics/performance/export/log
 
 ## Metric Definitions
 
-| Metric | Description |
-|--------|-------------|
-| totalCalls | Total number of method invocations |
-| successfulCalls | Number of successful executions |
-| failedCalls | Number of failed executions |
-| failureRate | Percentage of failed calls |
-| avgExecutionTime | Average execution time in ms |
-| minExecutionTime | Fastest execution time in ms |
-| maxExecutionTime | Slowest execution time in ms |
-| p50 | Median execution time (50th percentile) |
-| p95 | 95th percentile execution time |
-| p99 | 99th percentile execution time |
-| stdDev | Standard deviation of execution times |
+| Metric           | Description                             |
+|------------------|-----------------------------------------|
+| totalCalls       | Total number of method invocations      |
+| successfulCalls  | Number of successful executions         |
+| failedCalls      | Number of failed executions             |
+| failureRate      | Percentage of failed calls              |
+| avgExecutionTime | Average execution time in ms            |
+| minExecutionTime | Fastest execution time in ms            |
+| maxExecutionTime | Slowest execution time in ms            |
+| p50              | Median execution time (50th percentile) |
+| p95              | 95th percentile execution time          |
+| p99              | 99th percentile execution time          |
+| stdDev           | Standard deviation of execution times   |
 
 ---
 
@@ -113,16 +123,19 @@ curl -X POST http://localhost:8080/api/metrics/performance/export/log
 ## Actuator Endpoints
 
 ### Health
+
 ```bash
 curl http://localhost:8080/actuator/health
 ```
 
 ### All Metrics
+
 ```bash
 curl http://localhost:8080/actuator/metrics
 ```
 
 ### Prometheus Format
+
 ```bash
 curl http://localhost:8080/actuator/prometheus
 ```
@@ -142,6 +155,7 @@ curl http://localhost:8080/actuator/prometheus
 ## Common Workflows
 
 ### Performance Check After Deployment
+
 ```bash
 # 1. Check summary
 curl http://localhost:8080/api/metrics/performance/summary
@@ -154,6 +168,7 @@ curl http://localhost:8080/api/metrics/performance/failures
 ```
 
 ### Investigate Specific Service
+
 ```bash
 # 1. Get all service layer metrics
 curl http://localhost:8080/api/metrics/performance/layer/SERVICE
@@ -163,6 +178,7 @@ curl http://localhost:8080/api/metrics/performance/SERVICE/PostServiceImpl.creat
 ```
 
 ### Reset After Code Changes
+
 ```bash
 # Reset metrics to get fresh data
 curl -X DELETE http://localhost:8080/api/metrics/performance/reset
@@ -173,13 +189,16 @@ curl -X DELETE http://localhost:8080/api/metrics/performance/reset
 ## Troubleshooting
 
 **No metrics showing?**
+
 - Execute some operations first
 - Methods are only tracked after they're called
 
 **Want to clear old data?**
+
 - Use the reset endpoint
 
 **Need detailed logs?**
+
 - Use the export endpoint to print to logs
 - Check `logs/blogging-platform.log`
 
