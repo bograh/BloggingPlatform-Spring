@@ -65,19 +65,6 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    @ExceptionHandler(SQLQueryException.class)
-    public ResponseEntity<ErrorResponse> handleSQLQueryException(SQLQueryException e) {
-
-        HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
-
-        return ResponseEntity.status(status).body(
-                new ErrorResponse(
-                        "INTERNAL SERVER ERROR",
-                        e.getMessage(),
-                        status.value()
-                ));
-    }
-
     @ExceptionHandler(InvalidUserIdFormatException.class)
     public ResponseEntity<ErrorResponse> handleInvalidUserIdFormatException(InvalidUserIdFormatException e) {
 
