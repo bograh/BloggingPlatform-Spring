@@ -116,7 +116,7 @@ class PostControllerTest {
                 .andExpect(jsonPath("$.data.size").value(10))
                 .andExpect(jsonPath("$.data.totalElements").value(2));
 
-        verify(postService).getAllPosts(eq(0), eq(10), eq("lastUpdated"), eq("DESC"), any(PostFilterRequest.class));
+        verify(postService).getAllPosts(eq(0), eq(12), eq("lastUpdated"), eq("DESC"), any(PostFilterRequest.class));
     }
 
     @Test

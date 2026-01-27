@@ -147,7 +147,8 @@ class GraphQLQueryResolverTest {
         List<PostResponseDTO> posts = Collections.singletonList(postResponse);
         PageResponse<PostResponseDTO> pageResponse = new PageResponse<>(
                 posts, 0, 10,
-                Sort.by(Sort.Direction.DESC, "createdAt").toString(), 1
+                Sort.by(Sort.Direction.DESC, "createdAt").toString(),
+                1, true
         );
 
         when(postService.getAllPosts(
@@ -175,7 +176,8 @@ class GraphQLQueryResolverTest {
         List<PostResponseDTO> posts = Collections.singletonList(postResponse);
         PageResponse<PostResponseDTO> pageResponse = new PageResponse<>(
                 posts, 0, 10,
-                Sort.by(Sort.Direction.DESC, "createdAt").toString(), 1
+                Sort.by(Sort.Direction.DESC, "createdAt").toString(),
+                1, true
         );
 
         when(postService.getAllPosts(
@@ -196,7 +198,8 @@ class GraphQLQueryResolverTest {
         List<PostResponseDTO> posts = Collections.singletonList(postResponse);
         PageResponse<PostResponseDTO> pageResponse = new PageResponse<>(
                 posts, 0, 10,
-                Sort.by(Sort.Direction.DESC, "createdAt").toString(), 3
+                Sort.by(Sort.Direction.DESC, "createdAt").toString(),
+                3, true
         );
 
         when(postService.getAllPosts(
@@ -216,7 +219,8 @@ class GraphQLQueryResolverTest {
     void getAllPosts_WithEmptyResults_ShouldReturnEmptyPage() {
         PageResponse<PostResponseDTO> pageResponse = new PageResponse<>(
                 Collections.emptyList(), 0, 10,
-                Sort.by(Sort.Direction.DESC, "createdAt").toString(), 0
+                Sort.by(Sort.Direction.DESC, "createdAt").toString(),
+                0, true
         );
 
         when(postService.getAllPosts(
