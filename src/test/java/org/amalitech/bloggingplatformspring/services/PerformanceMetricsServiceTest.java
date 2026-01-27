@@ -1,5 +1,6 @@
 package org.amalitech.bloggingplatformspring.services;
 
+
 import org.amalitech.bloggingplatformspring.aop.PerformanceMonitoringAspect;
 import org.amalitech.bloggingplatformspring.aop.PerformanceMonitoringAspect.MethodMetrics;
 import org.junit.jupiter.api.BeforeEach;
@@ -10,7 +11,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Date;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -24,263 +24,312 @@ class PerformanceMetricsServiceTest {
     private PerformanceMonitoringAspect performanceAspect;
 
     @InjectMocks
-    private PerformanceMetricsService service;
+    private PerformanceMetricsService performanceMetricsService;
 
-    private ConcurrentHashMap<String, MethodMetrics> testMetrics;
+    private ConcurrentHashMap<String, MethodMetrics> mockMetricsMap;
+    private MethodMetrics mockMetrics1;
+    private MethodMetrics mockMetrics2;
+    private MethodMetrics mockMetrics3;
 
     @BeforeEach
     void setUp() {
-        testMetrics = new ConcurrentHashMap<>();
+        mockMetricsMap = new ConcurrentHashMap<>();
+
+        mockMetrics1 = new MethodMetrics("UserService.getUser(..)");
+        mockMetrics1.recordExecution(100, true);
+        mockMetrics1.recordExecution(150, true);
+        mockMetrics1.recordExecution(200, true);
+
+        mockMetrics2 = new MethodMetrics("PostService.createPost(..)");
+        mockMetrics2.recordExecution(250, true);
+        mockMetrics2.recordExecution(300, false);
+
+        mockMetrics3 = new MethodMetrics("CommentService.deleteComment(..)");
+        mockMetrics3.recordExecution(50, true);
+        mockMetrics3.recordExecution(75, true);
+        mockMetrics3.recordExecution(100, false);
+        mockMetrics3.recordExecution(125, true);
     }
 
     @Test
-    void getAllMetricsFormatted_shouldReturnFormattedMetrics() {
-        MethodMetrics metrics1 = createMethodMetrics(10L, 100L, 500L, 250L, 5, 0);
-        MethodMetrics metrics2 = createMethodMetrics(5L, 50L, 200L, 100L, 3, 0);
-        testMetrics.put("Service::method1", metrics1);
-        testMetrics.put("Controller::method2", metrics2);
+    void getAllMetrics_ShouldReturnAllMetricsWithMetadata_WhenMetricsExist() {
+        mockMetricsMap.put("UserService.getUser(..)", mockMetrics1);
+        mockMetricsMap.put("PostService.createPost(..)", mockMetrics2);
 
-        when(performanceAspect.getAllMetrics()).thenReturn(testMetrics);
+        when(performanceAspect.getAllMetrics()).thenReturn(mockMetricsMap);
 
-        Map<String, Object> result = service.getAllMetricsFormatted();
+        Map<String, Object> result = performanceMetricsService.getAllMetrics();
 
-        assertThat(result).containsKey("totalMethods");
+        assertThat(result).isNotNull();
+        assertThat(result).containsKeys("totalMethods", "timestamp", "metrics");
         assertThat(result.get("totalMethods")).isEqualTo(2);
-        assertThat(result).containsKey("timestamp");
         assertThat(result.get("timestamp")).isInstanceOf(Date.class);
-        assertThat(result).containsKey("methods");
+        assertThat(result.get("metrics")).isEqualTo(mockMetricsMap);
 
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> methods = (List<Map<String, Object>>) result.get("methods");
-        assertThat(methods).hasSize(2);
-
-        assertThat(methods.get(0).get("method")).isEqualTo("Service::method1");
-        assertThat(methods.get(1).get("method")).isEqualTo("Controller::method2");
+        verify(performanceAspect).getAllMetrics();
     }
 
     @Test
-    void getAllMetricsFormatted_withEmptyMetrics_shouldReturnEmptyList() {
-        when(performanceAspect.getAllMetrics()).thenReturn(testMetrics);
+    void getAllMetrics_ShouldReturnEmptyMetrics_WhenNoMetricsExist() {
+        when(performanceAspect.getAllMetrics()).thenReturn(new ConcurrentHashMap<>());
 
-        Map<String, Object> result = service.getAllMetricsFormatted();
+        Map<String, Object> result = performanceMetricsService.getAllMetrics();
 
+        assertThat(result).isNotNull();
         assertThat(result.get("totalMethods")).isEqualTo(0);
+        assertThat(result.get("timestamp")).isInstanceOf(Date.class);
+        assertThat(result.get("metrics")).isInstanceOf(ConcurrentHashMap.class);
+
         @SuppressWarnings("unchecked")
-        List<Map<String, Object>> methods = (List<Map<String, Object>>) result.get("methods");
-        assertThat(methods).isEmpty();
+        ConcurrentHashMap<String, MethodMetrics> metrics =
+                (ConcurrentHashMap<String, MethodMetrics>) result.get("metrics");
+        assertThat(metrics).isEmpty();
     }
 
     @Test
-    void getMethodMetricsFormatted_withExistingMethod_shouldReturnFormattedMetrics() {
-        String methodName = "Service::testMethod";
-        MethodMetrics metrics = createMethodMetrics(10L, 100L, 500L, 250L, 5, 0);
-        when(performanceAspect.getMetrics(methodName)).thenReturn(metrics);
+    void getMethodMetrics_ShouldReturnMethodMetrics_WhenMethodExists() {
+        String methodName = "UserService.getUser(..)";
+        when(performanceAspect.getMetrics(methodName)).thenReturn(mockMetrics1);
 
-        Map<String, Object> result = service.getMethodMetricsFormatted(methodName);
+        MethodMetrics result = performanceMetricsService.getMethodMetrics(methodName);
 
-        assertThat(result).containsEntry("method", methodName);
-        assertThat(result).containsEntry("totalCalls", 5L);
-        assertThat(result).containsEntry("avgExecutionTime", 250L);
-        assertThat(result).containsEntry("minExecutionTime", 10L);
-        assertThat(result).containsEntry("maxExecutionTime", 100L);
-        assertThat(result).containsEntry("performanceLevel", "NORMAL");
-        assertThat(result).containsEntry("unit", "ms");
+        assertThat(result).isNotNull();
+        assertThat(result).isEqualTo(mockMetrics1);
+        assertThat(result.getMethodName()).isEqualTo(methodName);
+        assertThat(result.getTotalCalls()).isEqualTo(3);
+
+        verify(performanceAspect).getMetrics(methodName);
     }
 
     @Test
-    void getMethodMetricsFormatted_withNonExistingMethod_shouldReturnError() {
-        String methodName = "NonExistent::method";
+    void getMethodMetrics_ShouldReturnNull_WhenMethodDoesNotExist() {
+        String methodName = "NonExistentService.method(..)";
         when(performanceAspect.getMetrics(methodName)).thenReturn(null);
 
-        Map<String, Object> result = service.getMethodMetricsFormatted(methodName);
+        MethodMetrics result = performanceMetricsService.getMethodMetrics(methodName);
 
-        assertThat(result).containsEntry("error", "Method not found");
-        assertThat(result).containsEntry("methodName", methodName);
+        assertThat(result).isNull();
+        verify(performanceAspect).getMetrics(methodName);
     }
 
     @Test
-    void getMetricsSummary_shouldReturnSummaryFromAspect() {
-        Map<String, Object> expectedSummary = Map.of("key", "value");
-        when(performanceAspect.getMetricsSummary()).thenReturn(expectedSummary);
+    void getMetricsSummary_ShouldCalculateCorrectSummary_WhenMetricsExist() {
+        mockMetricsMap.put("UserService.getUser(..)", mockMetrics1);
+        mockMetricsMap.put("PostService.createPost(..)", mockMetrics2);
+        mockMetricsMap.put("CommentService.deleteComment(..)", mockMetrics3);
 
-        Map<String, Object> result = service.getMetricsSummary();
+        when(performanceAspect.getAllMetrics()).thenReturn(mockMetricsMap);
 
-        assertThat(result).isEqualTo(expectedSummary);
-        verify(performanceAspect).getMetricsSummary();
+        Map<String, Object> summary = performanceMetricsService.getMetricsSummary();
+
+        assertThat(summary).isNotNull();
+        assertThat(summary).containsKeys(
+                "totalMethodsMonitored",
+                "totalExecutions",
+                "totalFailures",
+                "overallAverageExecutionTime",
+                "timestamp"
+        );
+
+        assertThat(summary.get("totalMethodsMonitored")).isEqualTo(3);
+
+        assertThat(summary.get("totalExecutions")).isEqualTo(9L);
+
+        assertThat(summary.get("totalFailures")).isEqualTo(2L);
+
+        String avgTime = (String) summary.get("overallAverageExecutionTime");
+        assertThat(avgTime).matches("\\d+\\.\\d{2} ms");
+
+        assertThat(summary.get("timestamp")).isInstanceOf(Date.class);
+
+        verify(performanceAspect).getAllMetrics();
     }
 
     @Test
-    void getSlowMethods_shouldReturnMethodsAboveThreshold() {
-        MethodMetrics fastMetrics = createMethodMetrics(10L, 50L, 100L, 80L, 5, 0);
-        MethodMetrics slowMetrics = createMethodMetrics(500L, 800L, 1200L, 900L, 3, 0);
-        testMetrics.put("Fast::method", fastMetrics);
-        testMetrics.put("Slow::method", slowMetrics);
+    void getMetricsSummary_ShouldReturnZeroValues_WhenNoMetricsExist() {
+        when(performanceAspect.getAllMetrics()).thenReturn(new ConcurrentHashMap<>());
 
-        when(performanceAspect.getAllMetrics()).thenReturn(testMetrics);
+        Map<String, Object> summary = performanceMetricsService.getMetricsSummary();
 
-        Map<String, Object> result = service.getSlowMethods(500L);
-
-        assertThat(result).containsEntry("threshold", "500 ms");
-        assertThat(result).containsEntry("count", 1);
-
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> methods = (List<Map<String, Object>>) result.get("methods");
-        assertThat(methods).hasSize(1);
-        assertThat(methods.get(0).get("method")).isEqualTo("Slow::method");
+        assertThat(summary).isNotNull();
+        assertThat(summary.get("totalMethodsMonitored")).isEqualTo(0);
+        assertThat(summary.get("totalExecutions")).isEqualTo(0L);
+        assertThat(summary.get("totalFailures")).isEqualTo(0L);
+        assertThat(summary.get("overallAverageExecutionTime")).isEqualTo("0.00 ms");
+        assertThat(summary.get("timestamp")).isInstanceOf(Date.class);
     }
 
     @Test
-    void getSlowMethods_withNoSlowMethods_shouldReturnEmptyList() {
-        MethodMetrics fastMetrics = createMethodMetrics(10L, 50L, 100L, 80L, 5, 0);
-        testMetrics.put("Fast::method", fastMetrics);
+    void getMetricsSummary_ShouldHandleSingleMethod() {
+        mockMetricsMap.put("UserService.getUser(..)", mockMetrics1);
+        when(performanceAspect.getAllMetrics()).thenReturn(mockMetricsMap);
 
-        when(performanceAspect.getAllMetrics()).thenReturn(testMetrics);
+        Map<String, Object> summary = performanceMetricsService.getMetricsSummary();
 
-        Map<String, Object> result = service.getSlowMethods(1000L);
+        assertThat(summary.get("totalMethodsMonitored")).isEqualTo(1);
+        assertThat(summary.get("totalExecutions")).isEqualTo(3L);
+        assertThat(summary.get("totalFailures")).isEqualTo(0L);
 
-        assertThat(result).containsEntry("count", 0);
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> methods = (List<Map<String, Object>>) result.get("methods");
-        assertThat(methods).isEmpty();
+        String avgTime = (String) summary.get("overallAverageExecutionTime");
+        assertThat(avgTime).isEqualTo("150.00 ms");
     }
 
     @Test
-    void getTopSlowMethods_shouldReturnLimitedSortedMethods() {
-        MethodMetrics metrics1 = createMethodMetrics(100L, 200L, 300L, 200L, 5, 0);
-        MethodMetrics metrics2 = createMethodMetrics(300L, 400L, 500L, 400L, 5, 0);
-        MethodMetrics metrics3 = createMethodMetrics(500L, 600L, 700L, 600L, 5, 0);
-        testMetrics.put("Method1", metrics1);
-        testMetrics.put("Method2", metrics2);
-        testMetrics.put("Method3", metrics3);
+    void getMetricsSummary_ShouldCalculateCorrectAverageAcrossMultipleMethods() {
+        MethodMetrics metrics1 = new MethodMetrics("Method1");
+        metrics1.recordExecution(100, true);
+        metrics1.recordExecution(200, true);
 
-        when(performanceAspect.getAllMetrics()).thenReturn(testMetrics);
+        MethodMetrics metrics2 = new MethodMetrics("Method2");
+        metrics2.recordExecution(300, true);
+        metrics2.recordExecution(500, true);
 
-        Map<String, Object> result = service.getTopSlowMethods(2);
+        mockMetricsMap.put("Method1", metrics1);
+        mockMetricsMap.put("Method2", metrics2);
 
-        assertThat(result).containsEntry("limit", 2);
+        when(performanceAspect.getAllMetrics()).thenReturn(mockMetricsMap);
 
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> methods = (List<Map<String, Object>>) result.get("methods");
-        assertThat(methods).hasSize(2);
-        assertThat(methods.get(0).get("method")).isEqualTo("Method3");
-        assertThat(methods.get(1).get("method")).isEqualTo("Method2");
+        Map<String, Object> summary = performanceMetricsService.getMetricsSummary();
+
+        String avgTime = (String) summary.get("overallAverageExecutionTime");
+        assertThat(avgTime).isEqualTo("275.00 ms");
     }
 
     @Test
-    void getMetricsByLayer_shouldFilterByLayerPrefix() {
-        MethodMetrics serviceMetrics = createMethodMetrics(100L, 200L, 300L, 200L, 5, 0);
-        MethodMetrics controllerMetrics = createMethodMetrics(50L, 100L, 150L, 100L, 5, 0);
-        testMetrics.put("Service::method1", serviceMetrics);
-        testMetrics.put("Service::method2", serviceMetrics);
-        testMetrics.put("Controller::method1", controllerMetrics);
+    void getMetricsSummary_ShouldCountAllFailuresCorrectly() {
+        MethodMetrics failingMetrics = new MethodMetrics("FailingMethod");
+        failingMetrics.recordExecution(100, false);
+        failingMetrics.recordExecution(200, false);
+        failingMetrics.recordExecution(150, false);
 
-        when(performanceAspect.getAllMetrics()).thenReturn(testMetrics);
+        mockMetricsMap.put("FailingMethod", failingMetrics);
+        when(performanceAspect.getAllMetrics()).thenReturn(mockMetricsMap);
 
-        Map<String, Object> result = service.getMetricsByLayer("Service");
+        Map<String, Object> summary = performanceMetricsService.getMetricsSummary();
 
-        assertThat(result).containsEntry("layer", "Service");
-        assertThat(result).containsEntry("count", 2);
-
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> methods = (List<Map<String, Object>>) result.get("methods");
-        assertThat(methods).hasSize(2);
-        assertThat(methods).allMatch(m -> ((String) m.get("method")).startsWith("Service::"));
+        assertThat(summary.get("totalExecutions")).isEqualTo(3L);
+        assertThat(summary.get("totalFailures")).isEqualTo(3L);
     }
 
     @Test
-    void getFailureStatistics_shouldReturnMethodsWithFailures() {
-        MethodMetrics noFailures = createMethodMetrics(100L, 200L, 300L, 200L, 10, 0);
-        MethodMetrics withFailures = createMethodMetrics(100L, 200L, 300L, 200L, 8, 2);
-        testMetrics.put("Stable::method", noFailures);
-        testMetrics.put("Failing::method", withFailures);
-
-        when(performanceAspect.getAllMetrics()).thenReturn(testMetrics);
-
-        Map<String, Object> result = service.getFailureStatistics();
-
-        assertThat(result).containsEntry("totalFailures", 2L);
-        assertThat(result).containsEntry("methodsWithFailures", 1);
-
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> methods = (List<Map<String, Object>>) result.get("methods");
-        assertThat(methods).hasSize(1);
-        assertThat(methods.get(0).get("method")).isEqualTo("Failing::method");
-        assertThat(methods.get(0).get("failedCalls")).isEqualTo(2L);
-    }
-
-    @Test
-    void resetMetrics_shouldDelegateToAspect() {
-        service.resetMetrics();
+    void resetMetrics_ShouldDelegateToPerformanceAspect() {
+        performanceMetricsService.resetMetrics();
 
         verify(performanceAspect).resetMetrics();
     }
 
     @Test
-    void exportPerformanceSummary_shouldDelegateToAspect() {
-        service.exportPerformanceSummary();
+    void resetMetrics_ShouldBeCalledOnce() {
+        performanceMetricsService.resetMetrics();
+
+        verify(performanceAspect, times(1)).resetMetrics();
+        verifyNoMoreInteractions(performanceAspect);
+    }
+
+    @Test
+    void exportPerformanceSummary_ShouldDelegateToPerformanceAspect() {
+        performanceMetricsService.exportPerformanceSummary();
 
         verify(performanceAspect).exportPerformanceSummary();
     }
 
     @Test
-    void formatMethodMetrics_shouldClassifyPerformanceCorrectly() {
-        MethodMetrics fastMetrics = createMethodMetrics(10L, 50L, 90L, 50L, 5, 0);
-        MethodMetrics normalMetrics = createMethodMetrics(100L, 200L, 400L, 250L, 5, 0);
-        MethodMetrics slowMetrics = createMethodMetrics(500L, 700L, 900L, 700L, 5, 0);
-        MethodMetrics criticalMetrics = createMethodMetrics(1000L, 1500L, 2000L, 1500L, 5, 0);
+    void exportPerformanceSummary_ShouldBeCalledOnce() {
+        performanceMetricsService.exportPerformanceSummary();
 
-        testMetrics.put("Fast::method", fastMetrics);
-        testMetrics.put("Normal::method", normalMetrics);
-        testMetrics.put("Slow::method", slowMetrics);
-        testMetrics.put("Critical::method", criticalMetrics);
-
-        when(performanceAspect.getAllMetrics()).thenReturn(testMetrics);
-
-        Map<String, Object> result = service.getAllMetricsFormatted();
-
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> methods = (List<Map<String, Object>>) result.get("methods");
-
-        Map<String, Object> fastMethod = methods.stream()
-                .filter(m -> m.get("method").equals("Fast::method"))
-                .findFirst().orElseThrow();
-        assertThat(fastMethod.get("performanceLevel")).isEqualTo("FAST");
-
-        Map<String, Object> normalMethod = methods.stream()
-                .filter(m -> m.get("method").equals("Normal::method"))
-                .findFirst().orElseThrow();
-        assertThat(normalMethod.get("performanceLevel")).isEqualTo("NORMAL");
-
-        Map<String, Object> slowMethod = methods.stream()
-                .filter(m -> m.get("method").equals("Slow::method"))
-                .findFirst().orElseThrow();
-        assertThat(slowMethod.get("performanceLevel")).isEqualTo("SLOW");
-
-        Map<String, Object> criticalMethod = methods.stream()
-                .filter(m -> m.get("method").equals("Critical::method"))
-                .findFirst().orElseThrow();
-        assertThat(criticalMethod.get("performanceLevel")).isEqualTo("CRITICAL");
+        verify(performanceAspect, times(1)).exportPerformanceSummary();
+        verifyNoMoreInteractions(performanceAspect);
     }
 
-    private MethodMetrics createMethodMetrics(long min, long max, long p99, long avg,
-                                              long successfulCalls, long failedCalls) {
-        MethodMetrics metrics = mock(MethodMetrics.class);
-        lenient().when(metrics.getMinExecutionTime()).thenReturn(min);
-        lenient().when(metrics.getMaxExecutionTime()).thenReturn(max);
-        lenient().when(metrics.getAverageExecutionTime()).thenReturn(avg);
-        lenient().when(metrics.getTotalCalls()).thenReturn(successfulCalls + failedCalls);
-        lenient().when(metrics.getSuccessfulCalls()).thenReturn(successfulCalls);
-        lenient().when(metrics.getFailedCalls()).thenReturn(failedCalls);
-        lenient().when(metrics.getPercentile(50)).thenReturn(avg);
-        lenient().when(metrics.getPercentile(95)).thenReturn((max + avg) / 2);
-        lenient().when(metrics.getPercentile(99)).thenReturn(p99);
-        lenient().when(metrics.getStandardDeviation()).thenReturn(50.0);
+    @Test
+    void getAllMetrics_ShouldContainTimestampWithinReasonableTimeRange() {
+        when(performanceAspect.getAllMetrics()).thenReturn(new ConcurrentHashMap<>());
+        Date beforeCall = new Date();
 
-        double failureRate = failedCalls > 0
-                ? (failedCalls * 100.0) / (successfulCalls + failedCalls)
-                : 0.0;
-        lenient().when(metrics.getFailureRate()).thenReturn(failureRate);
+        Map<String, Object> result = performanceMetricsService.getAllMetrics();
 
-        return metrics;
+        Date afterCall = new Date();
+        Date timestamp = (Date) result.get("timestamp");
+
+        assertThat(timestamp).isNotNull();
+        assertThat(timestamp.getTime()).isBetween(beforeCall.getTime(), afterCall.getTime());
+    }
+
+    @Test
+    void getMetricsSummary_ShouldContainTimestampWithinReasonableTimeRange() {
+        when(performanceAspect.getAllMetrics()).thenReturn(new ConcurrentHashMap<>());
+        Date beforeCall = new Date();
+
+        Map<String, Object> summary = performanceMetricsService.getMetricsSummary();
+
+        Date afterCall = new Date();
+        Date timestamp = (Date) summary.get("timestamp");
+
+        assertThat(timestamp).isNotNull();
+        assertThat(timestamp.getTime()).isBetween(beforeCall.getTime(), afterCall.getTime());
+    }
+
+    @Test
+    void getMetricsSummary_ShouldFormatAverageExecutionTimeWithTwoDecimals() {
+        MethodMetrics metrics = new MethodMetrics("TestMethod");
+        metrics.recordExecution(333, true);
+
+        mockMetricsMap.put("TestMethod", metrics);
+        when(performanceAspect.getAllMetrics()).thenReturn(mockMetricsMap);
+
+        Map<String, Object> summary = performanceMetricsService.getMetricsSummary();
+
+        String avgTime = (String) summary.get("overallAverageExecutionTime");
+        assertThat(avgTime).matches("\\d+\\.\\d{2} ms");
+        assertThat(avgTime).isEqualTo("333.00 ms");
+    }
+
+    @Test
+    void getAllMetrics_ShouldWorkWithLargeNumberOfMethods() {
+        ConcurrentHashMap<String, MethodMetrics> largeMetricsMap = new ConcurrentHashMap<>();
+        for (int i = 0; i < 100; i++) {
+            MethodMetrics metrics = new MethodMetrics("Method" + i);
+            metrics.recordExecution(100 + i, true);
+            largeMetricsMap.put("Method" + i, metrics);
+        }
+
+        when(performanceAspect.getAllMetrics()).thenReturn(largeMetricsMap);
+
+        Map<String, Object> result = performanceMetricsService.getAllMetrics();
+
+        assertThat(result.get("totalMethods")).isEqualTo(100);
+
+        @SuppressWarnings("unchecked")
+        ConcurrentHashMap<String, MethodMetrics> metrics =
+                (ConcurrentHashMap<String, MethodMetrics>) result.get("metrics");
+        assertThat(metrics).hasSize(100);
+    }
+
+    @Test
+    void getMetricsSummary_ShouldWorkWithLargeNumberOfExecutions() {
+        MethodMetrics heavilyUsedMethod = new MethodMetrics("PopularMethod");
+        for (int i = 0; i < 1000; i++) {
+            heavilyUsedMethod.recordExecution(50 + (i % 100), i % 10 != 0);
+        }
+
+        mockMetricsMap.put("PopularMethod", heavilyUsedMethod);
+        when(performanceAspect.getAllMetrics()).thenReturn(mockMetricsMap);
+
+        Map<String, Object> summary = performanceMetricsService.getMetricsSummary();
+
+        assertThat(summary.get("totalExecutions")).isEqualTo(1000L);
+        assertThat(summary.get("totalFailures")).isEqualTo(100L);
+        assertThat(summary.get("overallAverageExecutionTime")).isNotNull();
+    }
+
+    @Test
+    void getMethodMetrics_ShouldVerifyCorrectMethodNamePassedToAspect() {
+        String expectedMethodName = "SpecificService.specificMethod(..)";
+        when(performanceAspect.getMetrics(expectedMethodName)).thenReturn(mockMetrics1);
+
+        performanceMetricsService.getMethodMetrics(expectedMethodName);
+
+        verify(performanceAspect).getMetrics(expectedMethodName);
+        verify(performanceAspect, never()).getMetrics(argThat(arg -> !arg.equals(expectedMethodName)));
     }
 }

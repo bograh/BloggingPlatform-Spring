@@ -1,257 +1,222 @@
 package org.amalitech.bloggingplatformspring.controllers;
 
-import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
+import org.amalitech.bloggingplatformspring.aop.PerformanceMonitoringAspect.MethodMetrics;
 import org.amalitech.bloggingplatformspring.services.PerformanceMetricsService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
+import static org.hamcrest.Matchers.aMapWithSize;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@ExtendWith(MockitoExtension.class)
+@WebMvcTest(PerformanceMetricsController.class)
 class PerformanceMetricsControllerTest {
 
+    @Autowired
     private MockMvc mockMvc;
 
-    @Mock
+    @MockitoBean
     private PerformanceMetricsService metricsService;
 
-    @InjectMocks
-    private PerformanceMetricsController metricsController;
-
-    @BeforeEach
-    void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(metricsController).build();
-    }
-
     @Test
-    void getAllMetrics_ShouldReturnAllMetrics() throws Exception {
-        Map<String, Object> mockMetrics = new HashMap<>();
-        mockMetrics.put("totalMethods", 50);
-        mockMetrics.put("totalExecutions", 1000);
-        mockMetrics.put("averageExecutionTime", 250.5);
+    void getAllMetrics_ShouldReturnOkWithMetrics_WhenMetricsExist() throws Exception {
+        Map<String, Object> mockResponse = new HashMap<>();
+        mockResponse.put("totalMethods", 2);
+        mockResponse.put("timestamp", new Date());
 
-        when(metricsService.getAllMetricsFormatted()).thenReturn(mockMetrics);
+        ConcurrentHashMap<String, MethodMetrics> metricsMap = new ConcurrentHashMap<>();
+        MethodMetrics metrics = new MethodMetrics("UserService.getUser(..)");
+        metrics.recordExecution(100, true);
+        metricsMap.put("UserService.getUser(..)", metrics);
 
-        mockMvc.perform(get("/api/metrics/performance"))
+        mockResponse.put("metrics", metricsMap);
+
+        when(metricsService.getAllMetrics()).thenReturn(mockResponse);
+
+        mockMvc.perform(get("/api/metrics/performance")
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalMethods").value(50))
-                .andExpect(jsonPath("$.totalExecutions").value(1000))
-                .andExpect(jsonPath("$.averageExecutionTime").value(250.5));
+                .andExpect(jsonPath("$.totalMethods").value(2))
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.metrics").exists());
 
-        verify(metricsService).getAllMetricsFormatted();
+        verify(metricsService).getAllMetrics();
     }
 
     @Test
-    void getMethodMetrics_WithValidLayerAndMethod_ShouldReturnMethodMetrics() throws Exception {
+    void getAllMetrics_ShouldReturnOkWithEmptyMetrics_WhenNoMetricsExist() throws Exception {
+        Map<String, Object> emptyResponse = new HashMap<>();
+        emptyResponse.put("totalMethods", 0);
+        emptyResponse.put("timestamp", new Date());
+        emptyResponse.put("metrics", new ConcurrentHashMap<>());
+
+        when(metricsService.getAllMetrics()).thenReturn(emptyResponse);
+
+        mockMvc.perform(get("/api/metrics/performance")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalMethods").value(0))
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.metrics").isEmpty());
+
+        verify(metricsService).getAllMetrics();
+    }
+
+    @Test
+    void getMethodMetrics_ShouldReturnOkWithMetrics_WhenMethodExists() throws Exception {
         String layer = "SERVICE";
         String methodName = "createPost";
         String fullMethodName = "SERVICE::createPost";
 
-        Map<String, Object> mockMethodMetrics = new HashMap<>();
-        mockMethodMetrics.put("methodName", fullMethodName);
-        mockMethodMetrics.put("executionCount", 100);
-        mockMethodMetrics.put("averageTime", 150.0);
-        mockMethodMetrics.put("minTime", 50L);
-        mockMethodMetrics.put("maxTime", 500L);
+        MethodMetrics mockMetrics = new MethodMetrics(fullMethodName);
+        mockMetrics.recordExecution(150, true);
+        mockMetrics.recordExecution(200, true);
 
-        when(metricsService.getMethodMetricsFormatted(fullMethodName)).thenReturn(mockMethodMetrics);
+        when(metricsService.getMethodMetrics(fullMethodName)).thenReturn(mockMetrics);
 
-        mockMvc.perform(get("/api/metrics/performance/{layer}/{methodName}", layer, methodName))
+        mockMvc.perform(get("/api/metrics/performance/{layer}/{methodName}", layer, methodName)
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.methodName").value(fullMethodName))
-                .andExpect(jsonPath("$.executionCount").value(100))
-                .andExpect(jsonPath("$.averageTime").value(150.0))
-                .andExpect(jsonPath("$.minTime").value(50))
-                .andExpect(jsonPath("$.maxTime").value(500));
+                .andExpect(jsonPath("$.totalCalls").value(2))
+                .andExpect(jsonPath("$.successfulCalls").value(2))
+                .andExpect(jsonPath("$.failedCalls").value(0));
 
-        verify(metricsService).getMethodMetricsFormatted(fullMethodName);
+        verify(metricsService).getMethodMetrics(fullMethodName);
     }
 
     @Test
-    void getMethodMetrics_WithRepositoryLayer_ShouldConvertToUpperCase() throws Exception {
-        String layer = "repository";
+    void getMethodMetrics_ShouldConvertLayerToUpperCase() throws Exception {
+        String layer = "service";
+        String methodName = "updateUser";
+        String expectedFullMethodName = "SERVICE::updateUser";
+
+        MethodMetrics mockMetrics = new MethodMetrics(expectedFullMethodName);
+        mockMetrics.recordExecution(100, true);
+
+        when(metricsService.getMethodMetrics(expectedFullMethodName)).thenReturn(mockMetrics);
+
+        mockMvc.perform(get("/api/metrics/performance/{layer}/{methodName}", layer, methodName)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+
+        verify(metricsService).getMethodMetrics(expectedFullMethodName);
+    }
+
+    @Test
+    void getMethodMetrics_ShouldReturnOkWithNull_WhenMethodDoesNotExist() throws Exception {
+        String layer = "SERVICE";
+        String methodName = "nonExistentMethod";
+        String fullMethodName = "SERVICE::nonExistentMethod";
+
+        when(metricsService.getMethodMetrics(fullMethodName)).thenReturn(null);
+
+        mockMvc.perform(get("/api/metrics/performance/{layer}/{methodName}", layer, methodName)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(content().string(""));
+
+        verify(metricsService).getMethodMetrics(fullMethodName);
+    }
+
+    @Test
+    void getMethodMetrics_ShouldHandleRepositoryLayer() throws Exception {
+        String layer = "REPOSITORY";
         String methodName = "findById";
         String fullMethodName = "REPOSITORY::findById";
 
-        Map<String, Object> mockMethodMetrics = new HashMap<>();
-        mockMethodMetrics.put("methodName", fullMethodName);
-        mockMethodMetrics.put("executionCount", 50);
+        MethodMetrics mockMetrics = new MethodMetrics(fullMethodName);
+        mockMetrics.recordExecution(50, true);
 
-        when(metricsService.getMethodMetricsFormatted(fullMethodName)).thenReturn(mockMethodMetrics);
+        when(metricsService.getMethodMetrics(fullMethodName)).thenReturn(mockMetrics);
 
-        mockMvc.perform(get("/api/metrics/performance/{layer}/{methodName}", layer, methodName))
+        mockMvc.perform(get("/api/metrics/performance/{layer}/{methodName}", layer, methodName)
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.methodName").value(fullMethodName));
 
-        verify(metricsService).getMethodMetricsFormatted(fullMethodName);
+        verify(metricsService).getMethodMetrics(fullMethodName);
     }
 
     @Test
-    void getMetricsSummary_ShouldReturnSummaryData() throws Exception {
-        Map<String, Object> mockSummary = new HashMap<>();
-        mockSummary.put("totalMethods", 30);
-        mockSummary.put("healthyMethods", 25);
-        mockSummary.put("slowMethods", 5);
-        mockSummary.put("failureRate", 2.5);
+    void getMethodMetrics_ShouldHandleMethodNameWithSpecialCharacters() throws Exception {
+        String layer = "SERVICE";
+        String methodName = "get-user-by-id";
+        String fullMethodName = "SERVICE::get-user-by-id";
 
-        when(metricsService.getMetricsSummary()).thenReturn(mockSummary);
+        MethodMetrics mockMetrics = new MethodMetrics(fullMethodName);
+        mockMetrics.recordExecution(75, true);
 
-        mockMvc.perform(get("/api/metrics/performance/summary"))
+        when(metricsService.getMethodMetrics(fullMethodName)).thenReturn(mockMetrics);
+
+        mockMvc.perform(get("/api/metrics/performance/{layer}/{methodName}", layer, methodName)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+
+        verify(metricsService).getMethodMetrics(fullMethodName);
+    }
+
+    @Test
+    void getMetricsSummary_ShouldReturnOkWithSummary() throws Exception {
+        Map<String, Object> summaryResponse = new HashMap<>();
+        summaryResponse.put("totalMethodsMonitored", 5);
+        summaryResponse.put("totalExecutions", 100L);
+        summaryResponse.put("totalFailures", 10L);
+        summaryResponse.put("overallAverageExecutionTime", "150.25 ms");
+        summaryResponse.put("timestamp", new Date());
+
+        when(metricsService.getMetricsSummary()).thenReturn(summaryResponse);
+
+        mockMvc.perform(get("/api/metrics/performance/summary")
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalMethods").value(30))
-                .andExpect(jsonPath("$.healthyMethods").value(25))
-                .andExpect(jsonPath("$.slowMethods").value(5))
-                .andExpect(jsonPath("$.failureRate").value(2.5));
+                .andExpect(jsonPath("$.totalMethodsMonitored").value(5))
+                .andExpect(jsonPath("$.totalExecutions").value(100))
+                .andExpect(jsonPath("$.totalFailures").value(10))
+                .andExpect(jsonPath("$.overallAverageExecutionTime").value("150.25 ms"))
+                .andExpect(jsonPath("$.timestamp").exists());
 
         verify(metricsService).getMetricsSummary();
     }
 
     @Test
-    void getSlowMethods_WithDefaultThreshold_ShouldReturnSlowMethods() throws Exception {
-        Map<String, Object> mockSlowMethods = new HashMap<>();
-        mockSlowMethods.put("threshold", 1000L);
-        mockSlowMethods.put("count", 5);
-        mockSlowMethods.put("methods", Map.of(
-                "SERVICE::complexCalculation", 1500L,
-                "REPOSITORY::bulkInsert", 2000L
-        ));
+    void getMetricsSummary_ShouldReturnOkWithZeroValues_WhenNoMetrics() throws Exception {
+        Map<String, Object> emptySummary = new HashMap<>();
+        emptySummary.put("totalMethodsMonitored", 0);
+        emptySummary.put("totalExecutions", 0L);
+        emptySummary.put("totalFailures", 0L);
+        emptySummary.put("overallAverageExecutionTime", "0.00 ms");
+        emptySummary.put("timestamp", new Date());
 
-        when(metricsService.getSlowMethods(1000L)).thenReturn(mockSlowMethods);
+        when(metricsService.getMetricsSummary()).thenReturn(emptySummary);
 
-        mockMvc.perform(get("/api/metrics/performance/slow"))
+        mockMvc.perform(get("/api/metrics/performance/summary")
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.threshold").value(1000))
-                .andExpect(jsonPath("$.count").value(5));
+                .andExpect(jsonPath("$.totalMethodsMonitored").value(0))
+                .andExpect(jsonPath("$.totalExecutions").value(0))
+                .andExpect(jsonPath("$.totalFailures").value(0))
+                .andExpect(jsonPath("$.overallAverageExecutionTime").value("0.00 ms"));
 
-        verify(metricsService).getSlowMethods(1000L);
+        verify(metricsService).getMetricsSummary();
     }
 
     @Test
-    void getSlowMethods_WithCustomThreshold_ShouldReturnSlowMethods() throws Exception {
-        long customThreshold = 500L;
-        Map<String, Object> mockSlowMethods = new HashMap<>();
-        mockSlowMethods.put("threshold", customThreshold);
-        mockSlowMethods.put("count", 10);
-
-        when(metricsService.getSlowMethods(customThreshold)).thenReturn(mockSlowMethods);
-
-        mockMvc.perform(get("/api/metrics/performance/slow")
-                        .param("thresholdMs", String.valueOf(customThreshold)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.threshold").value(customThreshold))
-                .andExpect(jsonPath("$.count").value(10));
-
-        verify(metricsService).getSlowMethods(customThreshold);
-    }
-
-    @Test
-    void getTopSlowMethods_WithDefaultLimit_ShouldReturnTopMethods() throws Exception {
-        Map<String, Object> mockTopMethods = new HashMap<>();
-        mockTopMethods.put("limit", 10);
-        mockTopMethods.put("methods", Map.of(
-                "SERVICE::heavyOperation", 3000L,
-                "REPOSITORY::complexQuery", 2500L
-        ));
-
-        when(metricsService.getTopSlowMethods(10)).thenReturn(mockTopMethods);
-
-        mockMvc.perform(get("/api/metrics/performance/top"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.limit").value(10));
-
-        verify(metricsService).getTopSlowMethods(10);
-    }
-
-    @Test
-    void getTopSlowMethods_WithCustomLimit_ShouldReturnTopMethods() throws Exception {
-        int customLimit = 5;
-        Map<String, Object> mockTopMethods = new HashMap<>();
-        mockTopMethods.put("limit", customLimit);
-        mockTopMethods.put("count", 5);
-
-        when(metricsService.getTopSlowMethods(customLimit)).thenReturn(mockTopMethods);
-
-        mockMvc.perform(get("/api/metrics/performance/top")
-                        .param("limit", String.valueOf(customLimit)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.limit").value(customLimit))
-                .andExpect(jsonPath("$.count").value(5));
-
-        verify(metricsService).getTopSlowMethods(customLimit);
-    }
-
-    @Test
-    void getMetricsByLayer_WithServiceLayer_ShouldReturnServiceMetrics() throws Exception {
-        String layer = "SERVICE";
-        Map<String, Object> mockLayerMetrics = new HashMap<>();
-        mockLayerMetrics.put("layer", layer);
-        mockLayerMetrics.put("methodCount", 20);
-        mockLayerMetrics.put("totalExecutions", 500);
-
-        when(metricsService.getMetricsByLayer(layer)).thenReturn(mockLayerMetrics);
-
-        mockMvc.perform(get("/api/metrics/performance/layer/{layer}", layer))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.layer").value(layer))
-                .andExpect(jsonPath("$.methodCount").value(20))
-                .andExpect(jsonPath("$.totalExecutions").value(500));
-
-        verify(metricsService).getMetricsByLayer(layer);
-    }
-
-    @Test
-    void getMetricsByLayer_WithLowercaseLayer_ShouldConvertToUpperCase() throws Exception {
-        String layer = "repository";
-        Map<String, Object> mockLayerMetrics = new HashMap<>();
-        mockLayerMetrics.put("layer", "REPOSITORY");
-        mockLayerMetrics.put("methodCount", 15);
-
-        when(metricsService.getMetricsByLayer("REPOSITORY")).thenReturn(mockLayerMetrics);
-
-        mockMvc.perform(get("/api/metrics/performance/layer/{layer}", layer))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.layer").value("REPOSITORY"));
-
-        verify(metricsService).getMetricsByLayer("REPOSITORY");
-    }
-
-    @Test
-    void getFailureStatistics_ShouldReturnFailureStats() throws Exception {
-        Map<String, Object> mockFailureStats = new HashMap<>();
-        mockFailureStats.put("totalFailures", 25);
-        mockFailureStats.put("failureRate", 5.0);
-        mockFailureStats.put("topFailingMethods", Map.of(
-                "SERVICE::validateUser", 10,
-                "REPOSITORY::connect", 8
-        ));
-
-        when(metricsService.getFailureStatistics()).thenReturn(mockFailureStats);
-
-        mockMvc.perform(get("/api/metrics/performance/failures"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalFailures").value(25))
-                .andExpect(jsonPath("$.failureRate").value(5.0));
-
-        verify(metricsService).getFailureStatistics();
-    }
-
-    @Test
-    void resetMetrics_ShouldResetAllMetrics() throws Exception {
+    void resetMetrics_ShouldReturnOkWithSuccessMessage() throws Exception {
         doNothing().when(metricsService).resetMetrics();
 
-        mockMvc.perform(delete("/api/metrics/performance/reset"))
+        mockMvc.perform(delete("/api/metrics/performance/reset")
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("success"))
                 .andExpect(jsonPath("$.message").value("All performance metrics have been reset"));
@@ -260,10 +225,23 @@ class PerformanceMetricsControllerTest {
     }
 
     @Test
-    void exportToLog_ShouldExportMetrics() throws Exception {
+    void resetMetrics_ShouldCallServiceOnce() throws Exception {
+        doNothing().when(metricsService).resetMetrics();
+
+        mockMvc.perform(delete("/api/metrics/performance/reset")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+
+        verify(metricsService, times(1)).resetMetrics();
+        verifyNoMoreInteractions(metricsService);
+    }
+
+    @Test
+    void exportToLog_ShouldReturnOkWithSuccessMessage() throws Exception {
         doNothing().when(metricsService).exportPerformanceSummary();
 
-        mockMvc.perform(post("/api/metrics/performance/export/log"))
+        mockMvc.perform(post("/api/metrics/performance/export-log")
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("success"))
                 .andExpect(jsonPath("$.message").value("Metrics exported to application log"));
@@ -272,67 +250,222 @@ class PerformanceMetricsControllerTest {
     }
 
     @Test
-    void getMethodMetrics_WithNonExistentMethod_ShouldThrowException() throws Exception {
-        String layer = "SERVICE";
-        String methodName = "nonExistentMethod";
-        String fullMethodName = "SERVICE::nonExistentMethod";
+    void exportToLog_ShouldCallServiceOnce() throws Exception {
+        doNothing().when(metricsService).exportPerformanceSummary();
 
-        when(metricsService.getMethodMetricsFormatted(fullMethodName))
-                .thenThrow(new ResourceNotFoundException("Method not found"));
+        mockMvc.perform(post("/api/metrics/performance/export-log")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+
+        verify(metricsService, times(1)).exportPerformanceSummary();
+        verifyNoMoreInteractions(metricsService);
+    }
+
+    @Test
+    void getAllMetrics_ShouldReturnCorrectContentType() throws Exception {
+        Map<String, Object> mockResponse = new HashMap<>();
+        mockResponse.put("totalMethods", 0);
+        mockResponse.put("timestamp", new Date());
+        mockResponse.put("metrics", new ConcurrentHashMap<>());
+
+        when(metricsService.getAllMetrics()).thenReturn(mockResponse);
+
+        mockMvc.perform(get("/api/metrics/performance"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+    }
+
+    @Test
+    void getMetricsSummary_ShouldReturnCorrectContentType() throws Exception {
+        Map<String, Object> summaryResponse = new HashMap<>();
+        summaryResponse.put("totalMethodsMonitored", 0);
+        summaryResponse.put("totalExecutions", 0L);
+        summaryResponse.put("totalFailures", 0L);
+        summaryResponse.put("overallAverageExecutionTime", "0.00 ms");
+        summaryResponse.put("timestamp", new Date());
+
+        when(metricsService.getMetricsSummary()).thenReturn(summaryResponse);
+
+        mockMvc.perform(get("/api/metrics/performance/summary"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+    }
+
+    @Test
+    void resetMetrics_ShouldReturnCorrectContentType() throws Exception {
+        doNothing().when(metricsService).resetMetrics();
+
+        mockMvc.perform(delete("/api/metrics/performance/reset"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+    }
+
+    @Test
+    void exportToLog_ShouldReturnCorrectContentType() throws Exception {
+        doNothing().when(metricsService).exportPerformanceSummary();
+
+        mockMvc.perform(post("/api/metrics/performance/export-log"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON));
+    }
+
+    @Test
+    void getMethodMetrics_ShouldHandleMixedCaseLayer() throws Exception {
+        String layer = "SeRvIcE";
+        String methodName = "deleteUser";
+        String expectedFullMethodName = "SERVICE::deleteUser";
+
+        MethodMetrics mockMetrics = new MethodMetrics(expectedFullMethodName);
+        mockMetrics.recordExecution(80, true);
+
+        when(metricsService.getMethodMetrics(expectedFullMethodName)).thenReturn(mockMetrics);
 
         mockMvc.perform(get("/api/metrics/performance/{layer}/{methodName}", layer, methodName))
-                .andExpect(status().is4xxClientError());
+                .andExpect(status().isOk());
 
-        verify(metricsService).getMethodMetricsFormatted(fullMethodName);
+        verify(metricsService).getMethodMetrics(expectedFullMethodName);
     }
 
     @Test
-    void getMetricsByLayer_WithInvalidLayer_ShouldThrowException() throws Exception {
-        String layer = "INVALID";
+    void getAllMetrics_ShouldHandleComplexMetricsData() throws Exception {
+        Map<String, Object> complexResponse = new HashMap<>();
+        complexResponse.put("totalMethods", 3);
+        complexResponse.put("timestamp", new Date());
 
-        when(metricsService.getMetricsByLayer(layer))
-                .thenThrow(new ResourceNotFoundException("Invalid layer"));
+        ConcurrentHashMap<String, MethodMetrics> metricsMap = new ConcurrentHashMap<>();
 
-        mockMvc.perform(get("/api/metrics/performance/layer/{layer}", layer))
-                .andExpect(status().is4xxClientError());
+        MethodMetrics metrics1 = new MethodMetrics("UserService.getUser(..)");
+        metrics1.recordExecution(100, true);
+        metrics1.recordExecution(150, true);
+        metrics1.recordExecution(200, false);
 
-        verify(metricsService).getMetricsByLayer(layer);
-    }
+        MethodMetrics metrics2 = new MethodMetrics("PostService.createPost(..)");
+        metrics2.recordExecution(250, true);
 
-    @Test
-    void getSlowMethods_WithZeroThreshold_ShouldReturnAllMethods() throws Exception {
-        long threshold = 0L;
-        Map<String, Object> mockSlowMethods = new HashMap<>();
-        mockSlowMethods.put("threshold", threshold);
-        mockSlowMethods.put("count", 50);
+        metricsMap.put("UserService.getUser(..)", metrics1);
+        metricsMap.put("PostService.createPost(..)", metrics2);
 
-        when(metricsService.getSlowMethods(threshold)).thenReturn(mockSlowMethods);
+        complexResponse.put("metrics", metricsMap);
 
-        mockMvc.perform(get("/api/metrics/performance/slow")
-                        .param("thresholdMs", String.valueOf(threshold)))
+        when(metricsService.getAllMetrics()).thenReturn(complexResponse);
+
+        mockMvc.perform(get("/api/metrics/performance"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.threshold").value(threshold))
-                .andExpect(jsonPath("$.count").value(50));
-
-        verify(metricsService).getSlowMethods(threshold);
+                .andExpect(jsonPath("$.totalMethods").value(3))
+                .andExpect(jsonPath("$.metrics").isNotEmpty());
     }
 
     @Test
-    void getTopSlowMethods_WithLimitOne_ShouldReturnOnlyTopMethod() throws Exception {
-        int limit = 1;
-        Map<String, Object> mockTopMethods = new HashMap<>();
-        mockTopMethods.put("limit", limit);
-        mockTopMethods.put("count", 1);
-        mockTopMethods.put("methods", Map.of("SERVICE::slowestMethod", 5000L));
+    void getMethodMetrics_ShouldReturnMetricsWithFailedCalls() throws Exception {
+        String layer = "SERVICE";
+        String methodName = "processPayment";
+        String fullMethodName = "SERVICE::processPayment";
 
-        when(metricsService.getTopSlowMethods(limit)).thenReturn(mockTopMethods);
+        MethodMetrics mockMetrics = new MethodMetrics(fullMethodName);
+        mockMetrics.recordExecution(100, true);
+        mockMetrics.recordExecution(150, false);
+        mockMetrics.recordExecution(200, false);
+        mockMetrics.recordExecution(120, true);
 
-        mockMvc.perform(get("/api/metrics/performance/top")
-                        .param("limit", String.valueOf(limit)))
+        when(metricsService.getMethodMetrics(fullMethodName)).thenReturn(mockMetrics);
+
+        mockMvc.perform(get("/api/metrics/performance/{layer}/{methodName}", layer, methodName))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.limit").value(limit))
-                .andExpect(jsonPath("$.count").value(1));
+                .andExpect(jsonPath("$.totalCalls").value(4))
+                .andExpect(jsonPath("$.successfulCalls").value(2))
+                .andExpect(jsonPath("$.failedCalls").value(2))
+                .andExpect(jsonPath("$.averageExecutionTime").value(142));
 
-        verify(metricsService).getTopSlowMethods(limit);
+        verify(metricsService).getMethodMetrics(fullMethodName);
+    }
+
+    @Test
+    void resetMetrics_ShouldReturnMapWithTwoKeys() throws Exception {
+        doNothing().when(metricsService).resetMetrics();
+
+        mockMvc.perform(delete("/api/metrics/performance/reset"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", aMapWithSize(2)))
+                .andExpect(jsonPath("$.status").exists())
+                .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
+    void exportToLog_ShouldReturnMapWithTwoKeys() throws Exception {
+        doNothing().when(metricsService).exportPerformanceSummary();
+
+        mockMvc.perform(post("/api/metrics/performance/export-log"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", aMapWithSize(2)))
+                .andExpect(jsonPath("$.status").exists())
+                .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
+    void getMethodMetrics_ShouldHandleNumericMethodName() throws Exception {
+        String layer = "SERVICE";
+        String methodName = "method123";
+        String fullMethodName = "SERVICE::method123";
+
+        MethodMetrics mockMetrics = new MethodMetrics(fullMethodName);
+        mockMetrics.recordExecution(90, true);
+
+        when(metricsService.getMethodMetrics(fullMethodName)).thenReturn(mockMetrics);
+
+        mockMvc.perform(get("/api/metrics/performance/{layer}/{methodName}", layer, methodName))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.methodName").value(fullMethodName));
+
+        verify(metricsService).getMethodMetrics(fullMethodName);
+    }
+
+    @Test
+    void getAllMetrics_ShouldBeAccessibleViaGetRequest() throws Exception {
+        Map<String, Object> mockResponse = new HashMap<>();
+        mockResponse.put("totalMethods", 0);
+        mockResponse.put("timestamp", new Date());
+        mockResponse.put("metrics", new ConcurrentHashMap<>());
+
+        when(metricsService.getAllMetrics()).thenReturn(mockResponse);
+
+        mockMvc.perform(get("/api/metrics/performance"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/metrics/performance"))
+                .andExpect(status().isMethodNotAllowed());
+
+        mockMvc.perform(put("/api/metrics/performance"))
+                .andExpect(status().isMethodNotAllowed());
+
+        mockMvc.perform(delete("/api/metrics/performance"))
+                .andExpect(status().isMethodNotAllowed());
+    }
+
+    @Test
+    void resetMetrics_ShouldOnlyAcceptDeleteRequest() throws Exception {
+        doNothing().when(metricsService).resetMetrics();
+
+        mockMvc.perform(delete("/api/metrics/performance/reset"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/metrics/performance/reset"))
+                .andExpect(status().isMethodNotAllowed());
+
+        mockMvc.perform(post("/api/metrics/performance/reset"))
+                .andExpect(status().isMethodNotAllowed());
+    }
+
+    @Test
+    void exportToLog_ShouldOnlyAcceptPostRequest() throws Exception {
+        doNothing().when(metricsService).exportPerformanceSummary();
+
+        mockMvc.perform(post("/api/metrics/performance/export-log"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/metrics/performance/export-log"))
+                .andExpect(status().isMethodNotAllowed());
+
+        mockMvc.perform(delete("/api/metrics/performance/export-log"))
+                .andExpect(status().isMethodNotAllowed());
     }
 }
