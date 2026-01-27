@@ -14,7 +14,7 @@ import java.util.List;
 /**
  * OpenAPI/Swagger Configuration for the Blogging Platform API.
  * Provides automatic API documentation accessible via Swagger UI.
- *
+ * <p>
  * Access points:
  * - Swagger UI: <a href="http://localhost:8080/swagger-ui.html">...</a>
  * - API Docs JSON: <a href="http://localhost:8080/v3/api-docs">...</a>
