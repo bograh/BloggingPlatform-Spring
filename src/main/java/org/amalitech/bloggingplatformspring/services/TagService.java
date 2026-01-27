@@ -1,8 +1,10 @@
 package org.amalitech.bloggingplatformspring.services;
 
+import org.amalitech.bloggingplatformspring.dtos.responses.TagResponse;
 import org.amalitech.bloggingplatformspring.entity.Tag;
 import org.amalitech.bloggingplatformspring.repository.TagRepository;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +21,13 @@ public class TagService {
 
     public TagService(TagRepository tagRepository) {
         this.tagRepository = tagRepository;
+    }
+
+    public List<TagResponse> getPopularTags() {
+        List<Tag> tags = tagRepository.findMostPopularTags(PageRequest.of(0, 5));
+        return tags.stream().map(
+                        tag -> new TagResponse(tag.getName()))
+                .toList();
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
