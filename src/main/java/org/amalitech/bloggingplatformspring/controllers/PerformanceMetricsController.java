@@ -19,7 +19,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/metrics/performance")
 @RequiredArgsConstructor
-@Tag(name = "Performance Metrics", description = "APIs for monitoring application performance and method execution statistics")
+@Tag(name = "4. Performance Metrics", description = "APIs for monitoring application performance and method execution statistics")
 public class PerformanceMetricsController {
 
     private final PerformanceMetricsService metricsService;
@@ -34,8 +34,8 @@ public class PerformanceMetricsController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Metrics successfully retrieved")
     })
-    public ResponseEntity<Map<String, Object>> getAllMetrics() {
-        return ResponseEntity.ok(metricsService.getAllMetricsFormatted());
+    public ResponseEntity<?> getAllMetrics() {
+        return ResponseEntity.ok(metricsService.getAllMetrics());
     }
 
     /**
@@ -49,11 +49,11 @@ public class PerformanceMetricsController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Method metrics successfully retrieved")
     })
-    public ResponseEntity<Map<String, Object>> getMethodMetrics(
+    public ResponseEntity<?> getMethodMetrics(
             @Parameter(description = "Layer name (SERVICE or REPOSITORY)", example = "SERVICE") @PathVariable String layer,
             @Parameter(description = "Method name", example = "createPost") @PathVariable String methodName) {
         String fullMethodName = layer.toUpperCase() + "::" + methodName;
-        return ResponseEntity.ok(metricsService.getMethodMetricsFormatted(fullMethodName));
+        return ResponseEntity.ok(metricsService.getMethodMetrics(fullMethodName));
     }
 
     /**
@@ -66,70 +66,8 @@ public class PerformanceMetricsController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Summary successfully retrieved")
     })
-    public ResponseEntity<Map<String, Object>> getMetricsSummary() {
+    public ResponseEntity<?> getMetricsSummary() {
         return ResponseEntity.ok(metricsService.getMetricsSummary());
-    }
-
-    /**
-     * Get slow methods (execution time > threshold)
-     *
-     * @param thresholdMs Threshold in milliseconds (default: 1000ms)
-     * @return List of methods exceeding the threshold
-     */
-    @GetMapping("/slow")
-    @Operation(summary = "Get slow methods", description = "Retrieves methods with average execution time exceeding the specified threshold in milliseconds")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Slow methods successfully retrieved")
-    })
-    public ResponseEntity<Map<String, Object>> getSlowMethods(
-            @Parameter(description = "Threshold in milliseconds", example = "1000") @RequestParam(defaultValue = "1000") long thresholdMs) {
-        return ResponseEntity.ok(metricsService.getSlowMethods(thresholdMs));
-    }
-
-    /**
-     * Get top N methods by average execution time
-     *
-     * @param limit Number of methods to return (default: 10)
-     * @return Top methods by average execution time
-     */
-    @GetMapping("/top")
-    @Operation(summary = "Get top slowest methods", description = "Retrieves the top N methods with the highest average execution times")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Top methods successfully retrieved")
-    })
-    public ResponseEntity<Map<String, Object>> getTopSlowMethods(
-            @Parameter(description = "Number of methods to return", example = "10") @RequestParam(defaultValue = "10") int limit) {
-        return ResponseEntity.ok(metricsService.getTopSlowMethods(limit));
-    }
-
-    /**
-     * Get methods by layer (SERVICE or REPOSITORY)
-     *
-     * @param layer The layer to filter by
-     * @return Metrics for all methods in the specified layer
-     */
-    @GetMapping("/layer/{layer}")
-    @Operation(summary = "Get metrics by layer", description = "Retrieves performance metrics for all methods in a specific layer (SERVICE or REPOSITORY)")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Layer metrics successfully retrieved")
-    })
-    public ResponseEntity<Map<String, Object>> getMetricsByLayer(
-            @Parameter(description = "Layer name (SERVICE or REPOSITORY)", example = "SERVICE") @PathVariable String layer) {
-        return ResponseEntity.ok(metricsService.getMetricsByLayer(layer.toUpperCase()));
-    }
-
-    /**
-     * Get failure statistics
-     *
-     * @return Methods with failure counts and rates
-     */
-    @GetMapping("/failures")
-    @Operation(summary = "Get failure statistics", description = "Retrieves methods with their failure counts and failure rates")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Failure statistics successfully retrieved")
-    })
-    public ResponseEntity<Map<String, Object>> getFailureStatistics() {
-        return ResponseEntity.ok(metricsService.getFailureStatistics());
     }
 
     /**
@@ -150,7 +88,7 @@ public class PerformanceMetricsController {
     }
 
     /**
-     * Export metrics to console log
+     * Export metrics to log file
      *
      * @return Confirmation message
      */
