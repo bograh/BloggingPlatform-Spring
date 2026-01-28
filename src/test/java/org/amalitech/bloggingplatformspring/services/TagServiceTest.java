@@ -1,5 +1,6 @@
 package org.amalitech.bloggingplatformspring.services;
 
+import org.amalitech.bloggingplatformspring.dtos.responses.TagResponse;
 import org.amalitech.bloggingplatformspring.entity.Tag;
 import org.amalitech.bloggingplatformspring.repository.TagRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -9,6 +10,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 
 import java.util.*;
 import java.util.stream.StreamSupport;
@@ -335,5 +337,106 @@ class TagServiceTest {
 
         verify(tagRepository).findTagsByNameIn(anyList());
         verify(tagRepository).saveAll(anyList());
+    }
+
+    @Test
+    void getPopularTags_shouldReturnListOfTagResponses_whenTagsExist() {
+        Tag tag1 = new Tag();
+        tag1.setName("java");
+
+        Tag tag2 = new Tag();
+        tag2.setName("spring");
+
+        Tag tag3 = new Tag();
+        tag3.setName("python");
+
+        List<Tag> tags = Arrays.asList(tag1, tag2, tag3);
+
+        when(tagRepository.findMostPopularTags(PageRequest.of(0, 5)))
+                .thenReturn(tags);
+
+        List<TagResponse> result = tagService.getPopularTags();
+
+        assertNotNull(result);
+        assertEquals(3, result.size());
+        assertEquals("java", result.get(0).name());
+        assertEquals("spring", result.get(1).name());
+        assertEquals("python", result.get(2).name());
+        verify(tagRepository, times(1)).findMostPopularTags(PageRequest.of(0, 5));
+    }
+
+    @Test
+    void getPopularTags_shouldReturnEmptyList_whenNoTagsExist() {
+        when(tagRepository.findMostPopularTags(PageRequest.of(0, 5)))
+                .thenReturn(Collections.emptyList());
+
+        List<TagResponse> result = tagService.getPopularTags();
+
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+        verify(tagRepository, times(1)).findMostPopularTags(PageRequest.of(0, 5));
+    }
+
+    @Test
+    void getPopularTags_shouldReturnExactlyFiveTags_whenMoreThanFiveExist() {
+        Tag tag1 = new Tag();
+        tag1.setName("java");
+
+        Tag tag2 = new Tag();
+        tag2.setName("spring");
+
+        Tag tag3 = new Tag();
+        tag3.setName("python");
+
+        Tag tag4 = new Tag();
+        tag4.setName("javascript");
+
+        Tag tag5 = new Tag();
+        tag5.setName("react");
+
+        List<Tag> tags = Arrays.asList(tag1, tag2, tag3, tag4, tag5);
+
+        when(tagRepository.findMostPopularTags(PageRequest.of(0, 5)))
+                .thenReturn(tags);
+
+        List<TagResponse> result = tagService.getPopularTags();
+
+        assertNotNull(result);
+        assertEquals(5, result.size());
+        verify(tagRepository, times(1)).findMostPopularTags(PageRequest.of(0, 5));
+    }
+
+    @Test
+    void getPopularTags_shouldCallRepositoryWithCorrectPageRequest() {
+        when(tagRepository.findMostPopularTags(any(PageRequest.class)))
+                .thenReturn(Collections.emptyList());
+
+        tagService.getPopularTags();
+
+        verify(tagRepository, times(1)).findMostPopularTags(
+                argThat(pageRequest ->
+                        pageRequest.getPageNumber() == 0 &&
+                                pageRequest.getPageSize() == 5
+                )
+        );
+    }
+
+    @Test
+    void getPopularTags_shouldMapTagNamesCorrectly() {
+        Tag tag1 = new Tag();
+        tag1.setName("test-tag-1");
+
+        Tag tag2 = new Tag();
+        tag2.setName("test-tag-2");
+
+        List<Tag> tags = Arrays.asList(tag1, tag2);
+
+        when(tagRepository.findMostPopularTags(PageRequest.of(0, 5)))
+                .thenReturn(tags);
+
+        List<TagResponse> result = tagService.getPopularTags();
+
+        assertEquals("test-tag-1", result.get(0).name());
+        assertEquals("test-tag-2", result.get(1).name());
     }
 }

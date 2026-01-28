@@ -6,6 +6,7 @@ import org.amalitech.bloggingplatformspring.dtos.responses.CommentResponse;
 import org.amalitech.bloggingplatformspring.entity.Comment;
 import org.amalitech.bloggingplatformspring.entity.Post;
 import org.amalitech.bloggingplatformspring.entity.User;
+import org.amalitech.bloggingplatformspring.exceptions.ForbiddenException;
 import org.amalitech.bloggingplatformspring.exceptions.InvalidUserIdFormatException;
 import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
 import org.amalitech.bloggingplatformspring.repository.CommentRepository;
@@ -346,6 +347,56 @@ class CommentServiceTest {
 
         assertTrue(exception.getMessage().contains("User ID format is invalid"));
         verify(userRepository, never()).findById(any());
+        verify(commentRepository, never()).deleteCommentById(anyString());
+    }
+
+    @Test
+    void deleteComment_shouldThrowForbiddenException_whenUserIsNotCommentAuthor() {
+        String commentId = "comment123";
+        UUID actualAuthorId = UUID.randomUUID();
+        UUID differentUserId = UUID.randomUUID();
+
+        DeleteCommentRequestDTO requestDTO = new DeleteCommentRequestDTO();
+        requestDTO.setAuthorId(differentUserId.toString());
+
+        User user = new User();
+        user.setId(differentUserId);
+
+        Comment comment = new Comment();
+        comment.setAuthorId(actualAuthorId.toString());
+
+        when(userRepository.findById(differentUserId)).thenReturn(Optional.of(user));
+        when(commentRepository.findById(commentId)).thenReturn(Optional.of(comment));
+
+        ForbiddenException exception = assertThrows(
+                ForbiddenException.class,
+                () -> commentService.deleteComment(commentId, requestDTO)
+        );
+
+        assertEquals("You cannot delete this comment", exception.getMessage());
+        verify(commentRepository, never()).deleteCommentById(anyString());
+    }
+
+    @Test
+    void deleteComment_shouldThrowResourceNotFoundException_whenCommentNotFound() {
+        String commentId = "nonexistent-comment";
+        UUID userId = UUID.randomUUID();
+
+        DeleteCommentRequestDTO requestDTO = new DeleteCommentRequestDTO();
+        requestDTO.setAuthorId(userId.toString());
+
+        User user = new User();
+        user.setId(userId);
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(commentRepository.findById(commentId)).thenReturn(Optional.empty());
+
+        ResourceNotFoundException exception = assertThrows(
+                ResourceNotFoundException.class,
+                () -> commentService.deleteComment(commentId, requestDTO)
+        );
+
+        assertEquals("Comment not found with id: " + commentId, exception.getMessage());
         verify(commentRepository, never()).deleteCommentById(anyString());
     }
 

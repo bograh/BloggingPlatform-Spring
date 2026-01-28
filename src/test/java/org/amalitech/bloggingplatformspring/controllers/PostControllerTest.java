@@ -2,10 +2,13 @@ package org.amalitech.bloggingplatformspring.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.amalitech.bloggingplatformspring.dtos.requests.CreatePostDTO;
+import org.amalitech.bloggingplatformspring.dtos.requests.DeletePostRequestDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.PostFilterRequest;
 import org.amalitech.bloggingplatformspring.dtos.requests.UpdatePostDTO;
+import org.amalitech.bloggingplatformspring.dtos.responses.ApiResponseGeneric;
 import org.amalitech.bloggingplatformspring.dtos.responses.PageResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
+import org.amalitech.bloggingplatformspring.exceptions.ForbiddenException;
 import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
 import org.amalitech.bloggingplatformspring.services.PostService;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,7 +18,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -23,9 +28,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -238,5 +243,120 @@ class PostControllerTest {
                 .andExpect(status().is4xxClientError());
 
         verify(postService).updatePost(eq(postId), any(UpdatePostDTO.class));
+    }
+
+    @Test
+    void deletePost_shouldReturnNoContent_whenPostDeletedSuccessfully() {
+        Long postId = 1L;
+        DeletePostRequestDTO requestDTO = new DeletePostRequestDTO();
+        requestDTO.setAuthorId("123e4567-e89b-12d3-a456-426614174000");
+
+        doNothing().when(postService).deletePost(postId, requestDTO);
+
+        ResponseEntity<ApiResponseGeneric<Void>> response =
+                postController.deletePost(postId, requestDTO);
+
+        assertNotNull(response);
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        assertEquals(204, response.getStatusCode().value());
+
+        verify(postService, times(1)).deletePost(postId, requestDTO);
+    }
+
+    @Test
+    void deletePost_shouldReturnSuccessMessage_whenPostDeleted() {
+        Long postId = 5L;
+        DeletePostRequestDTO requestDTO = new DeletePostRequestDTO();
+        requestDTO.setAuthorId("123e4567-e89b-12d3-a456-426614174000");
+
+        doNothing().when(postService).deletePost(postId, requestDTO);
+
+        ResponseEntity<ApiResponseGeneric<Void>> response =
+                postController.deletePost(postId, requestDTO);
+
+        assertNotNull(response);
+        assertNotNull(response.getBody());
+        assertEquals("Post deleted successfully.", response.getBody().getMessage());
+        assertNull(response.getBody().getData());
+
+        verify(postService, times(1)).deletePost(postId, requestDTO);
+    }
+
+    @Test
+    void deletePost_shouldCallServiceWithCorrectParameters() {
+        Long postId = 10L;
+        DeletePostRequestDTO requestDTO = new DeletePostRequestDTO();
+        requestDTO.setAuthorId("123e4567-e89b-12d3-a456-426614174000");
+
+        doNothing().when(postService).deletePost(postId, requestDTO);
+
+        postController.deletePost(postId, requestDTO);
+
+        verify(postService, times(1)).deletePost(eq(postId), eq(requestDTO));
+        verifyNoMoreInteractions(postService);
+    }
+
+    @Test
+    void deletePost_shouldHandleDifferentPostIds() {
+        Long postId = 999L;
+        DeletePostRequestDTO requestDTO = new DeletePostRequestDTO();
+        requestDTO.setAuthorId("123e4567-e89b-12d3-a456-426614174000");
+
+        doNothing().when(postService).deletePost(postId, requestDTO);
+
+        ResponseEntity<ApiResponseGeneric<Void>> response =
+                postController.deletePost(postId, requestDTO);
+
+        assertNotNull(response);
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        verify(postService, times(1)).deletePost(999L, requestDTO);
+    }
+
+    @Test
+    void deletePost_shouldReturnApiResponseGeneric_withVoidData() {
+        Long postId = 1L;
+        DeletePostRequestDTO requestDTO = new DeletePostRequestDTO();
+        requestDTO.setAuthorId("123e4567-e89b-12d3-a456-426614174000");
+
+        doNothing().when(postService).deletePost(postId, requestDTO);
+
+        ResponseEntity<ApiResponseGeneric<Void>> response =
+                postController.deletePost(postId, requestDTO);
+
+        assertNotNull(response);
+        assertNotNull(response.getBody());
+        assertNull(response.getBody().getData());
+
+        verify(postService, times(1)).deletePost(postId, requestDTO);
+    }
+
+    @Test
+    void deletePost_shouldPropagateServiceException_whenServiceThrowsException() {
+        Long postId = 1L;
+        DeletePostRequestDTO requestDTO = new DeletePostRequestDTO();
+        requestDTO.setAuthorId("123e4567-e89b-12d3-a456-426614174000");
+
+        doThrow(new ResourceNotFoundException("Post not found"))
+                .when(postService).deletePost(postId, requestDTO);
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> postController.deletePost(postId, requestDTO));
+
+        verify(postService, times(1)).deletePost(postId, requestDTO);
+    }
+
+    @Test
+    void deletePost_shouldPropagateServiceException_whenUnauthorized() {
+        Long postId = 1L;
+        DeletePostRequestDTO requestDTO = new DeletePostRequestDTO();
+        requestDTO.setAuthorId("different-user-id");
+
+        doThrow(new ForbiddenException("You cannot delete this post"))
+                .when(postService).deletePost(postId, requestDTO);
+
+        assertThrows(ForbiddenException.class,
+                () -> postController.deletePost(postId, requestDTO));
+
+        verify(postService, times(1)).deletePost(postId, requestDTO);
     }
 }
