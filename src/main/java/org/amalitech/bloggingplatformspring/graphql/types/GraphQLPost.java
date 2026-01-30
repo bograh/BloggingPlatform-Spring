@@ -17,6 +17,7 @@ public class GraphQLPost {
     private String authorId;
     private String author;
     private List<GraphQLTag> tags;
+    private Long totalComments;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

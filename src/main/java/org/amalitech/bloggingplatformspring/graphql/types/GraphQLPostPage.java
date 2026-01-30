@@ -15,4 +15,5 @@ public class GraphQLPostPage {
     private Integer pageSize;
     private Long totalElements;
     private Integer totalPages;
+    private Boolean last;
 }

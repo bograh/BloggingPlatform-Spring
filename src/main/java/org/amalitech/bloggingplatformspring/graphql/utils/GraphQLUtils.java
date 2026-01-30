@@ -43,6 +43,7 @@ public class GraphQLUtils {
                 postResponse.getAuthorId(),
                 postResponse.getAuthor(),
                 tags,
+                postResponse.getTotalComments(),
                 postedAt,
                 updatedAt);
     }

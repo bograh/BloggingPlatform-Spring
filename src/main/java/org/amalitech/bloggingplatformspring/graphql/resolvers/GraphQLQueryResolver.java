@@ -65,6 +65,7 @@ public class GraphQLQueryResolver {
         graphQlPostPage.setPageSize(posts.size());
         graphQlPostPage.setTotalElements(posts.totalElements());
         graphQlPostPage.setTotalPages((int) Math.ceil((double) posts.totalElements() / posts.size()));
+        graphQlPostPage.setLast(posts.last());
 
         return graphQlPostPage;
     }
