@@ -18,6 +18,7 @@ import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.amalitech.bloggingplatformspring.utils.PostUtils;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -87,6 +88,7 @@ public class PostService {
 
     }
 
+    @Cacheable(cacheNames = "allPosts", key = "'page:' + #page + 'size:' + #size + 'sort:' + #sortBy + 'order:' + #order")
     public PageResponse<PostResponseDTO> getAllPosts(int page, int size, String sortBy, String order, PostFilterRequest postFilterRequest) {
         size = Math.min(size, 30);
         String entitySortField = postUtils.mapSortField(sortBy);
