@@ -1,0 +1,11 @@
+================================================================================
+PERFORMANCE METRICS SUMMARY
+================================================================================
+Method: PostService.getAllPosts(..)
+  Total Calls: 1
+  Successful: 1
+  Failed: 0
+  Avg Execution Time: 0 ms
+  Min Execution Time: 0 ms
+  Max Execution Time: 0 ms
+--------------------------------------------------------------------------------
