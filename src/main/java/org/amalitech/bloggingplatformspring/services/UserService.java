@@ -104,14 +104,14 @@ public class UserService {
             User user = userRepository.findById(id).orElseThrow(
                     () -> new ResourceNotFoundException("User not found with id: " + id)
             );
-            List<Post> recentPosts = postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(3));
+            List<Post> recentPosts = postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(4));
             List<PostResponseDTO> recentPostsResponse = recentPosts.stream()
                     .map(post -> {
                         Long totalComments = commentRepository.countByPostId(post.getId());
                         return postUtils.createPostResponseFromPost(post, totalComments);
                     }).toList();
 
-            List<Comment> recentComments = commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(3));
+            List<Comment> recentComments = commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(5));
             List<CommentResponse> recentCommentsResponse = recentComments.stream()
                     .map(CommentUtils::createCommentResponseFromComment).toList();
 
