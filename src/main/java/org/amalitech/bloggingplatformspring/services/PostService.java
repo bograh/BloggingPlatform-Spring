@@ -18,7 +18,9 @@ import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.amalitech.bloggingplatformspring.utils.PostUtils;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -51,6 +53,10 @@ public class PostService {
         this.tagService = tagService;
     }
 
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "allPosts", allEntries = true),
+            @CacheEvict(cacheNames = "users", key = "#createPostDTO.getAuthorId"),
+    })
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public PostResponseDTO createPost(CreatePostDTO createPostDTO) {
         UUID userId;
@@ -102,6 +108,7 @@ public class PostService {
         return postUtils.mapPostPageToPostResponsePage(postPage);
     }
 
+    @Cacheable(cacheNames = "posts", key = "#postId")
     public PostResponseDTO getPostById(Long postId) {
         if (postId <= 0) {
             throw new BadRequestException("Post ID must be a positive number");
@@ -115,6 +122,11 @@ public class PostService {
         return postUtils.createPostResponseFromPost(post, totalComments);
     }
 
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "allPosts", allEntries = true),
+            @CacheEvict(cacheNames = "posts", key = "#postId"),
+            @CacheEvict(cacheNames = "users", key = "#updatePostDTO.authorId")
+    })
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public PostResponseDTO updatePost(Long postId, UpdatePostDTO updatePostDTO) {
         try {
@@ -157,6 +169,11 @@ public class PostService {
         }
     }
 
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "allPosts", allEntries = true),
+            @CacheEvict(cacheNames = "posts", key = "#postId"),
+            @CacheEvict(cacheNames = "users", key = "#deletePostRequestDTO.authorId")
+    })
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public void deletePost(Long postId, DeletePostRequestDTO deletePostRequestDTO) {
         try {

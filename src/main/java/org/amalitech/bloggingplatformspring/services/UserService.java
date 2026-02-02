@@ -20,6 +20,7 @@ import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.amalitech.bloggingplatformspring.utils.CommentUtils;
 import org.amalitech.bloggingplatformspring.utils.PostUtils;
 import org.amalitech.bloggingplatformspring.utils.UserUtils;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -55,11 +56,11 @@ public class UserService {
             throw new BadRequestException("Password must not contain username");
         }
 
-        if (userRepository.existsByUsernameIgnoreCase(username)) {
+        if (Boolean.TRUE.equals(userRepository.existsByUsernameIgnoreCase(username))) {
             throw new BadRequestException("Username is taken");
         }
 
-        if (userRepository.existsByEmailIgnoreCase(email)) {
+        if (Boolean.TRUE.equals(userRepository.existsByEmailIgnoreCase(email))) {
             throw new BadRequestException("Email is taken");
         }
 
@@ -78,7 +79,7 @@ public class UserService {
         String email = signInUserDTO.getEmail();
         String password = signInUserDTO.getPassword();
 
-        if (!userRepository.existsByEmailIgnoreCase(email)) {
+        if (Boolean.FALSE.equals(userRepository.existsByEmailIgnoreCase(email))) {
             throw new UnauthorizedException("Invalid email or password");
         }
 
@@ -95,6 +96,7 @@ public class UserService {
 
     }
 
+    @Cacheable(cacheNames = "users", key = "'profile:' + #userID")
     public UserProfileResponse getUserProfile(String userID) {
         if (userID.isBlank())
             throw new BadRequestException("User ID cannot be empty");
