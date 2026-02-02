@@ -1,23 +1,23 @@
 package org.amalitech.bloggingplatformspring.repository;
 
 import org.amalitech.bloggingplatformspring.entity.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
-import java.sql.SQLException;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface UserRepository {
-    User saveUser(String username, String email, String password) throws SQLException;
 
-    User findUserByEmailAndPassword(String email, String password) throws SQLException;
+@Repository
+public interface UserRepository extends JpaRepository<User, UUID> {
 
-    String getUsernameById(UUID id) throws SQLException;
+    User findUserByEmailAndPassword(String email, String password);
 
-    Optional<User> findUserById(UUID id) throws SQLException;
+    Boolean existsByUsernameIgnoreCase(String username);
 
-    Boolean userExistsByUsername(String username) throws SQLException;
+    Boolean existsByEmailIgnoreCase(String email);
 
-    Boolean userExistsByEmail(String email) throws SQLException;
+    Optional<User> findUserByUsernameIgnoreCase(String username);
 
-    Optional<User> findUserByUsername(String username) throws SQLException;
+    Optional<User> findUserByEmailIgnoreCase(String email);
 }

@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class GraphQLComment {
     private String id;
-    private Integer postId;
+    private Long postId;
     private String author;
     private String content;
     private LocalDateTime createdAt;

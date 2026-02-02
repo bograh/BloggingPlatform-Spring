@@ -2,9 +2,9 @@ package org.amalitech.bloggingplatformspring.graphql.resolvers;
 
 import lombok.RequiredArgsConstructor;
 import org.amalitech.bloggingplatformspring.dtos.requests.*;
+import org.amalitech.bloggingplatformspring.dtos.responses.CommentResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
 import org.amalitech.bloggingplatformspring.dtos.responses.UserResponseDTO;
-import org.amalitech.bloggingplatformspring.entity.CommentDocument;
 import org.amalitech.bloggingplatformspring.entity.Post;
 import org.amalitech.bloggingplatformspring.graphql.types.*;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
@@ -16,7 +16,6 @@ import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.stereotype.Controller;
 
-import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -74,7 +73,7 @@ public class GraphQLMutationResolver {
     }
 
     @MutationMapping
-    public GraphQLPost updatePost(@Argument Integer postId, @Argument UpdatePostInput input) {
+    public GraphQLPost updatePost(@Argument Long postId, @Argument UpdatePostInput input) {
         UpdatePostDTO dto = new UpdatePostDTO(
                 input.getTitle(),
                 input.getBody(),
@@ -86,7 +85,7 @@ public class GraphQLMutationResolver {
     }
 
     @MutationMapping
-    public Boolean deletePost(@Argument Integer postId, @Argument String authorId) {
+    public Boolean deletePost(@Argument Long postId, @Argument String authorId) {
         DeletePostRequestDTO dto = new DeletePostRequestDTO(authorId);
         postService.deletePost(postId, dto);
         return true;
@@ -99,7 +98,7 @@ public class GraphQLMutationResolver {
                 input.getAuthorId(),
                 input.getCommentContent());
 
-        CommentDocument comment = commentService.addCommentToPost(dto);
+        CommentResponse comment = commentService.addCommentToPost(dto);
         return mapToGraphQLComment(comment);
     }
 
@@ -118,25 +117,21 @@ public class GraphQLMutationResolver {
         LocalDateTime updatedAt = LocalDateTime.parse(postResponse.getLastUpdated(), FORMATTER);
 
         // Fetch the Post entity to get authorId and createdAt
-        try {
-            Post post = postRepository.findPostById(postResponse.getId())
-                    .orElseThrow(() -> new RuntimeException("Post not found"));
+        Post post = postRepository.findPostById(postResponse.getId())
+                .orElseThrow(() -> new RuntimeException("Post not found"));
 
-            return new GraphQLPost(
-                    postResponse.getId(),
-                    postResponse.getTitle(),
-                    postResponse.getBody(),
-                    post.getAuthorId().toString(),
-                    postResponse.getAuthor(),
-                    tags,
-                    post.getCreatedAt(),
-                    updatedAt);
-        } catch (SQLException e) {
-            throw new RuntimeException("Error fetching post details", e);
-        }
+        return new GraphQLPost(
+                postResponse.getId(),
+                postResponse.getTitle(),
+                postResponse.getBody(),
+                String.valueOf(post.getAuthor().getId()),
+                postResponse.getAuthor(),
+                tags,
+                post.getPostedAt(),
+                updatedAt);
     }
 
-    private GraphQLComment mapToGraphQLComment(CommentDocument comment) {
+    private GraphQLComment mapToGraphQLComment(CommentResponse comment) {
         LocalDateTime createdAt = LocalDateTime.parse(comment.getCreatedAt(), FORMATTER);
 
         return new GraphQLComment(

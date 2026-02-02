@@ -1,4 +1,4 @@
-package org.amalitech.bloggingplatformspring.entity;
+package org.amalitech.bloggingplatformspring.dtos.responses;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -9,9 +9,9 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class CommentDocument {
+public class CommentResponse {
     private String id;
-    private int postId;
+    private Long postId;
     private String author;
     private String content;
     private String createdAt;

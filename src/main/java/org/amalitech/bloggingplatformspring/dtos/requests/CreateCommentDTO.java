@@ -13,9 +13,10 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CreateCommentDTO {
+
     @NotNull(message = "Post ID is required")
     @Min(value = 1, message = "Post ID must be greater than 0")
-    private Integer postId;
+    private Long postId;
 
     @NotBlank(message = "Comment should not be blank")
     private String commentContent;

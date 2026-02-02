@@ -1,23 +1,18 @@
 package org.amalitech.bloggingplatformspring.repository;
 
 import org.amalitech.bloggingplatformspring.entity.Tag;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 
-public interface TagRepository {
+@Repository
+public interface TagRepository extends JpaRepository<Tag, Integer> {
 
-    Tag saveTag(String name) throws SQLException;
+    List<Tag> findTagsByNameIn(List<String> tagsList);
 
-    List<Tag> getAllTags() throws SQLException;
+    Optional<Tag> findByName(String name);
 
-    List<Tag> getAllTagsFromNamesList(List<String> tagsList) throws SQLException;
-
-    Boolean existsByName(String name) throws SQLException;
-
-    Optional<Integer> getIdByName(String name) throws SQLException;
-
-    int findOrCreate(String tagName, Connection conn) throws SQLException;
+    Boolean existsByName(String name);
 }
