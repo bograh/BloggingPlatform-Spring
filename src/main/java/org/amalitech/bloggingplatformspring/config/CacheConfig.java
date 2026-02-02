@@ -90,7 +90,7 @@ public class CacheConfig {
 
                 new MonitoredCaffeineCache(Constants.COMMENTS_CACHE_NAME,
                         Caffeine.newBuilder()
-                                .expireAfterWrite(15, TimeUnit.MINUTES)
+                                .expireAfterWrite(5, TimeUnit.MINUTES)
                                 .recordStats()
                                 .build(),
                         cacheStats.get(Constants.COMMENTS_CACHE_NAME))
