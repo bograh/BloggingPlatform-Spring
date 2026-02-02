@@ -16,11 +16,12 @@ class CacheConfigTest {
 
     @BeforeEach
     void setUp() {
-        // Create cache manager for testing
         CacheConfig cacheConfig = new CacheConfig();
         cacheManager = cacheConfig.cacheManager();
 
-        // Reset statistics before each test
+        // SimpleCacheManager requires initialization
+        ((org.springframework.cache.support.SimpleCacheManager) cacheManager).initializeCaches();
+
         CacheConfig.resetAllStatistics();
     }
 
@@ -28,7 +29,6 @@ class CacheConfigTest {
     void testCacheManagerCreation() {
         assertNotNull(cacheManager);
 
-        // Verify all expected caches are created
         assertNotNull(cacheManager.getCache("users"));
         assertNotNull(cacheManager.getCache("posts"));
         assertNotNull(cacheManager.getCache("postsList"));
@@ -41,16 +41,12 @@ class CacheConfigTest {
         Cache usersCache = cacheManager.getCache("users");
         assertNotNull(usersCache);
 
-        // Put a value in cache
         usersCache.put("user1", "John Doe");
 
-        // First get should be a miss (already tracked in put operation flow)
-        // Second get should be a hit
         Cache.ValueWrapper result = usersCache.get("user1");
         assertNotNull(result);
         assertEquals("John Doe", result.get());
 
-        // Verify hit was recorded
         CacheConfig.CacheStatistics stats = CacheConfig.getAllCacheStatistics().get("users");
         assertTrue(stats.getHits() > 0, "At least one hit should be recorded");
     }
@@ -60,11 +56,9 @@ class CacheConfigTest {
         Cache postsCache = cacheManager.getCache("posts");
         assertNotNull(postsCache);
 
-        // Try to get non-existent value
         Cache.ValueWrapper result = postsCache.get("nonexistent");
         assertNull(result);
 
-        // Verify miss was recorded
         CacheConfig.CacheStatistics stats = CacheConfig.getAllCacheStatistics().get("posts");
         assertTrue(stats.getMisses() > 0, "At least one miss should be recorded");
     }
@@ -74,20 +68,16 @@ class CacheConfigTest {
         Cache commentsCache = cacheManager.getCache("comments");
         assertNotNull(commentsCache);
 
-        // Add some data
         commentsCache.put("comment1", "First comment");
         commentsCache.put("comment2", "Second comment");
 
-        // Generate hits
-        commentsCache.get("comment1"); // hit
-        commentsCache.get("comment2"); // hit
-        commentsCache.get("comment1"); // hit
+        commentsCache.get("comment1");
+        commentsCache.get("comment2");
+        commentsCache.get("comment1");
 
-        // Generate misses
-        commentsCache.get("comment3"); // miss
-        commentsCache.get("comment4"); // miss
+        commentsCache.get("comment3");
+        commentsCache.get("comment4");
 
-        // Verify statistics
         CacheConfig.CacheStatistics stats = CacheConfig.getAllCacheStatistics().get("comments");
 
         assertEquals(3, stats.getHits());
@@ -95,7 +85,6 @@ class CacheConfigTest {
         assertEquals(5, stats.getTotalRequests());
         assertEquals(2, stats.getPuts());
 
-        // Hit rate should be 60% (3 hits out of 5 requests)
         assertEquals(60.0, stats.getHitRate(), 0.01);
         assertEquals(40.0, stats.getMissRate(), 0.01);
     }
@@ -146,20 +135,17 @@ class CacheConfigTest {
         Cache usersCache = cacheManager.getCache("users");
         assertNotNull(usersCache);
 
-        // Generate some statistics
         usersCache.put("user1", "John");
-        usersCache.get("user1"); // hit
-        usersCache.get("user2"); // miss
+        usersCache.get("user1");
+        usersCache.get("user2");
 
         CacheConfig.CacheStatistics stats = CacheConfig.getAllCacheStatistics().get("users");
         assertTrue(stats.getHits() > 0);
         assertTrue(stats.getMisses() > 0);
         assertTrue(stats.getPuts() > 0);
 
-        // Reset statistics
         CacheConfig.resetAllStatistics();
 
-        // Verify all statistics are reset
         assertEquals(0, stats.getHits());
         assertEquals(0, stats.getMisses());
         assertEquals(0, stats.getPuts());
@@ -171,7 +157,6 @@ class CacheConfigTest {
 
     @Test
     void testMultipleCacheStatistics() {
-        // Add data to multiple caches
         Cache usersCache = cacheManager.getCache("users");
         Cache postsCache = cacheManager.getCache("posts");
 
