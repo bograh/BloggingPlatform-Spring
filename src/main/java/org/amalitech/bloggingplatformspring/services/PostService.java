@@ -114,7 +114,6 @@ public class PostService {
         if (postId <= 0) {
             throw new BadRequestException("Post ID must be a positive number");
         }
-
         Post post = postRepository.findPostById(postId).orElseThrow(
                 () -> new ResourceNotFoundException("Post not found with id: " + postId)
         );

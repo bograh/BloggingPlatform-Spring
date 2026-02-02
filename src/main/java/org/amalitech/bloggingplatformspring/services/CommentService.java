@@ -12,6 +12,7 @@ import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.amalitech.bloggingplatformspring.utils.CommentUtils;
+import org.amalitech.bloggingplatformspring.utils.Constants;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
@@ -35,8 +36,10 @@ public class CommentService {
     }
 
     @Caching(evict = {
-            @CacheEvict(cacheNames = "comments", key = "'post:' + #newComment.postId"),
-            @CacheEvict(cacheNames = "users", key = "#newComment.authorId"),
+            @CacheEvict(cacheNames = Constants.COMMENTS_CACHE_NAME, key = "'post:' + #newComment.postId"),
+            @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, key = "#newComment.postId"),
+            @CacheEvict(cacheNames = Constants.POST_LIST_CACHE_NAME, allEntries = true),
+            @CacheEvict(cacheNames = Constants.USERS_CACHE_NAME, key = "#newComment.authorId")
     })
     public CommentResponse addCommentToPost(CreateCommentDTO newComment) {
         String authorId = newComment.getAuthorId();
@@ -62,7 +65,7 @@ public class CommentService {
         }
     }
 
-    @Cacheable(cacheNames = "comments", key = "'post:' + #postId")
+    @Cacheable(cacheNames = Constants.COMMENTS_CACHE_NAME, key = "'post:' + #postId")
     public List<CommentResponse> getAllCommentsByPostId(Long postId) {
         postRepository.findPostById(postId).orElseThrow(
                 () -> new ResourceNotFoundException("Post not found with ID: " + postId)
@@ -74,7 +77,7 @@ public class CommentService {
                 .toList();
     }
 
-    @Cacheable(cacheNames = "comments", key = "#commentId")
+    @Cacheable(cacheNames = Constants.COMMENTS_CACHE_NAME, key = "#commentId")
     public CommentResponse getCommentById(String commentId) {
 
         Comment comment = commentRepository.findById(commentId).orElseThrow(
@@ -85,8 +88,10 @@ public class CommentService {
     }
 
     @Caching(evict = {
-            @CacheEvict(cacheNames = "comments", allEntries = true),
-            @CacheEvict(cacheNames = "users", key = "#deleteCommentRequestDTO.authorId"),
+            @CacheEvict(cacheNames = Constants.COMMENTS_CACHE_NAME, key = "'post:' + #deleteCommentRequestDTO.postId"),
+            @CacheEvict(cacheNames = Constants.COMMENTS_CACHE_NAME, key = "#commentId"),
+            @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, key = "#deleteCommentRequestDTO.postId"),
+            @CacheEvict(cacheNames = Constants.POST_LIST_CACHE_NAME, allEntries = true)
     })
     public void deleteComment(String commentId, DeleteCommentRequestDTO deleteCommentRequestDTO) {
         try {
