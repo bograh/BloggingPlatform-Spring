@@ -19,7 +19,6 @@ import org.springframework.stereotype.Controller;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Controller
 @RequiredArgsConstructor
@@ -60,7 +59,7 @@ public class GraphQLQueryResolver {
         GraphQLPostPage graphQlPostPage = new GraphQLPostPage();
         graphQlPostPage.setContent(posts.content().stream()
                 .map(graphQLUtils::mapPostResponseToGraphQLPost)
-                .collect(Collectors.toList()));
+                .toList());
         graphQlPostPage.setPageNumber(posts.page());
         graphQlPostPage.setPageSize(posts.size());
         graphQlPostPage.setTotalElements(posts.totalElements());
@@ -81,7 +80,7 @@ public class GraphQLQueryResolver {
         List<CommentResponse> comments = commentService.getAllCommentsByPostId(postId);
         return comments.stream()
                 .map(graphQLUtils::mapCommentResponseToGraphQLComment)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @QueryMapping
@@ -89,7 +88,7 @@ public class GraphQLQueryResolver {
         List<Tag> tags = tagRepository.findAll();
         return tags.stream()
                 .map(tag -> new GraphQLTag(tag.getId(), tag.getName()))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @SchemaMapping(typeName = "Post", field = "author")

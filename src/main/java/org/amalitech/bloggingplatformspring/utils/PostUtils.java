@@ -108,7 +108,7 @@ public class PostUtils {
 
     private String formatDate(LocalDateTime localDateTime) {
         return localDateTime.format(
-                DateTimeFormatter.ofPattern(Constants.DateTimeFormatPattern)
+                DateTimeFormatter.ofPattern(Constants.DATE_TIME_FORMAT_PATTERN)
         );
     }
 

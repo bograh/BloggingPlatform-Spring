@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 @Component
 public class GraphQLUtils {
 
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(Constants.DateTimeFormatPattern);
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(Constants.DATE_TIME_FORMAT_PATTERN);
 
     public GraphQLUser mapUserToGraphQLUser(User user) {
         return new GraphQLUser(
