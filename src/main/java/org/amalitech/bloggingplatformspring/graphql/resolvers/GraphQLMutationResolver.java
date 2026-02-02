@@ -96,7 +96,7 @@ public class GraphQLMutationResolver {
 
     @MutationMapping
     public Boolean deleteComment(@Argument String commentId, @Argument DeleteCommentInput input) {
-        DeleteCommentRequestDTO dto = new DeleteCommentRequestDTO(input.getAuthorId());
+        DeleteCommentRequestDTO dto = new DeleteCommentRequestDTO(input.getAuthorId(), input.getPostId());
         commentService.deleteComment(commentId, dto);
         return true;
     }
