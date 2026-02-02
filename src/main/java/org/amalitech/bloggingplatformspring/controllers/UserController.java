@@ -10,19 +10,17 @@ import jakarta.validation.Valid;
 import org.amalitech.bloggingplatformspring.dtos.requests.RegisterUserDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.SignInUserDTO;
 import org.amalitech.bloggingplatformspring.dtos.responses.ApiResponseGeneric;
+import org.amalitech.bloggingplatformspring.dtos.responses.UserProfileResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.UserResponseDTO;
 import org.amalitech.bloggingplatformspring.exceptions.ErrorResponse;
 import org.amalitech.bloggingplatformspring.services.UserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/v1/users")
-@Tag(name = "User Management", description = "APIs for user registration and authentication")
+@Tag(name = "1. User Management", description = "APIs for user registration and authentication")
 public class UserController {
 
     private final UserService userService;
@@ -64,11 +62,32 @@ public class UserController {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))
             )
     })
-
     public ResponseEntity<ApiResponseGeneric<UserResponseDTO>> signInUser(
             @Valid @RequestBody SignInUserDTO signInUserDTO) {
         UserResponseDTO userResponse = userService.signInUser(signInUserDTO);
         ApiResponseGeneric<UserResponseDTO> response = ApiResponseGeneric.success("User sign in successful",
+                userResponse);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @GetMapping("/profile/{userID}")
+    @Operation(
+            summary = "Get User Profile",
+            description = "Returns the user profile."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200", description = "User profile returned successfully",
+                    content = @Content(schema = @Schema(implementation = UserResponseDTO.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404", description = "User not found",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    public ResponseEntity<ApiResponseGeneric<UserProfileResponse>> getUserProfile(@PathVariable String userID) {
+        UserProfileResponse userResponse = userService.getUserProfile(userID);
+        ApiResponseGeneric<UserProfileResponse> response = ApiResponseGeneric.success("User profile retrieved successfully",
                 userResponse);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }

@@ -10,12 +10,20 @@ import org.amalitech.bloggingplatformspring.enums.PostSortField;
 import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+@Component
 public class PostUtils {
+
+    private final CommentRepository commentRepository;
+
+    public PostUtils(CommentRepository commentRepository) {
+        this.commentRepository = commentRepository;
+    }
 
     public PostResponseDTO createResponseFromPostAndTags(Post post, String authorName, List<String> tags, Long totalComments) {
         return new PostResponseDTO(
@@ -47,7 +55,7 @@ public class PostUtils {
         );
     }
 
-    public PageResponse<PostResponseDTO> mapPostPageToPostResponsePage(Page<Post> postPage, CommentRepository commentRepository) {
+    public PageResponse<PostResponseDTO> mapPostPageToPostResponsePage(Page<Post> postPage) {
         List<PostResponseDTO> postsResponse = postPage.getContent().stream()
                 .map(post -> {
                     Long totalComments = commentRepository.countByPostId(post.getId());
@@ -60,7 +68,8 @@ public class PostUtils {
                 postPage.getPageable().getPageNumber(),
                 postPage.getSize(),
                 postPage.getSort().toString(),
-                postPage.getTotalElements()
+                postPage.getTotalElements(),
+                postPage.isLast()
         );
     }
 

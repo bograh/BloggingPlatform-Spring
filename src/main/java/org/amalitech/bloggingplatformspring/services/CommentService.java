@@ -5,6 +5,7 @@ import org.amalitech.bloggingplatformspring.dtos.requests.DeleteCommentRequestDT
 import org.amalitech.bloggingplatformspring.dtos.responses.CommentResponse;
 import org.amalitech.bloggingplatformspring.entity.Comment;
 import org.amalitech.bloggingplatformspring.entity.User;
+import org.amalitech.bloggingplatformspring.exceptions.ForbiddenException;
 import org.amalitech.bloggingplatformspring.exceptions.InvalidUserIdFormatException;
 import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
 import org.amalitech.bloggingplatformspring.repository.CommentRepository;
@@ -23,13 +24,11 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
     private final PostRepository postRepository;
-    private final CommentUtils commentUtils;
 
     public CommentService(CommentRepository commentRepository, UserRepository userRepository, PostRepository postRepository) {
         this.commentRepository = commentRepository;
         this.userRepository = userRepository;
         this.postRepository = postRepository;
-        this.commentUtils = new CommentUtils();
     }
 
     public CommentResponse addCommentToPost(CreateCommentDTO newComment) {
@@ -49,7 +48,7 @@ public class CommentService {
 
             commentRepository.save(comment);
 
-            return commentUtils.createCommentResponseFromComment(comment);
+            return CommentUtils.createCommentResponseFromComment(comment);
 
         } catch (IllegalArgumentException ex) {
             throw new InvalidUserIdFormatException("User ID format is invalid: " + ex.getMessage());
@@ -63,7 +62,7 @@ public class CommentService {
         List<Comment> comments = commentRepository.findByPostIdOrderByCommentedAtDesc(postId);
 
         return comments.stream()
-                .map(commentUtils::createCommentResponseFromComment)
+                .map(CommentUtils::createCommentResponseFromComment)
                 .toList();
     }
 
@@ -73,16 +72,24 @@ public class CommentService {
                 () -> new ResourceNotFoundException("Comment not found with id: " + commentId)
         );
 
-        return commentUtils.createCommentResponseFromComment(comment);
+        return CommentUtils.createCommentResponseFromComment(comment);
     }
 
     public void deleteComment(String commentId, DeleteCommentRequestDTO deleteCommentRequestDTO) {
         try {
             String authorId = deleteCommentRequestDTO.getAuthorId();
             UUID userId = UUID.fromString(authorId);
-            userRepository.findById(userId).orElseThrow(
+            User user = userRepository.findById(userId).orElseThrow(
                     () -> new ResourceNotFoundException("User not found")
             );
+
+            Comment comment = commentRepository.findById(commentId).orElseThrow(
+                    () -> new ResourceNotFoundException("Comment not found with id: " + commentId)
+            );
+
+            if (!comment.getAuthorId().equalsIgnoreCase(String.valueOf(user.getId()))) {
+                throw new ForbiddenException("You cannot delete this comment");
+            }
 
             commentRepository.deleteCommentById(commentId);
 

@@ -1,0 +1,179 @@
+================================================================================
+PERFORMANCE METRICS SUMMARY
+================================================================================
+Method: REPOSITORY::JpaSpecificationExecutor.findAll(..)
+  Total Calls: 2
+  Successful: 2
+  Failed: 0
+  Avg Execution Time: 184 ms
+  Min Execution Time: 15 ms
+  Max Execution Time: 354 ms
+  P50 (Median): 15 ms
+  P95: 354 ms
+  P99: 354 ms
+--------------------------------------------------------------------------------
+Method: REPOSITORY::CommentRepository.countByPostId(..)
+  Total Calls: 26
+  Successful: 26
+  Failed: 0
+  Avg Execution Time: 10 ms
+  Min Execution Time: 2 ms
+  Max Execution Time: 167 ms
+  P50 (Median): 4 ms
+  P95: 5 ms
+  P99: 167 ms
+--------------------------------------------------------------------------------
+Method: SERVICE::PerformanceMetricsService.getTopSlowMethods(..)
+  Total Calls: 2
+  Successful: 2
+  Failed: 0
+  Avg Execution Time: 5 ms
+  Min Execution Time: 2 ms
+  Max Execution Time: 8 ms
+  P50 (Median): 2 ms
+  P95: 8 ms
+  P99: 8 ms
+--------------------------------------------------------------------------------
+Method: SERVICE::PerformanceMetricsService.getMethodMetricsFormatted(..)
+  Total Calls: 6
+  Successful: 6
+  Failed: 0
+  Avg Execution Time: 0 ms
+  Min Execution Time: 0 ms
+  Max Execution Time: 0 ms
+  P50 (Median): 0 ms
+  P95: 0 ms
+  P99: 0 ms
+--------------------------------------------------------------------------------
+Method: SERVICE::PostService.getAllPosts(..)
+  Total Calls: 2
+  Successful: 2
+  Failed: 0
+  Avg Execution Time: 397 ms
+  Min Execution Time: 124 ms
+  Max Execution Time: 671 ms
+  P50 (Median): 124 ms
+  P95: 671 ms
+  P99: 671 ms
+--------------------------------------------------------------------------------
+Method: SERVICE::PerformanceMetricsService.getFailureStatistics()
+  Total Calls: 1
+  Successful: 1
+  Failed: 0
+  Avg Execution Time: 6 ms
+  Min Execution Time: 6 ms
+  Max Execution Time: 6 ms
+  P50 (Median): 6 ms
+  P95: 6 ms
+  P99: 6 ms
+--------------------------------------------------------------------------------
+Method: SERVICE::PerformanceMetricsService.getAllMetricsFormatted()
+  Total Calls: 34
+  Successful: 34
+  Failed: 0
+  Avg Execution Time: 1 ms
+  Min Execution Time: 0 ms
+  Max Execution Time: 10 ms
+  P50 (Median): 1 ms
+  P95: 3 ms
+  P99: 10 ms
+--------------------------------------------------------------------------------
+Method: SERVICE::PerformanceMetricsService.getSlowMethods(..)
+  Total Calls: 3
+  Successful: 3
+  Failed: 0
+  Avg Execution Time: 1 ms
+  Min Execution Time: 0 ms
+  Max Execution Time: 2 ms
+  P50 (Median): 1 ms
+  P95: 2 ms
+  P99: 2 ms
+--------------------------------------------------------------------------------
+Method: SERVICE::PerformanceMetricsService.getMetricsByLayer(..)
+  Total Calls: 5
+  Successful: 5
+  Failed: 0
+  Avg Execution Time: 0 ms
+  Min Execution Time: 0 ms
+  Max Execution Time: 1 ms
+  P50 (Median): 0 ms
+  P95: 1 ms
+  P99: 1 ms
+--------------------------------------------------------------------------------
+Method: SERVICE::PerformanceMetricsService.getMetricsSummary()
+  Total Calls: 33
+  Successful: 33
+  Failed: 0
+  Avg Execution Time: 0 ms
+  Min Execution Time: 0 ms
+  Max Execution Time: 2 ms
+  P50 (Median): 0 ms
+  P95: 1 ms
+  P99: 2 ms
+--------------------------------------------------------------------------------
+Method: REPOSITORY::CommentRepository.countByAuthor(..)
+  Total Calls: 2
+  Successful: 2
+  Failed: 0
+  Avg Execution Time: 2 ms
+  Min Execution Time: 2 ms
+  Max Execution Time: 2 ms
+  P50 (Median): 2 ms
+  P95: 2 ms
+  P99: 2 ms
+--------------------------------------------------------------------------------
+Method: REPOSITORY::CrudRepository.findById(..)
+  Total Calls: 2
+  Successful: 2
+  Failed: 0
+  Avg Execution Time: 4 ms
+  Min Execution Time: 2 ms
+  Max Execution Time: 6 ms
+  P50 (Median): 2 ms
+  P95: 6 ms
+  P99: 6 ms
+--------------------------------------------------------------------------------
+Method: REPOSITORY::CommentRepository.findCommentsByAuthorOrderByCommentedAtDesc(..)
+  Total Calls: 2
+  Successful: 2
+  Failed: 0
+  Avg Execution Time: 16 ms
+  Min Execution Time: 3 ms
+  Max Execution Time: 30 ms
+  P50 (Median): 3 ms
+  P95: 30 ms
+  P99: 30 ms
+--------------------------------------------------------------------------------
+Method: REPOSITORY::PostRepository.countByAuthor(..)
+  Total Calls: 2
+  Successful: 2
+  Failed: 0
+  Avg Execution Time: 3 ms
+  Min Execution Time: 3 ms
+  Max Execution Time: 3 ms
+  P50 (Median): 3 ms
+  P95: 3 ms
+  P99: 3 ms
+--------------------------------------------------------------------------------
+Method: SERVICE::UserService.getUserProfile(..)
+  Total Calls: 2
+  Successful: 2
+  Failed: 0
+  Avg Execution Time: 54 ms
+  Min Execution Time: 30 ms
+  Max Execution Time: 78 ms
+  P50 (Median): 30 ms
+  P95: 78 ms
+  P99: 78 ms
+--------------------------------------------------------------------------------
+Method: REPOSITORY::PostRepository.findPostsByAuthorOrderByUpdatedAtDesc(..)
+  Total Calls: 2
+  Successful: 2
+  Failed: 0
+  Avg Execution Time: 10 ms
+  Min Execution Time: 4 ms
+  Max Execution Time: 17 ms
+  P50 (Median): 4 ms
+  P95: 17 ms
+  P99: 17 ms
+--------------------------------------------------------------------------------

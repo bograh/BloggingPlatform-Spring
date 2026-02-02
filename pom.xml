@@ -80,16 +80,6 @@
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
-        <!--<dependency>
-            <groupId>org.mongodb</groupId>
-            <artifactId>mongodb-driver-sync</artifactId>
-            <version>4.11.5</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mongodb</groupId>
-            <artifactId>mongodb-driver-core</artifactId>
-            <version>4.11.5</version>
-        </dependency>-->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -141,13 +131,13 @@
 
                 <configuration>
                     <excludes>
-                        <exclude>**/dtos/**</exclude>
-                        <exclude>**/config/**</exclude>
-                        <exclude>**/aop/**</exclude>
-                        <exclude>**/entity/**</exclude>
-                        <exclude>**/enums/**</exclude>
-                        <exclude>**/exceptions/**</exclude>
-                        <exclude>**/graphql/**</exclude>
+                        <!--<exclude>**/dtos/**</exclude>-->
+                        <!--<exclude>**/config/**</exclude>-->
+                        <!--<exclude>**/aop/**</exclude>-->
+                        <!--<exclude>**/entity/**</exclude>-->
+                        <!--<exclude>**/enums/**</exclude>-->
+                        <!--<exclude>**/exceptions/**</exclude>-->
+                        <!--<exclude>**/graphql/**</exclude>-->
                         <exclude>**/utils/**</exclude>
                     </excludes>
                 </configuration>

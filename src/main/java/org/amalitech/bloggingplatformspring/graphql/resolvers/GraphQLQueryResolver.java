@@ -93,7 +93,7 @@ public class GraphQLQueryResolver {
 
     @SchemaMapping(typeName = "Post", field = "author")
     public GraphQLUser getPostAuthor(GraphQLPost post) {
-        return userRepository.findUserByUsername(post.getAuthor())
+        return userRepository.findUserByUsernameIgnoreCase(post.getAuthor())
                 .map(graphQLUtils::mapUserToGraphQLUser)
                 .orElse(null);
     }

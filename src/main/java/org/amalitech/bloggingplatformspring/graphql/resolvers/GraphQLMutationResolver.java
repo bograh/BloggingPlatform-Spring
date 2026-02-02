@@ -10,19 +10,15 @@ import org.amalitech.bloggingplatformspring.graphql.utils.GraphQLUtils;
 import org.amalitech.bloggingplatformspring.services.CommentService;
 import org.amalitech.bloggingplatformspring.services.PostService;
 import org.amalitech.bloggingplatformspring.services.UserService;
-import org.amalitech.bloggingplatformspring.utils.Constants;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.stereotype.Controller;
 
-import java.time.format.DateTimeFormatter;
 import java.util.UUID;
 
 @Controller
 @RequiredArgsConstructor
 public class GraphQLMutationResolver {
-
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(Constants.DateTimeFormatPattern);
 
     private final UserService userService;
     private final PostService postService;
@@ -91,8 +87,8 @@ public class GraphQLMutationResolver {
     public GraphQLComment createComment(@Argument CreateCommentInput input) {
         CreateCommentDTO dto = new CreateCommentDTO(
                 input.getPostId(),
-                input.getAuthorId(),
-                input.getCommentContent());
+                input.getCommentContent(),
+                input.getAuthorId());
 
         CommentResponse comment = commentService.addCommentToPost(dto);
         return graphQLUtils.mapCommentResponseToGraphQLComment(comment);
