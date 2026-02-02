@@ -18,6 +18,7 @@ type Post {
     body: String!
     author: User
     tags: [Tag!]
+    totalComments: Int!
     createdAt: DateTime!
     updatedAt: DateTime!
 }
@@ -44,6 +45,7 @@ type PostPage {
     pageSize: Int!
     totalElements: Int!
     totalPages: Int!
+    last: Boolean!
 }
 
 # Input Types for Mutations
@@ -80,6 +82,7 @@ input CreateCommentInput {
 
 input DeleteCommentInput {
     authorId: String!
+    postId: Int!
 }
 
 # Query Type

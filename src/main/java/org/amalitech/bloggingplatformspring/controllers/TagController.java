@@ -21,7 +21,7 @@ public class TagController {
     }
 
     @GetMapping("/popular")
-    public ResponseEntity<?> getPopularTags() {
+    public ResponseEntity<ApiResponseGeneric<List<TagResponse>>> getPopularTags() {
         List<TagResponse> popularTags = tagService.getPopularTags();
         ApiResponseGeneric<List<TagResponse>> response =
                 ApiResponseGeneric.success("Popular Tags retrieved", popularTags);

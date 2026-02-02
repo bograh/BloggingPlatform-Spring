@@ -17,7 +17,11 @@ import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException
 import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
+import org.amalitech.bloggingplatformspring.utils.Constants;
 import org.amalitech.bloggingplatformspring.utils.PostUtils;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -50,6 +54,10 @@ public class PostService {
         this.tagService = tagService;
     }
 
+    @Caching(evict = {
+            @CacheEvict(cacheNames = Constants.POST_LIST_CACHE_NAME, allEntries = true),
+            @CacheEvict(cacheNames = Constants.USERS_CACHE_NAME, key = "#createPostDTO.authorId"),
+    })
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public PostResponseDTO createPost(CreatePostDTO createPostDTO) {
         UUID userId;
@@ -87,6 +95,7 @@ public class PostService {
 
     }
 
+    @Cacheable(cacheNames = Constants.POST_LIST_CACHE_NAME, key = "'page:' + #page + 'size:' + #size + 'sort:' + #sortBy + 'order:' + #order")
     public PageResponse<PostResponseDTO> getAllPosts(int page, int size, String sortBy, String order, PostFilterRequest postFilterRequest) {
         size = Math.min(size, 30);
         String entitySortField = postUtils.mapSortField(sortBy);
@@ -100,11 +109,11 @@ public class PostService {
         return postUtils.mapPostPageToPostResponsePage(postPage);
     }
 
+    @Cacheable(cacheNames = Constants.POSTS_CACHE_NAME, key = "#postId")
     public PostResponseDTO getPostById(Long postId) {
         if (postId <= 0) {
             throw new BadRequestException("Post ID must be a positive number");
         }
-
         Post post = postRepository.findPostById(postId).orElseThrow(
                 () -> new ResourceNotFoundException("Post not found with id: " + postId)
         );
@@ -113,6 +122,11 @@ public class PostService {
         return postUtils.createPostResponseFromPost(post, totalComments);
     }
 
+    @Caching(evict = {
+            @CacheEvict(cacheNames = Constants.POST_LIST_CACHE_NAME, allEntries = true),
+            @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, key = "#postId"),
+            @CacheEvict(cacheNames = Constants.USERS_CACHE_NAME, key = "#updatePostDTO.authorId")
+    })
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public PostResponseDTO updatePost(Long postId, UpdatePostDTO updatePostDTO) {
         try {
@@ -155,6 +169,11 @@ public class PostService {
         }
     }
 
+    @Caching(evict = {
+            @CacheEvict(cacheNames = Constants.POST_LIST_CACHE_NAME, allEntries = true),
+            @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, key = "#postId"),
+            @CacheEvict(cacheNames = Constants.USERS_CACHE_NAME, key = "#deletePostRequestDTO.authorId")
+    })
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public void deletePost(Long postId, DeletePostRequestDTO deletePostRequestDTO) {
         try {

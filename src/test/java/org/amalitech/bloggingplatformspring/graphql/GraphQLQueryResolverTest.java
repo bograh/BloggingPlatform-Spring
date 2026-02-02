@@ -160,7 +160,7 @@ class GraphQLQueryResolverTest {
         );
 
         assertThat(result).isNotNull();
-        assertThat(result.getPageNumber()).isEqualTo(0);
+        assertThat(result.getPageNumber()).isZero();
         assertThat(result.getPageSize()).isEqualTo(10);
         assertThat(result.getTotalElements()).isEqualTo(1);
         assertThat(result.getTotalPages()).isEqualTo(1);
@@ -233,8 +233,8 @@ class GraphQLQueryResolverTest {
 
         assertThat(result).isNotNull();
         assertThat(result.getContent()).isEmpty();
-        assertThat(result.getTotalElements()).isEqualTo(0);
-        assertThat(result.getTotalPages()).isEqualTo(0);
+        assertThat(result.getTotalElements()).isZero();
+        assertThat(result.getTotalPages()).isZero();
     }
 
     @Test

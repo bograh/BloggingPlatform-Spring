@@ -18,8 +18,10 @@ import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.amalitech.bloggingplatformspring.utils.CommentUtils;
+import org.amalitech.bloggingplatformspring.utils.Constants;
 import org.amalitech.bloggingplatformspring.utils.PostUtils;
 import org.amalitech.bloggingplatformspring.utils.UserUtils;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Limit;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
@@ -55,11 +57,11 @@ public class UserService {
             throw new BadRequestException("Password must not contain username");
         }
 
-        if (userRepository.existsByUsernameIgnoreCase(username)) {
+        if (Boolean.TRUE.equals(userRepository.existsByUsernameIgnoreCase(username))) {
             throw new BadRequestException("Username is taken");
         }
 
-        if (userRepository.existsByEmailIgnoreCase(email)) {
+        if (Boolean.TRUE.equals(userRepository.existsByEmailIgnoreCase(email))) {
             throw new BadRequestException("Email is taken");
         }
 
@@ -78,7 +80,7 @@ public class UserService {
         String email = signInUserDTO.getEmail();
         String password = signInUserDTO.getPassword();
 
-        if (!userRepository.existsByEmailIgnoreCase(email)) {
+        if (Boolean.FALSE.equals(userRepository.existsByEmailIgnoreCase(email))) {
             throw new UnauthorizedException("Invalid email or password");
         }
 
@@ -95,6 +97,7 @@ public class UserService {
 
     }
 
+    @Cacheable(cacheNames = Constants.USERS_CACHE_NAME, key = "'profile:' + #userID")
     public UserProfileResponse getUserProfile(String userID) {
         if (userID.isBlank())
             throw new BadRequestException("User ID cannot be empty");
@@ -104,14 +107,14 @@ public class UserService {
             User user = userRepository.findById(id).orElseThrow(
                     () -> new ResourceNotFoundException("User not found with id: " + id)
             );
-            List<Post> recentPosts = postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(3));
+            List<Post> recentPosts = postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(4));
             List<PostResponseDTO> recentPostsResponse = recentPosts.stream()
                     .map(post -> {
                         Long totalComments = commentRepository.countByPostId(post.getId());
                         return postUtils.createPostResponseFromPost(post, totalComments);
                     }).toList();
 
-            List<Comment> recentComments = commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(3));
+            List<Comment> recentComments = commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(5));
             List<CommentResponse> recentCommentsResponse = recentComments.stream()
                     .map(CommentUtils::createCommentResponseFromComment).toList();
 

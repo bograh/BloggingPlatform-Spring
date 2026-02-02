@@ -79,8 +79,7 @@ class BloggingPlatformSpringApplicationTests {
     @Test
     void applicationContextContainsBeans() {
         String[] beanNames = applicationContext.getBeanDefinitionNames();
-        assertThat(beanNames).isNotEmpty();
-        assertThat(beanNames.length).isGreaterThan(10);
+        assertThat(beanNames).isNotEmpty().hasSizeGreaterThan(10);
     }
 
     @Test

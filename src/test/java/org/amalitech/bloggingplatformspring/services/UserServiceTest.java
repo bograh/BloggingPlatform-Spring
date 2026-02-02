@@ -276,7 +276,7 @@ class UserServiceTest {
         );
 
         when(userRepository.findById(validUserId)).thenReturn(Optional.of(user));
-        when(postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(3)))
+        when(postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(4)))
                 .thenReturn(recentPosts);
         when(commentRepository.countByPostId(testPost1.getId())).thenReturn(5L);
         when(commentRepository.countByPostId(testPost2.getId())).thenReturn(3L);
@@ -285,7 +285,7 @@ class UserServiceTest {
         when(postUtils.createPostResponseFromPost(testPost2, 3L)).thenReturn(postResponse2);
         when(postUtils.createPostResponseFromPost(testPost3, 7L)).thenReturn(postResponse3);
 
-        when(commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(3)))
+        when(commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(5)))
                 .thenReturn(recentComments);
 
         when(postRepository.countByAuthor(user)).thenReturn(10L);
@@ -308,8 +308,8 @@ class UserServiceTest {
             // Assert
             assertThat(result).isEqualTo(expectedResponse);
             verify(userRepository).findById(validUserId);
-            verify(postRepository).findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(3));
-            verify(commentRepository).findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(3));
+            verify(postRepository).findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(4));
+            verify(commentRepository).findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(5));
             verify(postRepository).countByAuthor(user);
             verify(commentRepository).countByAuthor(user.getUsername());
         }
@@ -391,9 +391,9 @@ class UserServiceTest {
         );
 
         when(userRepository.findById(validUserId)).thenReturn(Optional.of(user));
-        when(postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(3)))
+        when(postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(4)))
                 .thenReturn(emptyPosts);
-        when(commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(3)))
+        when(commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(5)))
                 .thenReturn(recentComments);
         when(postRepository.countByAuthor(user)).thenReturn(0L);
         when(commentRepository.countByAuthor(user.getUsername())).thenReturn(1L);
@@ -409,7 +409,7 @@ class UserServiceTest {
 
             // Assert
             assertThat(result).isEqualTo(expectedResponse);
-            verify(postRepository).findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(3));
+            verify(postRepository).findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(4));
             verify(postRepository).countByAuthor(user);
         }
     }
@@ -432,11 +432,11 @@ class UserServiceTest {
         );
 
         when(userRepository.findById(validUserId)).thenReturn(Optional.of(user));
-        when(postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(3)))
+        when(postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(4)))
                 .thenReturn(recentPosts);
         when(commentRepository.countByPostId(testPost1.getId())).thenReturn(2L);
         when(postUtils.createPostResponseFromPost(testPost1, 2L)).thenReturn(postResponse1);
-        when(commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(3)))
+        when(commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(5)))
                 .thenReturn(emptyComments);
         when(postRepository.countByAuthor(user)).thenReturn(1L);
         when(commentRepository.countByAuthor(user.getUsername())).thenReturn(0L);
@@ -448,7 +448,7 @@ class UserServiceTest {
 
         // Assert
         assertThat(result).isEqualTo(expectedResponse);
-        verify(commentRepository).findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(3));
+        verify(commentRepository).findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(5));
         verify(commentRepository).countByAuthor(user.getUsername());
     }
 
@@ -468,9 +468,9 @@ class UserServiceTest {
         );
 
         when(userRepository.findById(validUserId)).thenReturn(Optional.of(user));
-        when(postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(3)))
+        when(postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(4)))
                 .thenReturn(emptyPosts);
-        when(commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(3)))
+        when(commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(5)))
                 .thenReturn(emptyComments);
         when(postRepository.countByAuthor(user)).thenReturn(0L);
         when(commentRepository.countByAuthor(user.getUsername())).thenReturn(0L);
@@ -487,17 +487,17 @@ class UserServiceTest {
     }
 
     @Test
-    void getUserProfile_ShouldLimitRecentPostsToThree() {
+    void getUserProfile_ShouldLimitRecentPostsToFour() {
         // Arrange
         String userIdString = validUserId.toString();
         List<Post> recentPosts = List.of(testPost1, testPost2, testPost3);
 
         when(userRepository.findById(validUserId)).thenReturn(Optional.of(user));
-        when(postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(3)))
+        when(postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(4)))
                 .thenReturn(recentPosts);
         when(commentRepository.countByPostId(any())).thenReturn(0L);
         when(postUtils.createPostResponseFromPost(any(), anyLong())).thenReturn(new PostResponseDTO());
-        when(commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(3)))
+        when(commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(5)))
                 .thenReturn(new ArrayList<>());
         when(postRepository.countByAuthor(user)).thenReturn(10L);
         when(commentRepository.countByAuthor(user.getUsername())).thenReturn(0L);
@@ -515,7 +515,7 @@ class UserServiceTest {
         userService.getUserProfile(userIdString);
 
         // Assert
-        verify(postRepository).findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(3));
+        verify(postRepository).findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(4));
         verify(postUtils, times(3)).createPostResponseFromPost(any(), anyLong());
     }
 
@@ -528,9 +528,9 @@ class UserServiceTest {
         CommentResponse commentResponse = new CommentResponse();
 
         when(userRepository.findById(validUserId)).thenReturn(Optional.of(user));
-        when(postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(3)))
+        when(postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(4)))
                 .thenReturn(new ArrayList<>());
-        when(commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(3)))
+        when(commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(5)))
                 .thenReturn(recentComments);
         when(postRepository.countByAuthor(user)).thenReturn(0L);
         when(commentRepository.countByAuthor(user.getUsername())).thenReturn(15L);
@@ -552,7 +552,7 @@ class UserServiceTest {
             userService.getUserProfile(userIdString);
 
             // Assert
-            verify(commentRepository).findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(3));
+            verify(commentRepository).findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(5));
             commentUtilsMock.verify(() -> CommentUtils.createCommentResponseFromComment(any()), times(3));
         }
     }
@@ -564,12 +564,12 @@ class UserServiceTest {
         List<Post> recentPosts = List.of(testPost1, testPost2);
 
         when(userRepository.findById(validUserId)).thenReturn(Optional.of(user));
-        when(postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(3)))
+        when(postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(4)))
                 .thenReturn(recentPosts);
         when(commentRepository.countByPostId(testPost1.getId())).thenReturn(5L);
         when(commentRepository.countByPostId(testPost2.getId())).thenReturn(3L);
         when(postUtils.createPostResponseFromPost(any(), anyLong())).thenReturn(new PostResponseDTO());
-        when(commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(3)))
+        when(commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(5)))
                 .thenReturn(new ArrayList<>());
         when(postRepository.countByAuthor(user)).thenReturn(2L);
         when(commentRepository.countByAuthor(user.getUsername())).thenReturn(0L);
@@ -600,9 +600,9 @@ class UserServiceTest {
         String userIdString = uuid.toString();
 
         when(userRepository.findById(uuid)).thenReturn(Optional.of(user));
-        when(postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(3)))
+        when(postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(4)))
                 .thenReturn(new ArrayList<>());
-        when(commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(3)))
+        when(commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(5)))
                 .thenReturn(new ArrayList<>());
         when(postRepository.countByAuthor(user)).thenReturn(0L);
         when(commentRepository.countByAuthor(user.getUsername())).thenReturn(0L);
@@ -642,11 +642,11 @@ class UserServiceTest {
         );
 
         when(userRepository.findById(validUserId)).thenReturn(Optional.of(user));
-        when(postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(3)))
+        when(postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(4)))
                 .thenReturn(recentPosts);
         when(commentRepository.countByPostId(testPost1.getId())).thenReturn(5L);
         when(postUtils.createPostResponseFromPost(testPost1, 5L)).thenReturn(postResponse);
-        when(commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(3)))
+        when(commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(5)))
                 .thenReturn(recentComments);
         when(postRepository.countByAuthor(user)).thenReturn(10L);
         when(commentRepository.countByAuthor(user.getUsername())).thenReturn(25L);

@@ -14,7 +14,7 @@ public final class CommentUtils {
                 comment.getAuthor(),
                 comment.getContent(),
                 comment.getCommentedAt()
-                        .format(DateTimeFormatter.ofPattern(Constants.DateTimeFormatPattern))
+                        .format(DateTimeFormatter.ofPattern(Constants.DATE_TIME_FORMAT_PATTERN))
         );
     }
 }

@@ -3,6 +3,9 @@ package org.amalitech.bloggingplatformspring.services;
 import org.amalitech.bloggingplatformspring.dtos.responses.TagResponse;
 import org.amalitech.bloggingplatformspring.entity.Tag;
 import org.amalitech.bloggingplatformspring.repository.TagRepository;
+import org.amalitech.bloggingplatformspring.utils.Constants;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -23,6 +26,7 @@ public class TagService {
         this.tagRepository = tagRepository;
     }
 
+    @Cacheable(cacheNames = Constants.TAGS_CACHE_NAME, key = "'popular'")
     public List<TagResponse> getPopularTags() {
         List<Tag> tags = tagRepository.findMostPopularTags(PageRequest.of(0, 5));
         return tags.stream().map(
@@ -30,6 +34,7 @@ public class TagService {
                 .toList();
     }
 
+    @CacheEvict(cacheNames = Constants.TAGS_CACHE_NAME, allEntries = true)
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public Set<Tag> getOrCreateTags(List<String> tagNames) {
         if (tagNames == null || tagNames.isEmpty()) {
@@ -41,7 +46,7 @@ public class TagService {
                 .map(String::toLowerCase)
                 .map(String::trim)
                 .distinct()
-                .collect(Collectors.toList());
+                .toList();
 
         if (normalizedNames.isEmpty()) {
             return new HashSet<>();
@@ -56,12 +61,12 @@ public class TagService {
 
         List<String> missingNames = normalizedNames.stream()
                 .filter(name -> !existingNames.contains(name))
-                .collect(Collectors.toList());
+                .toList();
 
         if (!missingNames.isEmpty()) {
             List<Tag> newTags = missingNames.stream()
                     .map(Tag::new)
-                    .collect(Collectors.toList());
+                    .toList();
 
             try {
                 List<Tag> savedTags = tagRepository.saveAll(newTags);
