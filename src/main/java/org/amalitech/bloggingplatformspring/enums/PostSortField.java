@@ -1,19 +1,19 @@
 package org.amalitech.bloggingplatformspring.enums;
 
+import lombok.Getter;
+
+@Getter
 public enum PostSortField {
-    ID("p.id"),
-    TITLE("p.title"),
-    BODY("p.body"),
-    UPDATED_AT("p.updated_at"),
-    AUTHOR("u.username");
+    ID("id"),
+    TITLE("title"),
+    BODY("body"),
+    UPDATED_AT("updatedAt"),
+    AUTHOR("author.username");
 
-    private final String sqlName;
+    private final String propertyName;
 
-    PostSortField(String sqlName) {
-        this.sqlName = sqlName;
+    PostSortField(String propertyName) {
+        this.propertyName = propertyName;
     }
 
-    public String sqlName() {
-        return sqlName;
-    }
 }

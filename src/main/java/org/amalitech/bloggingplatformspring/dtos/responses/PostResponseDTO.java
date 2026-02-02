@@ -16,7 +16,9 @@ public class PostResponseDTO {
     private String title;
     private String body;
     private String author;
+    private String authorId;
     private List<String> tags;
+    private String postedAt;
     private String lastUpdated;
     private long totalComments;
 }
