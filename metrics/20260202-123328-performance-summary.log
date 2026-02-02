@@ -1,0 +1,91 @@
+================================================================================
+PERFORMANCE METRICS SUMMARY
+================================================================================
+Method: PostService.getAllPosts(..)
+  Total Calls: 3
+  Successful: 3
+  Failed: 0
+  Avg Execution Time: 417 ms
+  Min Execution Time: 44 ms
+  Max Execution Time: 604 ms
+--------------------------------------------------------------------------------
+Method: PerformanceMetricsService.getAllMetrics()
+  Total Calls: 15
+  Successful: 15
+  Failed: 0
+  Avg Execution Time: 0 ms
+  Min Execution Time: 0 ms
+  Max Execution Time: 1 ms
+--------------------------------------------------------------------------------
+Method: PerformanceMetricsService.getMetricsSummary()
+  Total Calls: 15
+  Successful: 15
+  Failed: 0
+  Avg Execution Time: 0 ms
+  Min Execution Time: 0 ms
+  Max Execution Time: 7 ms
+--------------------------------------------------------------------------------
+Method: UserService.getUserProfile(..)
+  Total Calls: 1
+  Successful: 1
+  Failed: 0
+  Avg Execution Time: 43 ms
+  Min Execution Time: 43 ms
+  Max Execution Time: 43 ms
+--------------------------------------------------------------------------------
+Method: PostService.getPostById(..)
+  Total Calls: 17
+  Successful: 17
+  Failed: 0
+  Avg Execution Time: 14 ms
+  Min Execution Time: 11 ms
+  Max Execution Time: 22 ms
+--------------------------------------------------------------------------------
+Method: TagService.getPopularTags()
+  Total Calls: 1
+  Successful: 1
+  Failed: 0
+  Avg Execution Time: 563 ms
+  Min Execution Time: 563 ms
+  Max Execution Time: 563 ms
+--------------------------------------------------------------------------------
+Method: CommentService.deleteComment(..)
+  Total Calls: 1
+  Successful: 1
+  Failed: 0
+  Avg Execution Time: 53 ms
+  Min Execution Time: 53 ms
+  Max Execution Time: 53 ms
+--------------------------------------------------------------------------------
+Method: PerformanceMetricsService.getAllCacheMetrics()
+  Total Calls: 15
+  Successful: 15
+  Failed: 0
+  Avg Execution Time: 0 ms
+  Min Execution Time: 0 ms
+  Max Execution Time: 2 ms
+--------------------------------------------------------------------------------
+Method: PerformanceMetricsService.getCacheMetrics(..)
+  Total Calls: 1
+  Successful: 1
+  Failed: 0
+  Avg Execution Time: 0 ms
+  Min Execution Time: 0 ms
+  Max Execution Time: 0 ms
+--------------------------------------------------------------------------------
+Method: PerformanceMetricsService.getCacheSummary()
+  Total Calls: 14
+  Successful: 14
+  Failed: 0
+  Avg Execution Time: 0 ms
+  Min Execution Time: 0 ms
+  Max Execution Time: 5 ms
+--------------------------------------------------------------------------------
+Method: CommentService.getAllCommentsByPostId(..)
+  Total Calls: 23
+  Successful: 23
+  Failed: 0
+  Avg Execution Time: 15 ms
+  Min Execution Time: 6 ms
+  Max Execution Time: 76 ms
+--------------------------------------------------------------------------------
