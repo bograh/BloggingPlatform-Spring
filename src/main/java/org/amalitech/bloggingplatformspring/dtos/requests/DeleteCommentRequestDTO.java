@@ -11,4 +11,5 @@ import lombok.Setter;
 @AllArgsConstructor
 public class DeleteCommentRequestDTO {
     private String authorId;
+    private Long postId;
 }

@@ -82,6 +82,7 @@ input CreateCommentInput {
 
 input DeleteCommentInput {
     authorId: String!
+    postId: Int!
 }
 
 # Query Type
