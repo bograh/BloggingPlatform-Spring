@@ -3,6 +3,7 @@ package org.amalitech.bloggingplatformspring.services;
 import org.amalitech.bloggingplatformspring.dtos.responses.TagResponse;
 import org.amalitech.bloggingplatformspring.entity.Tag;
 import org.amalitech.bloggingplatformspring.repository.TagRepository;
+import org.amalitech.bloggingplatformspring.utils.Constants;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -25,7 +26,7 @@ public class TagService {
         this.tagRepository = tagRepository;
     }
 
-    @Cacheable(cacheNames = "tags", key = "'popular'")
+    @Cacheable(cacheNames = Constants.TAGS_CACHE_NAME, key = "'popular'")
     public List<TagResponse> getPopularTags() {
         List<Tag> tags = tagRepository.findMostPopularTags(PageRequest.of(0, 5));
         return tags.stream().map(
@@ -33,7 +34,7 @@ public class TagService {
                 .toList();
     }
 
-    @CacheEvict(cacheNames = "tags", allEntries = true)
+    @CacheEvict(cacheNames = Constants.TAGS_CACHE_NAME, allEntries = true)
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public Set<Tag> getOrCreateTags(List<String> tagNames) {
         if (tagNames == null || tagNames.isEmpty()) {

@@ -18,6 +18,7 @@ import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.amalitech.bloggingplatformspring.utils.CommentUtils;
+import org.amalitech.bloggingplatformspring.utils.Constants;
 import org.amalitech.bloggingplatformspring.utils.PostUtils;
 import org.amalitech.bloggingplatformspring.utils.UserUtils;
 import org.springframework.cache.annotation.Cacheable;
@@ -96,7 +97,7 @@ public class UserService {
 
     }
 
-    @Cacheable(cacheNames = "users", key = "'profile:' + #userID")
+    @Cacheable(cacheNames = Constants.USERS_CACHE_NAME, key = "'profile:' + #userID")
     public UserProfileResponse getUserProfile(String userID) {
         if (userID.isBlank())
             throw new BadRequestException("User ID cannot be empty");

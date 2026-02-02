@@ -35,8 +35,8 @@ public class CommentService {
     }
 
     @Caching(evict = {
-            @CacheEvict(cacheNames = "comments", allEntries = true),
-            @CacheEvict(cacheNames = "users", key = "#newComment.getAuthorId"),
+            @CacheEvict(cacheNames = "comments", key = "'post:' + #newComment.postId"),
+            @CacheEvict(cacheNames = "users", key = "#newComment.authorId"),
     })
     public CommentResponse addCommentToPost(CreateCommentDTO newComment) {
         String authorId = newComment.getAuthorId();
@@ -86,7 +86,7 @@ public class CommentService {
 
     @Caching(evict = {
             @CacheEvict(cacheNames = "comments", allEntries = true),
-            @CacheEvict(cacheNames = "users", key = "#deleteCommentRequestDTO.getAuthorId"),
+            @CacheEvict(cacheNames = "users", key = "#deleteCommentRequestDTO.authorId"),
     })
     public void deleteComment(String commentId, DeleteCommentRequestDTO deleteCommentRequestDTO) {
         try {
