@@ -1,16 +1,20 @@
 package org.amalitech.bloggingplatformspring.config;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.Getter;
+import org.amalitech.bloggingplatformspring.utils.Constants;
 import org.jspecify.annotations.NonNull;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
-import org.springframework.cache.concurrent.ConcurrentMapCache;
+import org.springframework.cache.caffeine.CaffeineCache;
 import org.springframework.cache.support.SimpleCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -43,29 +47,67 @@ public class CacheConfig {
     public CacheManager cacheManager() {
         SimpleCacheManager cacheManager = new SimpleCacheManager();
 
-        String[] cacheNames = {"users", "posts", "allPosts", "comments", "tags"};
+        String[] cacheNames = {
+                Constants.USERS_CACHE_NAME,
+                Constants.POSTS_CACHE_NAME,
+                Constants.POST_LIST_CACHE_NAME,
+                Constants.TAGS_CACHE_NAME,
+                Constants.COMMENTS_CACHE_NAME
+        };
 
         Arrays.stream(cacheNames).forEach(name ->
                 cacheStats.putIfAbsent(name, new CacheStatistics(name))
         );
 
-        cacheManager.setCaches(Arrays.stream(cacheNames)
-                .map(name -> new MonitoredCache(name, cacheStats.get(name)))
-                .toList());
+        cacheManager.setCaches(List.of(
+                new MonitoredCaffeineCache(Constants.USERS_CACHE_NAME,
+                        Caffeine.newBuilder()
+                                .expireAfterWrite(10, TimeUnit.MINUTES)
+                                .recordStats()
+                                .build(),
+                        cacheStats.get(Constants.USERS_CACHE_NAME)),
 
-        cacheManager.afterPropertiesSet();
+                new MonitoredCaffeineCache(Constants.POSTS_CACHE_NAME,
+                        Caffeine.newBuilder()
+                                .expireAfterWrite(15, TimeUnit.MINUTES)
+                                .recordStats()
+                                .build(),
+                        cacheStats.get(Constants.POSTS_CACHE_NAME)),
+
+                new MonitoredCaffeineCache(Constants.POST_LIST_CACHE_NAME,
+                        Caffeine.newBuilder()
+                                .expireAfterWrite(5, TimeUnit.MINUTES)
+                                .recordStats()
+                                .build(),
+                        cacheStats.get(Constants.POST_LIST_CACHE_NAME)),
+
+                new MonitoredCaffeineCache(Constants.TAGS_CACHE_NAME,
+                        Caffeine.newBuilder()
+                                .expireAfterWrite(15, TimeUnit.MINUTES)
+                                .recordStats()
+                                .build(),
+                        cacheStats.get(Constants.TAGS_CACHE_NAME)),
+
+                new MonitoredCaffeineCache(Constants.COMMENTS_CACHE_NAME,
+                        Caffeine.newBuilder()
+                                .expireAfterWrite(15, TimeUnit.MINUTES)
+                                .recordStats()
+                                .build(),
+                        cacheStats.get(Constants.COMMENTS_CACHE_NAME))
+        ));
 
         return cacheManager;
     }
 
     /**
-     * Custom cache implementation with hit/miss tracking
+     * Custom Caffeine cache implementation with hit/miss tracking
      */
-    static class MonitoredCache extends ConcurrentMapCache {
+    static class MonitoredCaffeineCache extends CaffeineCache {
         private final CacheStatistics statistics;
 
-        public MonitoredCache(String name, CacheStatistics statistics) {
-            super(name);
+        public MonitoredCaffeineCache(String name, com.github.benmanes.caffeine.cache.Cache<Object, Object> cache,
+                                      CacheStatistics statistics) {
+            super(name, cache);
             this.statistics = statistics;
         }
 
