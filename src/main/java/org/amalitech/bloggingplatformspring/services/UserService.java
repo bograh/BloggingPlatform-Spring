@@ -1,6 +1,7 @@
 package org.amalitech.bloggingplatformspring.services;
 
-import at.favre.lib.crypto.bcrypt.BCrypt;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.amalitech.bloggingplatformspring.dtos.requests.RegisterUserDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.SignInUserDTO;
 import org.amalitech.bloggingplatformspring.dtos.responses.CommentResponse;
@@ -23,6 +24,11 @@ import org.amalitech.bloggingplatformspring.utils.PostUtils;
 import org.amalitech.bloggingplatformspring.utils.UserUtils;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Limit;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +36,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
+@AllArgsConstructor
 @Service
 public class UserService {
 
@@ -38,14 +46,8 @@ public class UserService {
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final PostUtils postUtils;
-
-    public UserService(UserRepository userRepository, UserUtils userUtils, PostRepository postRepository, CommentRepository commentRepository, PostUtils postUtils) {
-        this.userRepository = userRepository;
-        this.userUtils = userUtils;
-        this.postRepository = postRepository;
-        this.commentRepository = commentRepository;
-        this.postUtils = postUtils;
-    }
+    private final PasswordEncoder passwordEncoder;
+    private final AuthenticationManager authenticationManager;
 
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public UserResponseDTO registerUser(RegisterUserDTO registerUserDTO) {
@@ -65,7 +67,7 @@ public class UserService {
             throw new BadRequestException("Email is taken");
         }
 
-        String hashedPassword = BCrypt.withDefaults().hashToString(12, password.toCharArray());
+        String hashedPassword = passwordEncoder.encode(password);
 
         User user = new User();
         user.setUsername(username);
@@ -88,10 +90,13 @@ public class UserService {
                 () -> new UnauthorizedException("Invalid email or password")
         );
 
-        BCrypt.Result result = BCrypt.verifyer().verify(password.toCharArray(), user.getPassword());
-        if (!result.verified) {
-            throw new UnauthorizedException("Invalid email or password");
-        }
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(email, password)
+        );
+
+        log.info("User {} signed in successfully", authentication.getName());
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
 
         return userUtils.mapUserToUserResponse(user);
 
