@@ -30,8 +30,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Isolation;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
@@ -49,7 +47,6 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
 
-    @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public UserResponseDTO registerUser(RegisterUserDTO registerUserDTO) {
         String username = registerUserDTO.getUsername();
         String email = registerUserDTO.getEmail();
@@ -75,6 +72,12 @@ public class UserService {
         user.setPassword(hashedPassword);
         userRepository.save(user);
 
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(email, password)
+        );
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
         return userUtils.mapUserToUserResponse(user);
     }
 
@@ -93,8 +96,6 @@ public class UserService {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(email, password)
         );
-
-        log.info("User {} signed in successfully", authentication.getName());
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
