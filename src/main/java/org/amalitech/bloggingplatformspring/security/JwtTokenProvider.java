@@ -2,6 +2,7 @@ package org.amalitech.bloggingplatformspring.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -47,12 +48,20 @@ public class JwtTokenProvider {
         return getEmailFromToken(token, refreshTokenSecret);
     }
 
-    public boolean validateAccessToken(String authToken) {
+    public boolean validAccessToken(String authToken) {
         return validateToken(authToken, accessTokenSecret);
     }
 
-    public boolean validateRefreshToken(String authToken) {
+    public boolean validRefreshToken(String authToken) {
         return validateToken(authToken, refreshTokenSecret);
+    }
+
+    public String getTokenFromRequest(HttpServletRequest request) {
+        String bearerToken = request.getHeader("Authorization");
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+        return null;
     }
 
     private String createToken(Authentication authentication, String secret, long expirationMs) {
