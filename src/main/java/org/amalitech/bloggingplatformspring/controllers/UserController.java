@@ -27,7 +27,7 @@ public class UserController {
 
     private final UserService userService;
 
-    @GetMapping("/profile}")
+    @GetMapping("/profile")
     @Operation(
             summary = "Get User Profile",
             description = "Returns the user profile."

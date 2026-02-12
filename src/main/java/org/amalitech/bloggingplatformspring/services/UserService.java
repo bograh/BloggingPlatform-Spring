@@ -10,7 +10,6 @@ import org.amalitech.bloggingplatformspring.entity.Comment;
 import org.amalitech.bloggingplatformspring.entity.Post;
 import org.amalitech.bloggingplatformspring.entity.User;
 import org.amalitech.bloggingplatformspring.exceptions.BadRequestException;
-import org.amalitech.bloggingplatformspring.exceptions.InvalidUserIdFormatException;
 import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
@@ -42,26 +41,21 @@ public class UserService {
         if (userID.isBlank())
             throw new BadRequestException("User ID cannot be empty");
 
-        try {
-            List<Post> recentPosts = postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(4));
-            List<PostResponseDTO> recentPostsResponse = recentPosts.stream()
-                    .map(post -> {
-                        Long totalComments = commentRepository.countByPostId(post.getId());
-                        return postUtils.createPostResponseFromPost(post, totalComments);
-                    }).toList();
+        List<Post> recentPosts = postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(4));
+        List<PostResponseDTO> recentPostsResponse = recentPosts.stream()
+                .map(post -> {
+                    Long totalComments = commentRepository.countByPostId(post.getId());
+                    return postUtils.createPostResponseFromPost(post, totalComments);
+                }).toList();
 
-            List<Comment> recentComments = commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(5));
-            List<CommentResponse> recentCommentsResponse = recentComments.stream()
-                    .map(CommentUtils::createCommentResponseFromComment).toList();
+        List<Comment> recentComments = commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(5));
+        List<CommentResponse> recentCommentsResponse = recentComments.stream()
+                .map(CommentUtils::createCommentResponseFromComment).toList();
 
-            Long totalPosts = postRepository.countByAuthor(user);
-            Long totalComments = commentRepository.countByAuthor(user.getUsername());
+        Long totalPosts = postRepository.countByAuthor(user);
+        Long totalComments = commentRepository.countByAuthor(user.getUsername());
 
-            return userUtils.createUserProfileResponse(user, recentPostsResponse, recentCommentsResponse, totalPosts, totalComments);
-
-        } catch (IllegalArgumentException e) {
-            throw new InvalidUserIdFormatException("Invalid UUID format for userID");
-        }
+        return userUtils.createUserProfileResponse(user, recentPostsResponse, recentCommentsResponse, totalPosts, totalComments);
 
     }
 }

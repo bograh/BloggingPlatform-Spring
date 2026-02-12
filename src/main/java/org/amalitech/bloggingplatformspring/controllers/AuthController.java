@@ -80,7 +80,7 @@ public class AuthController {
         return new ResponseEntity<>(apiResponse, HttpStatus.OK);
     }
 
-    @GetMapping("/refresh-toke}")
+    @PostMapping("/refresh-token")
     @Operation(
             summary = "Refresh Access Token",
             description = "Returns new access token."

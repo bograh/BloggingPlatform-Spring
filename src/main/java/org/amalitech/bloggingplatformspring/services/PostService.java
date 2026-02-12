@@ -128,7 +128,7 @@ public class PostService {
             post.setBody(updatePostDTO.getBody());
         }
 
-        if (!updatePostDTO.getTags().isEmpty()) {
+        if (updatePostDTO.getTags() != null && !updatePostDTO.getTags().isEmpty()) {
             Set<Tag> updatedTags = tagService.getOrCreateTags(updatePostDTO.getTags());
             post.getTags().addAll(updatedTags);
         }

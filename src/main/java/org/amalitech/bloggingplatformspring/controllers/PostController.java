@@ -109,7 +109,7 @@ public class PostController {
     })
     public ResponseEntity<Void> deletePost(
             @Parameter(description = "Post ID", example = "1") @PathVariable Long postId,
-            @RequestBody HttpServletRequest request) {
+            HttpServletRequest request) {
         postService.deletePost(postId, request);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
