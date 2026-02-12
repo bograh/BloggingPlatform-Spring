@@ -20,7 +20,4 @@ public class CreateCommentDTO {
 
     @NotBlank(message = "Comment should not be blank")
     private String commentContent;
-
-    @NotBlank(message = "Author ID should not be blank")
-    private String authorId;
 }
