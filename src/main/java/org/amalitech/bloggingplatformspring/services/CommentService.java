@@ -1,9 +1,12 @@
 package org.amalitech.bloggingplatformspring.services;
 
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import org.amalitech.bloggingplatformspring.dtos.requests.CommentFilterRequest;
 import org.amalitech.bloggingplatformspring.dtos.requests.CreateCommentDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.DeleteCommentRequestDTO;
 import org.amalitech.bloggingplatformspring.dtos.responses.CommentResponse;
+import org.amalitech.bloggingplatformspring.dtos.responses.PageResponse;
 import org.amalitech.bloggingplatformspring.entity.Comment;
 import org.amalitech.bloggingplatformspring.entity.Post;
 import org.amalitech.bloggingplatformspring.entity.User;
@@ -11,32 +14,29 @@ import org.amalitech.bloggingplatformspring.exceptions.ForbiddenException;
 import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
 import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
-import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.amalitech.bloggingplatformspring.utils.CommentUtils;
 import org.amalitech.bloggingplatformspring.utils.Constants;
 import org.amalitech.bloggingplatformspring.utils.UserUtils;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+@RequiredArgsConstructor
 @Service
 public class CommentService {
 
     private final CommentRepository commentRepository;
-    private final UserRepository userRepository;
     private final PostRepository postRepository;
     private final UserUtils userUtils;
-
-    public CommentService(CommentRepository commentRepository, UserRepository userRepository, PostRepository postRepository, UserUtils userUtils) {
-        this.commentRepository = commentRepository;
-        this.userRepository = userRepository;
-        this.postRepository = postRepository;
-        this.userUtils = userUtils;
-    }
+    private final CommentUtils commentUtils;
 
     @Caching(evict = {
             @CacheEvict(cacheNames = Constants.COMMENTS_CACHE_NAME, key = "'post:' + #newComment.postId"),
@@ -54,7 +54,7 @@ public class CommentService {
         comment.setAuthor(user.getUsername());
         commentRepository.save(comment);
 
-        return CommentUtils.createCommentResponseFromComment(comment);
+        return commentUtils.createCommentResponseFromComment(comment);
 
     }
 
@@ -66,7 +66,7 @@ public class CommentService {
         List<Comment> comments = commentRepository.findByPostIdOrderByCommentedAtDesc(postId);
 
         return comments.stream()
-                .map(CommentUtils::createCommentResponseFromComment)
+                .map(commentUtils::createCommentResponseFromComment)
                 .toList();
     }
 
@@ -77,7 +77,7 @@ public class CommentService {
                 () -> new ResourceNotFoundException("Comment not found with id: " + commentId)
         );
 
-        return CommentUtils.createCommentResponseFromComment(comment);
+        return commentUtils.createCommentResponseFromComment(comment);
     }
 
     @Caching(evict = {
@@ -104,6 +104,16 @@ public class CommentService {
         }
 
         commentRepository.deleteCommentById(commentId);
+
+    }
+
+    public PageResponse<CommentResponse> getAllComments(int page, int size, String sortBy, String order, CommentFilterRequest commentFilterRequest) {
+        size = Math.min(size, 30);
+
+        Sort sort = commentUtils.createSort(sortBy, order);
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<Comment> comments = commentUtils.findComments(commentFilterRequest, pageable);
+        return commentUtils.mapCommentsToResponse(comments);
 
     }
 }
