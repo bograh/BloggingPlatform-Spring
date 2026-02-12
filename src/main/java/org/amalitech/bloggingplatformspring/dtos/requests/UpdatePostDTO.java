@@ -14,6 +14,5 @@ import java.util.List;
 public class UpdatePostDTO {
     private String title;
     private String body;
-
     private List<String> tags;
 }
