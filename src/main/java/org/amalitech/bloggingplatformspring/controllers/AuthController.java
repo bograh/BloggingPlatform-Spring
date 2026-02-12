@@ -13,7 +13,6 @@ import org.amalitech.bloggingplatformspring.dtos.requests.SignInUserDTO;
 import org.amalitech.bloggingplatformspring.dtos.responses.ApiResponseGeneric;
 import org.amalitech.bloggingplatformspring.dtos.responses.AuthResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.AuthResponseDTO;
-import org.amalitech.bloggingplatformspring.dtos.responses.UserResponseDTO;
 import org.amalitech.bloggingplatformspring.exceptions.ErrorResponse;
 import org.amalitech.bloggingplatformspring.security.RefreshCookieService;
 import org.amalitech.bloggingplatformspring.services.AuthService;
@@ -81,7 +80,7 @@ public class AuthController {
         return new ResponseEntity<>(apiResponse, HttpStatus.OK);
     }
 
-    @GetMapping("/refresh-token}")
+    @GetMapping("/refresh-toke}")
     @Operation(
             summary = "Refresh Access Token",
             description = "Returns new access token."
@@ -89,7 +88,7 @@ public class AuthController {
     @ApiResponses(value = {
             @ApiResponse(
                     responseCode = "200", description = "Access token refreshed successfully",
-                    content = @Content(schema = @Schema(implementation = UserResponseDTO.class))
+                    content = @Content(schema = @Schema(implementation = AuthResponse.class))
             )
     })
     public ResponseEntity<ApiResponseGeneric<AuthResponse>> refreshAccessToken(
