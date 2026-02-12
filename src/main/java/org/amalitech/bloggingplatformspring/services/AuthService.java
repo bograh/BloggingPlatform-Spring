@@ -7,6 +7,7 @@ import org.amalitech.bloggingplatformspring.dtos.responses.AuthResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.AuthResponseDTO;
 import org.amalitech.bloggingplatformspring.dtos.responses.UserResponseDTO;
 import org.amalitech.bloggingplatformspring.entity.User;
+import org.amalitech.bloggingplatformspring.enums.UserRoles;
 import org.amalitech.bloggingplatformspring.exceptions.BadRequestException;
 import org.amalitech.bloggingplatformspring.exceptions.UnauthorizedException;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
@@ -19,6 +20,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @RequiredArgsConstructor
 @Service
@@ -54,6 +57,7 @@ public class AuthService {
         user.setUsername(username);
         user.setEmail(email);
         user.setPassword(hashedPassword);
+        user.setUserRoles(List.of(UserRoles.READER));
         userRepository.save(user);
 
         Authentication authentication = authenticationManager.authenticate(
