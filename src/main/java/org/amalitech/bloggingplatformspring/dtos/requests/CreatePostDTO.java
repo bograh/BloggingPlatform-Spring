@@ -20,8 +20,5 @@ public class CreatePostDTO {
     @NotBlank(message = "Body for post should not be blank")
     private String body;
 
-    @NotBlank(message = "Author ID should not be blank")
-    private String authorId;
-
     private List<String> tags;
 }

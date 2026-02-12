@@ -7,9 +7,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.amalitech.bloggingplatformspring.dtos.requests.CreatePostDTO;
-import org.amalitech.bloggingplatformspring.dtos.requests.DeletePostRequestDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.PostFilterRequest;
 import org.amalitech.bloggingplatformspring.dtos.requests.UpdatePostDTO;
 import org.amalitech.bloggingplatformspring.dtos.responses.ApiResponseGeneric;
@@ -42,8 +42,8 @@ public class PostController {
             @ApiResponse(responseCode = "404", description = "Author not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<ApiResponseGeneric<PostResponseDTO>> createPost(
-            @Valid @RequestBody CreatePostDTO createPostDTO) {
-        PostResponseDTO postResponseDTO = postService.createPost(createPostDTO);
+            @Valid @RequestBody CreatePostDTO createPostDTO, HttpServletRequest request) {
+        PostResponseDTO postResponseDTO = postService.createPost(createPostDTO, request);
         ApiResponseGeneric<PostResponseDTO> response = ApiResponseGeneric.success("Post created successfully",
                 postResponseDTO);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
@@ -94,8 +94,8 @@ public class PostController {
     })
     public ResponseEntity<ApiResponseGeneric<PostResponseDTO>> updatePost(
             @Parameter(description = "Post ID", example = "1") @PathVariable Long postId,
-            @Valid @RequestBody UpdatePostDTO updatePostDTO) {
-        PostResponseDTO post = postService.updatePost(postId, updatePostDTO);
+            @Valid @RequestBody UpdatePostDTO updatePostDTO, HttpServletRequest request) {
+        PostResponseDTO post = postService.updatePost(postId, updatePostDTO, request);
         ApiResponseGeneric<PostResponseDTO> response = ApiResponseGeneric.success("Post updated successfully", post);
         return ResponseEntity.ok(response);
     }
@@ -107,11 +107,10 @@ public class PostController {
             @ApiResponse(responseCode = "403", description = "Not authorized to delete this post", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "404", description = "Post not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    public ResponseEntity<ApiResponseGeneric<Void>> deletePost(
+    public ResponseEntity<Void> deletePost(
             @Parameter(description = "Post ID", example = "1") @PathVariable Long postId,
-            @RequestBody DeletePostRequestDTO deletePostRequestDTO) {
-        postService.deletePost(postId, deletePostRequestDTO);
-        ApiResponseGeneric<Void> response = ApiResponseGeneric.success("Post deleted successfully.");
-        return new ResponseEntity<>(response, HttpStatus.NO_CONTENT);
+            @RequestBody HttpServletRequest request) {
+        postService.deletePost(postId, request);
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 }

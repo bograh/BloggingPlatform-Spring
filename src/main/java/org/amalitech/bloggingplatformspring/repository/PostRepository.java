@@ -5,6 +5,7 @@ import org.amalitech.bloggingplatformspring.entity.User;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -17,9 +18,9 @@ import java.util.Optional;
 @Repository
 public interface PostRepository extends JpaRepository<Post, Long>, JpaSpecificationExecutor<Post> {
 
+    @EntityGraph(attributePaths = {"author", "tags"})
+    @Query("SELECT p FROM Post p WHERE p.id = :id")
     Optional<Post> findPostById(Long id);
-
-    void deletePostById(Long id);
 
     @Query("""
                 SELECT p FROM Post p
