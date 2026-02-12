@@ -5,6 +5,7 @@ import org.amalitech.bloggingplatformspring.security.JwtAuthenticationEntryPoint
 import org.amalitech.bloggingplatformspring.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -45,7 +46,23 @@ public class SecurityConfig {
         http.csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/v1/auth/**").permitAll()
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/tags/**").permitAll()
+
+                        .requestMatchers(HttpMethod.POST, "/api/posts").hasRole("AUTHOR")
+                        .requestMatchers(HttpMethod.PUT, "/api/posts/**").hasRole("AUTHOR")
+                        .requestMatchers(HttpMethod.DELETE, "/api/posts/**").hasAnyRole("AUTHOR", "ADMIN")
+
+                        .requestMatchers(HttpMethod.POST, "/api/tags").hasAnyRole("AUTHOR", "ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/tags/**").hasAnyRole("AUTHOR", "ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/tags/**").hasAnyRole("AUTHOR", "ADMIN")
+
+                        .requestMatchers("/api/users/profile").authenticated()
+
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/users/**").hasRole("ADMIN")
+
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(ex -> ex

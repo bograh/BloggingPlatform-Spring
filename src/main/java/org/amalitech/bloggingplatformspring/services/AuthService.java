@@ -21,7 +21,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 @RequiredArgsConstructor
 @Service
@@ -35,8 +36,8 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
 
     public AuthResponseDTO registerUser(RegisterUserDTO registerUserDTO) {
-        String username = registerUserDTO.getUsername();
-        String email = registerUserDTO.getEmail();
+        String username = registerUserDTO.getUsername().trim().toLowerCase();
+        String email = registerUserDTO.getEmail().trim().toLowerCase();
         String password = registerUserDTO.getPassword();
 
         if (password.toLowerCase().contains(username.toLowerCase())) {
@@ -57,8 +58,11 @@ public class AuthService {
         user.setUsername(username);
         user.setEmail(email);
         user.setPassword(hashedPassword);
-        user.setUserRoles(List.of(UserRoles.READER));
-        userRepository.save(user);
+        user.setUserRoles(new ArrayList<>(Arrays.asList(
+                UserRoles.READER,
+                UserRoles.AUTHOR
+        )));
+        user = userRepository.save(user);
 
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(email, password)
@@ -68,7 +72,7 @@ public class AuthService {
     }
 
     public AuthResponseDTO signInUser(SignInUserDTO signInUserDTO) {
-        String email = signInUserDTO.getEmail();
+        String email = signInUserDTO.getEmail().trim().toLowerCase();
         String password = signInUserDTO.getPassword();
 
         if (Boolean.FALSE.equals(userRepository.existsByEmailIgnoreCase(email))) {
