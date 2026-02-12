@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/posts")
+@RequestMapping("/api/posts")
 @Tag(name = "3. Post Management", description = "APIs for creating, reading, updating, and deleting blog posts")
 public class PostController {
 

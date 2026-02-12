@@ -29,6 +29,7 @@ public class UserUtils {
         userResponseDTO.setId(String.valueOf(user.getId()));
         userResponseDTO.setUsername(user.getUsername());
         userResponseDTO.setEmail(user.getEmail());
+        userResponseDTO.setRoles(user.getUserRoles());
         return userResponseDTO;
     }
 
@@ -42,6 +43,7 @@ public class UserUtils {
                 user.getEmail(),
                 totalPosts,
                 totalComments,
+                user.getUserRoles(),
                 recentPosts,
                 recentComments
         );

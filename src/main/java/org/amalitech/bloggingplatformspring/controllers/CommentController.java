@@ -24,7 +24,7 @@ import java.util.List;
 
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("/api/v1/comments")
+@RequestMapping("/api/comments")
 @Tag(name = "4. Comment Management", description = "APIs for managing comments on blog posts (MongoDB-backed)")
 public class CommentController {
 
