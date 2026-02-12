@@ -1,18 +1,20 @@
 package org.amalitech.bloggingplatformspring.services;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.amalitech.bloggingplatformspring.dtos.requests.CreateCommentDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.DeleteCommentRequestDTO;
 import org.amalitech.bloggingplatformspring.dtos.responses.CommentResponse;
 import org.amalitech.bloggingplatformspring.entity.Comment;
+import org.amalitech.bloggingplatformspring.entity.Post;
 import org.amalitech.bloggingplatformspring.entity.User;
 import org.amalitech.bloggingplatformspring.exceptions.ForbiddenException;
-import org.amalitech.bloggingplatformspring.exceptions.InvalidUserIdFormatException;
 import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
 import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.amalitech.bloggingplatformspring.utils.CommentUtils;
 import org.amalitech.bloggingplatformspring.utils.Constants;
+import org.amalitech.bloggingplatformspring.utils.UserUtils;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
@@ -20,7 +22,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 public class CommentService {
@@ -28,41 +29,33 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
     private final PostRepository postRepository;
+    private final UserUtils userUtils;
 
-    public CommentService(CommentRepository commentRepository, UserRepository userRepository, PostRepository postRepository) {
+    public CommentService(CommentRepository commentRepository, UserRepository userRepository, PostRepository postRepository, UserUtils userUtils) {
         this.commentRepository = commentRepository;
         this.userRepository = userRepository;
         this.postRepository = postRepository;
+        this.userUtils = userUtils;
     }
 
     @Caching(evict = {
             @CacheEvict(cacheNames = Constants.COMMENTS_CACHE_NAME, key = "'post:' + #newComment.postId"),
             @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, key = "#newComment.postId"),
-            @CacheEvict(cacheNames = Constants.POST_LIST_CACHE_NAME, allEntries = true),
-            @CacheEvict(cacheNames = Constants.USERS_CACHE_NAME, key = "#newComment.authorId")
+            @CacheEvict(cacheNames = Constants.POST_LIST_CACHE_NAME, allEntries = true)
     })
-    public CommentResponse addCommentToPost(CreateCommentDTO newComment) {
-        String authorId = newComment.getAuthorId();
+    public CommentResponse addCommentToPost(CreateCommentDTO newComment, HttpServletRequest request) {
+        User user = userUtils.getUserFromRequest(request);
+
         Comment comment = new Comment();
         comment.setContent(newComment.getCommentContent());
         comment.setPostId(newComment.getPostId());
         comment.setCommentedAt(LocalDateTime.now());
+        comment.setAuthorId(String.valueOf(user.getId()));
+        comment.setAuthor(user.getUsername());
+        commentRepository.save(comment);
 
-        try {
-            User user = userRepository.findById(UUID.fromString(authorId)).orElseThrow(
-                    () -> new ResourceNotFoundException("User not found")
-            );
+        return CommentUtils.createCommentResponseFromComment(comment);
 
-            comment.setAuthorId(String.valueOf(user.getId()));
-            comment.setAuthor(user.getUsername());
-
-            commentRepository.save(comment);
-
-            return CommentUtils.createCommentResponseFromComment(comment);
-
-        } catch (IllegalArgumentException ex) {
-            throw new InvalidUserIdFormatException("User ID format is invalid: " + ex.getMessage());
-        }
     }
 
     @Cacheable(cacheNames = Constants.COMMENTS_CACHE_NAME, key = "'post:' + #postId")
@@ -93,27 +86,24 @@ public class CommentService {
             @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, key = "#deleteCommentRequestDTO.postId"),
             @CacheEvict(cacheNames = Constants.POST_LIST_CACHE_NAME, allEntries = true)
     })
-    public void deleteComment(String commentId, DeleteCommentRequestDTO deleteCommentRequestDTO) {
-        try {
-            String authorId = deleteCommentRequestDTO.getAuthorId();
-            UUID userId = UUID.fromString(authorId);
-            User user = userRepository.findById(userId).orElseThrow(
-                    () -> new ResourceNotFoundException("User not found")
-            );
+    public void deleteComment(String commentId,
+                              DeleteCommentRequestDTO deleteCommentRequestDTO,
+                              HttpServletRequest request) {
+        User user = userUtils.getUserFromRequest(request);
+        Post post = postRepository.findPostById(deleteCommentRequestDTO.getPostId()).orElseThrow(
+                () -> new ResourceNotFoundException("Post not found")
+        );
 
-            Comment comment = commentRepository.findById(commentId).orElseThrow(
-                    () -> new ResourceNotFoundException("Comment not found with id: " + commentId)
-            );
+        Comment comment = commentRepository.findById(commentId).orElseThrow(
+                () -> new ResourceNotFoundException("Comment not found with id: " + commentId)
+        );
 
-            if (!comment.getAuthorId().equalsIgnoreCase(String.valueOf(user.getId()))) {
-                throw new ForbiddenException("You cannot delete this comment");
-            }
-
-            commentRepository.deleteCommentById(commentId);
-
-        } catch (IllegalArgumentException ex) {
-            throw new InvalidUserIdFormatException("User ID format is invalid: " + ex.getMessage());
+        if (!comment.getAuthorId().equalsIgnoreCase(String.valueOf(user.getId()))
+                && !post.getId().equals(comment.getPostId())) {
+            throw new ForbiddenException("You cannot delete this comment");
         }
-    }
 
+        commentRepository.deleteCommentById(commentId);
+
+    }
 }

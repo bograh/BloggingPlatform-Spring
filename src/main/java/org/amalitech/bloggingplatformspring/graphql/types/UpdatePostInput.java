@@ -10,6 +10,5 @@ import java.util.List;
 public class UpdatePostInput {
     private String title;
     private String body;
-    private String authorId;
     private List<String> tags;
 }

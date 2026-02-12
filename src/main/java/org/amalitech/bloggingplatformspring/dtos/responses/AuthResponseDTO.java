@@ -1,4 +1,4 @@
-package org.amalitech.bloggingplatformspring.dtos.requests;
+package org.amalitech.bloggingplatformspring.dtos.responses;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -9,6 +9,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class DeleteCommentRequestDTO {
-    private Long postId;
+public class AuthResponseDTO {
+    private String refreshToken;
+    private AuthResponse authResponse;
 }

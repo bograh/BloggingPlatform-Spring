@@ -7,7 +7,6 @@ import lombok.Setter;
 @Getter
 public class CreateCommentInput {
     private Long postId;
-    private String authorId;
     private String commentContent;
 
 }

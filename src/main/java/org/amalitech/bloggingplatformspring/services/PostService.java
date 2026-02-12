@@ -1,8 +1,9 @@
 package org.amalitech.bloggingplatformspring.services;
 
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.amalitech.bloggingplatformspring.dtos.requests.CreatePostDTO;
-import org.amalitech.bloggingplatformspring.dtos.requests.DeletePostRequestDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.PostFilterRequest;
 import org.amalitech.bloggingplatformspring.dtos.requests.UpdatePostDTO;
 import org.amalitech.bloggingplatformspring.dtos.responses.PageResponse;
@@ -12,13 +13,14 @@ import org.amalitech.bloggingplatformspring.entity.Tag;
 import org.amalitech.bloggingplatformspring.entity.User;
 import org.amalitech.bloggingplatformspring.exceptions.BadRequestException;
 import org.amalitech.bloggingplatformspring.exceptions.ForbiddenException;
-import org.amalitech.bloggingplatformspring.exceptions.InvalidUserIdFormatException;
 import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
 import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
+import org.amalitech.bloggingplatformspring.security.JwtTokenProvider;
 import org.amalitech.bloggingplatformspring.utils.Constants;
 import org.amalitech.bloggingplatformspring.utils.PostUtils;
+import org.amalitech.bloggingplatformspring.utils.UserUtils;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
@@ -34,8 +36,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.UUID;
 
+@RequiredArgsConstructor
 @Slf4j
 @Service
 public class PostService {
@@ -45,32 +47,13 @@ public class PostService {
     private final CommentRepository commentRepository;
     private final PostUtils postUtils;
     private final TagService tagService;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final UserUtils userUtils;
 
-    public PostService(PostRepository postRepository, UserRepository userRepository, CommentRepository commentRepository, PostUtils postUtils, TagService tagService) {
-        this.postRepository = postRepository;
-        this.userRepository = userRepository;
-        this.commentRepository = commentRepository;
-        this.postUtils = postUtils;
-        this.tagService = tagService;
-    }
-
-    @Caching(evict = {
-            @CacheEvict(cacheNames = Constants.POST_LIST_CACHE_NAME, allEntries = true),
-            @CacheEvict(cacheNames = Constants.USERS_CACHE_NAME, key = "#createPostDTO.authorId"),
-    })
+    @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, allEntries = true)
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
-    public PostResponseDTO createPost(CreatePostDTO createPostDTO) {
-        UUID userId;
-        try {
-            userId = UUID.fromString(createPostDTO.getAuthorId());
-        } catch (IllegalArgumentException e) {
-            throw new BadRequestException("Invalid authorId UUID format");
-        }
-
-        User user = userRepository.findById(userId).orElseThrow(
-                () -> new ResourceNotFoundException("User not found with ID: " + userId)
-        );
-
+    public PostResponseDTO createPost(CreatePostDTO createPostDTO, HttpServletRequest request) {
+        User user = userUtils.getUserFromRequest(request);
         Post post = new Post();
         post.setTitle(createPostDTO.getTitle());
         post.setBody(createPostDTO.getBody());
@@ -84,7 +67,6 @@ public class PostService {
         }
 
         postRepository.save(post);
-
 
         return postUtils.createResponseFromPostAndTags(
                 post,
@@ -124,77 +106,57 @@ public class PostService {
 
     @Caching(evict = {
             @CacheEvict(cacheNames = Constants.POST_LIST_CACHE_NAME, allEntries = true),
-            @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, key = "#postId"),
-            @CacheEvict(cacheNames = Constants.USERS_CACHE_NAME, key = "#updatePostDTO.authorId")
+            @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, key = "#postId")
     })
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
-    public PostResponseDTO updatePost(Long postId, UpdatePostDTO updatePostDTO) {
-        try {
-            UUID userID = UUID.fromString(updatePostDTO.getAuthorId());
+    public PostResponseDTO updatePost(Long postId, UpdatePostDTO updatePostDTO, HttpServletRequest request) {
+        User user = userUtils.getUserFromRequest(request);
 
-            Post post = postRepository.findPostById(postId).orElseThrow(
-                    () -> new ResourceNotFoundException("Post with ID: " + postId + " not found.")
-            );
+        Post post = postRepository.findPostById(postId).orElseThrow(
+                () -> new ResourceNotFoundException("Post with ID: " + postId + " not found.")
+        );
 
-            User user = userRepository.findById(userID).orElseThrow(
-                    () -> new ResourceNotFoundException("User not found with ID: " + userID)
-            );
-
-            if (!user.getId().equals(post.getAuthor().getId())) {
-                throw new ForbiddenException("You are not permitted to edit this post.");
-            }
-
-            if (!updatePostDTO.getTitle().isBlank()) {
-                post.setTitle(updatePostDTO.getTitle());
-            }
-
-            if (!updatePostDTO.getBody().isBlank()) {
-                post.setBody(updatePostDTO.getBody());
-            }
-
-            if (!updatePostDTO.getTags().isEmpty()) {
-                Set<Tag> updatedTags = tagService.getOrCreateTags(updatePostDTO.getTags());
-                post.getTags().addAll(updatedTags);
-            }
-
-            post.setUpdatedAt(LocalDateTime.now());
-
-            Post savedPost = postRepository.save(post);
-            long totalComments = commentRepository.countByPostId(savedPost.getId());
-
-            return postUtils.createPostResponseFromPost(savedPost, totalComments);
-
-        } catch (IllegalArgumentException e) {
-            throw new InvalidUserIdFormatException("Invalid user ID format: " + e.getMessage());
+        if (!user.getId().equals(post.getAuthor().getId())) {
+            throw new ForbiddenException("You are not permitted to edit this post.");
         }
+
+        if (!updatePostDTO.getTitle().isBlank()) {
+            post.setTitle(updatePostDTO.getTitle());
+        }
+
+        if (!updatePostDTO.getBody().isBlank()) {
+            post.setBody(updatePostDTO.getBody());
+        }
+
+        if (updatePostDTO.getTags() != null && !updatePostDTO.getTags().isEmpty()) {
+            Set<Tag> updatedTags = tagService.getOrCreateTags(updatePostDTO.getTags());
+            post.getTags().addAll(updatedTags);
+        }
+
+        post.setUpdatedAt(LocalDateTime.now());
+
+        Post savedPost = postRepository.save(post);
+        long totalComments = commentRepository.countByPostId(savedPost.getId());
+
+        return postUtils.createPostResponseFromPost(savedPost, totalComments);
     }
 
     @Caching(evict = {
             @CacheEvict(cacheNames = Constants.POST_LIST_CACHE_NAME, allEntries = true),
-            @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, key = "#postId"),
-            @CacheEvict(cacheNames = Constants.USERS_CACHE_NAME, key = "#deletePostRequestDTO.authorId")
+            @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, key = "#postId")
     })
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
-    public void deletePost(Long postId, DeletePostRequestDTO deletePostRequestDTO) {
-        try {
-            UUID userID = UUID.fromString(deletePostRequestDTO.getAuthorId());
+    public void deletePost(Long postId, HttpServletRequest request) {
+        User user = userUtils.getUserFromRequest(request);
+        Post post = postRepository.findPostById(postId).orElseThrow(
+                () -> new ResourceNotFoundException("Post with ID: " + postId + " not found.")
+        );
 
-            Post post = postRepository.findPostById(postId).orElseThrow(
-                    () -> new ResourceNotFoundException("Post with ID: " + postId + " not found.")
-            );
-
-            User user = userRepository.findById(userID).orElseThrow(
-                    () -> new ResourceNotFoundException("User not found with username: " + userID));
-
-            if (!user.getId().equals(post.getAuthor().getId())) {
-                throw new ForbiddenException("You are not permitted to delete this post.");
-            }
-
-            postRepository.delete(post);
-            commentRepository.deleteCommentsByPostId(postId);
-
-        } catch (IllegalArgumentException e) {
-            throw new InvalidUserIdFormatException("Invalid user ID format: " + e.getMessage());
+        if (!user.getId().equals(post.getAuthor().getId())) {
+            throw new ForbiddenException("You are not permitted to delete this post.");
         }
+
+        postRepository.delete(post);
+        commentRepository.deleteCommentsByPostId(postId);
     }
 }
