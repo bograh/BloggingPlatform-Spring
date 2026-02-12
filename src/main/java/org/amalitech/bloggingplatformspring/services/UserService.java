@@ -11,7 +11,6 @@ import org.amalitech.bloggingplatformspring.entity.Post;
 import org.amalitech.bloggingplatformspring.entity.User;
 import org.amalitech.bloggingplatformspring.exceptions.BadRequestException;
 import org.amalitech.bloggingplatformspring.exceptions.InvalidUserIdFormatException;
-import org.amalitech.bloggingplatformspring.exceptions.UnauthorizedException;
 import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
@@ -37,11 +36,7 @@ public class UserService {
     private final JwtTokenProvider jwtTokenProvider;
 
     public UserProfileResponse getUserProfile(HttpServletRequest httpServletRequest) {
-        String token = jwtTokenProvider.getTokenFromRequest(httpServletRequest);
-        String email = jwtTokenProvider.getEmailFromAccessToken(token);
-        User user = userRepository.findUserByEmailIgnoreCase(email).orElseThrow(
-                () -> new UnauthorizedException("Invalid email or password")
-        );
+        User user = userUtils.getUserFromRequest(httpServletRequest);
         String userID = String.valueOf(user.getId());
 
         if (userID.isBlank())
