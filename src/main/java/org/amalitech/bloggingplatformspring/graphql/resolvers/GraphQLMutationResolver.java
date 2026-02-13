@@ -1,5 +1,7 @@
 package org.amalitech.bloggingplatformspring.graphql.resolvers;
 
+import graphql.GraphQLContext;
+import graphql.schema.DataFetchingEnvironment;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.amalitech.bloggingplatformspring.dtos.requests.*;
@@ -8,25 +10,22 @@ import org.amalitech.bloggingplatformspring.dtos.responses.CommentResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
 import org.amalitech.bloggingplatformspring.graphql.types.*;
 import org.amalitech.bloggingplatformspring.graphql.utils.GraphQLUtils;
-import org.amalitech.bloggingplatformspring.security.RefreshCookieService;
 import org.amalitech.bloggingplatformspring.services.AuthService;
 import org.amalitech.bloggingplatformspring.services.CommentService;
 import org.amalitech.bloggingplatformspring.services.PostService;
-import org.amalitech.bloggingplatformspring.services.UserService;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 
 @Controller
 @RequiredArgsConstructor
 public class GraphQLMutationResolver {
 
-    private final UserService userService;
     private final AuthService authService;
     private final PostService postService;
     private final CommentService commentService;
     private final GraphQLUtils graphQLUtils = new GraphQLUtils();
-    private final RefreshCookieService refreshCookieService;
 
     @MutationMapping
     public GraphQLAuthResponse registerUser(@Argument RegisterUserInput input) {
@@ -50,7 +49,12 @@ public class GraphQLMutationResolver {
     }
 
     @MutationMapping
-    public GraphQLPost createPost(@Argument CreatePostInput input, HttpServletRequest request) {
+    @PreAuthorize("hasRole('AUTHOR')")
+    public GraphQLPost createPost(@Argument CreatePostInput input, DataFetchingEnvironment environment) {
+
+        GraphQLContext graphQLContext = environment.getGraphQlContext();
+        HttpServletRequest request = graphQLContext.get("httpServletRequest");
+
         CreatePostDTO dto = new CreatePostDTO(
                 input.getTitle(),
                 input.getBody(),
@@ -61,8 +65,13 @@ public class GraphQLMutationResolver {
     }
 
     @MutationMapping
+    @PreAuthorize("hasRole('AUTHOR')")
     public GraphQLPost updatePost(
-            @Argument Long postId, @Argument UpdatePostInput input, HttpServletRequest request) {
+            @Argument Long postId, @Argument UpdatePostInput input, DataFetchingEnvironment environment) {
+
+        GraphQLContext graphQLContext = environment.getGraphQlContext();
+        HttpServletRequest request = graphQLContext.get("httpServletRequest");
+
         UpdatePostDTO dto = new UpdatePostDTO(
                 input.getTitle(),
                 input.getBody(),
@@ -73,13 +82,23 @@ public class GraphQLMutationResolver {
     }
 
     @MutationMapping
-    public Boolean deletePost(@Argument Long postId, HttpServletRequest request) {
+    @PreAuthorize("hasAnyRole('AUTHOR', 'ADMIN')")
+    public Boolean deletePost(@Argument Long postId, DataFetchingEnvironment environment) {
+
+        GraphQLContext graphQLContext = environment.getGraphQlContext();
+        HttpServletRequest request = graphQLContext.get("httpServletRequest");
+
         postService.deletePost(postId, request);
         return true;
     }
 
     @MutationMapping
-    public GraphQLComment createComment(@Argument CreateCommentInput input, HttpServletRequest request) {
+    @PreAuthorize("hasRole('AUTHOR')")
+    public GraphQLComment createComment(@Argument CreateCommentInput input, DataFetchingEnvironment environment) {
+
+        GraphQLContext graphQLContext = environment.getGraphQlContext();
+        HttpServletRequest request = graphQLContext.get("httpServletRequest");
+
         CreateCommentDTO dto = new CreateCommentDTO(
                 input.getPostId(),
                 input.getCommentContent());
@@ -89,7 +108,12 @@ public class GraphQLMutationResolver {
     }
 
     @MutationMapping
-    public Boolean deleteComment(@Argument String commentId, @Argument DeleteCommentInput input, HttpServletRequest request) {
+    @PreAuthorize("hasAnyRole('AUTHOR', 'ADMIN')")
+    public Boolean deleteComment(@Argument String commentId, @Argument DeleteCommentInput input, DataFetchingEnvironment environment) {
+
+        GraphQLContext graphQLContext = environment.getGraphQlContext();
+        HttpServletRequest request = graphQLContext.get("httpServletRequest");
+
         DeleteCommentRequestDTO dto = new DeleteCommentRequestDTO(input.getPostId());
         commentService.deleteComment(commentId, dto, request);
         return true;
