@@ -11,6 +11,8 @@ import org.amalitech.bloggingplatformspring.utils.Constants;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
 @Service
@@ -32,11 +34,13 @@ public class AdminService {
             @CacheEvict(cacheNames = Constants.POST_LIST_CACHE_NAME, allEntries = true),
             @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, key = "#postId")
     })
+    @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public void adminDeletePost(Long postId) {
         Post post = postRepository.findPostById(postId).orElseThrow(
                 () -> new ResourceNotFoundException("Post not found with id: " + postId)
         );
         postRepository.delete(post);
+        commentRepository.deleteCommentsByPostId(postId);
     }
 
     @Caching(evict = {
