@@ -1,6 +1,7 @@
 package org.amalitech.bloggingplatformspring.config;
 
 import lombok.RequiredArgsConstructor;
+import org.amalitech.bloggingplatformspring.security.JwtAccessDeniedHandler;
 import org.amalitech.bloggingplatformspring.security.JwtAuthenticationEntryPoint;
 import org.amalitech.bloggingplatformspring.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
@@ -30,6 +31,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthenticationEntryPoint authEntryPoint;
+    private final JwtAccessDeniedHandler accessDeniedHandler;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -68,6 +70,7 @@ public class SecurityConfig {
                 )
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(authEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler)
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .sessionManagement(session -> session
