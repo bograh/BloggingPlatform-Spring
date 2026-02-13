@@ -3,17 +3,24 @@ package org.amalitech.bloggingplatformspring.utils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.amalitech.bloggingplatformspring.dtos.responses.*;
 import org.amalitech.bloggingplatformspring.entity.User;
+import org.amalitech.bloggingplatformspring.enums.AuthProvider;
+import org.amalitech.bloggingplatformspring.enums.UserRoles;
 import org.amalitech.bloggingplatformspring.enums.UserSortField;
 import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.amalitech.bloggingplatformspring.security.JwtTokenProvider;
+import org.amalitech.bloggingplatformspring.security.oauth.OAuth2UserInfo;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class UserUtils {
@@ -114,5 +121,33 @@ public class UserUtils {
                 user.getUserRoles(),
                 user.getCreatedAt()
         );
+    }
+
+    public User saveOrUpdateOAuthUser(OAuth2UserInfo userInfo, String registrationId) {
+        AuthProvider provider = AuthProvider.valueOf(registrationId.toUpperCase());
+
+        return userRepository.findUserByEmailIgnoreCase(userInfo.getEmail())
+                .map(existingUser -> {
+                    existingUser.setUsername(userInfo.getName());
+                    existingUser.setAuthProvider(provider);
+                    existingUser.setOauth2ProviderId(userInfo.getId());
+                    return userRepository.save(existingUser);
+                })
+                .orElseGet(() -> userRepository.save(
+                        User.builder()
+                                .email(userInfo.getEmail())
+                                .username(userInfo.getName())
+                                .authProvider(provider)
+                                .oauth2ProviderId(userInfo.getId())
+                                .userRoles(new ArrayList<>(List.of(UserRoles.READER, UserRoles.AUTHOR)))
+                                .build()
+                ));
+    }
+
+    public List<GrantedAuthority> getUserAuthorities(User user) {
+        List<UserRoles> userRoles = user.getUserRoles();
+        return userRoles.stream()
+                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.name()))
+                .collect(Collectors.toList());
     }
 }

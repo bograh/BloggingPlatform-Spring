@@ -11,6 +11,7 @@ import java.util.*;
 @Getter
 @Setter
 @ToString
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
