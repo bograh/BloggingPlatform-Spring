@@ -111,7 +111,6 @@ public class AuthController {
         }*/
 
         refreshCookieService.clearRefreshTokenCookie(response);
-
         return ResponseEntity.noContent().build();
     }
 }
