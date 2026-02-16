@@ -637,6 +637,192 @@ public class PerformanceMetricsService {
     }
 
     /**
+     * Save current metrics as PRE_CACHE baseline and reset metrics for fresh
+     * measurement
+     */
+    public PerformanceMetricsSnapshot savePreCacheBaseline() {
+        PerformanceMetricsSnapshot snapshot = savePerformanceMetricsSnapshot("PRE_CACHE");
+        performanceAspect.resetMetrics();
+        log.info("Saved PRE_CACHE baseline and reset metrics for fresh measurement");
+        return snapshot;
+    }
+
+    /**
+     * Save current metrics as POST_CACHE for comparison
+     */
+    public PerformanceMetricsSnapshot savePostCacheMetrics() {
+        return savePerformanceMetricsSnapshot("POST_CACHE");
+    }
+
+    /**
+     * Get the latest PRE_CACHE snapshot
+     */
+    public PerformanceMetricsSnapshot getLatestPreCacheSnapshot() {
+        return performanceMetricsRepository.findTopBySnapshotTypeOrderByTimestampDesc("PRE_CACHE")
+                .orElseThrow(() -> new BadRequestException(
+                        "No PRE_CACHE baseline found. Save a baseline first using /baseline endpoint."));
+    }
+
+    /**
+     * Get the latest POST_CACHE snapshot
+     */
+    public PerformanceMetricsSnapshot getLatestPostCacheSnapshot() {
+        return performanceMetricsRepository.findTopBySnapshotTypeOrderByTimestampDesc("POST_CACHE")
+                .orElseThrow(() -> new BadRequestException(
+                        "No POST_CACHE snapshot found. Save post-cache metrics first using /postcache endpoint."));
+    }
+
+    /**
+     * Get all PRE_CACHE snapshots
+     */
+    public List<PerformanceMetricsSnapshot> getPreCacheSnapshots(int limit) {
+        return performanceMetricsRepository.findBySnapshotTypeOrderByTimestampDesc("PRE_CACHE",
+                org.springframework.data.domain.PageRequest.of(0, limit)).getContent();
+    }
+
+    /**
+     * Get all POST_CACHE snapshots
+     */
+    public List<PerformanceMetricsSnapshot> getPostCacheSnapshots(int limit) {
+        return performanceMetricsRepository.findBySnapshotTypeOrderByTimestampDesc("POST_CACHE",
+                org.springframework.data.domain.PageRequest.of(0, limit)).getContent();
+    }
+
+    /**
+     * Compare latest PRE_CACHE with latest POST_CACHE from database
+     */
+    public PerformanceComparisonDTO compareFromDatabase() {
+        PerformanceMetricsSnapshot preCacheSnapshot = getLatestPreCacheSnapshot();
+        PerformanceMetricsSnapshot postCacheSnapshot = getLatestPostCacheSnapshot();
+        return compareSnapshots(preCacheSnapshot, postCacheSnapshot);
+    }
+
+    /**
+     * Compare specific PRE_CACHE and POST_CACHE snapshots by ID
+     */
+    public PerformanceComparisonDTO compareFromDatabase(String preCacheId, String postCacheId) {
+        PerformanceMetricsSnapshot preCacheSnapshot = performanceMetricsRepository.findById(preCacheId)
+                .orElseThrow(() -> new BadRequestException("PRE_CACHE snapshot not found: " + preCacheId));
+        PerformanceMetricsSnapshot postCacheSnapshot = performanceMetricsRepository.findById(postCacheId)
+                .orElseThrow(() -> new BadRequestException("POST_CACHE snapshot not found: " + postCacheId));
+        return compareSnapshots(preCacheSnapshot, postCacheSnapshot);
+    }
+
+    /**
+     * Compare two snapshots and generate comparison DTO
+     */
+    private PerformanceComparisonDTO compareSnapshots(PerformanceMetricsSnapshot preCacheSnapshot,
+            PerformanceMetricsSnapshot postCacheSnapshot) {
+        List<MethodComparisonDTO> comparisons = new ArrayList<>();
+
+        double totalImprovementPercent = 0;
+        int methodsImproved = 0;
+        int methodsDegraded = 0;
+        int methodsUnchanged = 0;
+        String bestImprovedMethod = null;
+        double bestImprovementPercent = Double.MIN_VALUE;
+        String worstMethod = null;
+        double worstChangePercent = Double.MAX_VALUE;
+
+        // Build map from pre-cache snapshot
+        Map<String, PerformanceMetricsSnapshot.MethodMetricsData> preCacheMap = preCacheSnapshot.getMethodMetrics()
+                .stream()
+                .collect(Collectors.toMap(PerformanceMetricsSnapshot.MethodMetricsData::getMethodName, m -> m));
+
+        // Compare methods
+        for (PerformanceMetricsSnapshot.MethodMetricsData postCacheData : postCacheSnapshot.getMethodMetrics()) {
+            String methodName = postCacheData.getMethodName();
+            PerformanceMetricsSnapshot.MethodMetricsData preCacheData = preCacheMap.get(methodName);
+
+            if (preCacheData == null) {
+                // Try partial match
+                preCacheData = findMatchingMethodData(preCacheMap, methodName);
+                if (preCacheData == null) {
+                    continue; // Skip if no matching pre-cache data
+                }
+            }
+
+            PrePostMetricsDTO preMetrics = new PrePostMetricsDTO(
+                    preCacheData.getTotalCalls(),
+                    preCacheData.getAverageExecutionTime(),
+                    preCacheData.getMinExecutionTime(),
+                    preCacheData.getMaxExecutionTime());
+
+            PrePostMetricsDTO postMetrics = new PrePostMetricsDTO(
+                    postCacheData.getTotalCalls(),
+                    postCacheData.getAverageExecutionTime(),
+                    postCacheData.getMinExecutionTime(),
+                    postCacheData.getMaxExecutionTime());
+
+            long avgTimeReduction = preCacheData.getAverageExecutionTime() - postCacheData.getAverageExecutionTime();
+            double improvementPercent = preCacheData.getAverageExecutionTime() > 0
+                    ? (double) avgTimeReduction / preCacheData.getAverageExecutionTime() * 100
+                    : 0.0;
+
+            ImprovementDTO improvement = new ImprovementDTO(
+                    avgTimeReduction,
+                    String.format("%.2f%%", improvementPercent),
+                    preCacheData.getMinExecutionTime() - postCacheData.getMinExecutionTime(),
+                    preCacheData.getMaxExecutionTime() - postCacheData.getMaxExecutionTime(),
+                    avgTimeReduction > 0);
+
+            comparisons.add(new MethodComparisonDTO(methodName, preMetrics, postMetrics, improvement));
+
+            totalImprovementPercent += improvementPercent;
+
+            if (avgTimeReduction > 0) {
+                methodsImproved++;
+                if (improvementPercent > bestImprovementPercent) {
+                    bestImprovementPercent = improvementPercent;
+                    bestImprovedMethod = methodName;
+                }
+            } else if (avgTimeReduction < 0) {
+                methodsDegraded++;
+                if (improvementPercent < worstChangePercent) {
+                    worstChangePercent = improvementPercent;
+                    worstMethod = methodName;
+                }
+            } else {
+                methodsUnchanged++;
+            }
+        }
+
+        int methodsCompared = comparisons.size();
+        double overallAvgImprovement = methodsCompared > 0 ? totalImprovementPercent / methodsCompared : 0.0;
+
+        ComparisonSummaryDTO summary = new ComparisonSummaryDTO(
+                methodsCompared,
+                methodsImproved,
+                methodsDegraded,
+                methodsUnchanged,
+                String.format("%.2f%%", overallAvgImprovement),
+                bestImprovedMethod,
+                bestImprovedMethod != null ? String.format("%.2f%%", bestImprovementPercent) : null,
+                worstMethod,
+                worstMethod != null ? String.format("%.2f%%", worstChangePercent) : null);
+
+        return new PerformanceComparisonDTO(
+                "Database: PRE_CACHE(" + preCacheSnapshot.getId() + ") @ " + preCacheSnapshot.getTimestamp(),
+                postCacheSnapshot.getTimestamp().toString(),
+                comparisons,
+                summary,
+                LocalDateTime.now());
+    }
+
+    /**
+     * Find matching method data by partial name match
+     */
+    private PerformanceMetricsSnapshot.MethodMetricsData findMatchingMethodData(
+            Map<String, PerformanceMetricsSnapshot.MethodMetricsData> methodMap, String methodName) {
+        for (Map.Entry<String, PerformanceMetricsSnapshot.MethodMetricsData> entry : methodMap.entrySet()) {
+            if (entry.getKey().contains(methodName) || methodName.contains(entry.getKey())) {
+                return entry.getValue();
+            }
+        }
+        return null;
+    }
+
+    /**
      * Helper class for parsed pre-cache metrics
      */
     private static class PreCacheMetrics {

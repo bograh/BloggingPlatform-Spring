@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.amalitech.bloggingplatformspring.dtos.responses.*;
 import org.amalitech.bloggingplatformspring.entity.CacheMetricsSnapshot;
 import org.amalitech.bloggingplatformspring.entity.PerformanceMetricsSnapshot;
+import org.amalitech.bloggingplatformspring.services.CachePerformanceSimulationService;
 import org.amalitech.bloggingplatformspring.services.PerformanceMetricsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +27,7 @@ import java.util.List;
 public class PerformanceMetricsController {
 
         private final PerformanceMetricsService metricsService;
+        private final CachePerformanceSimulationService simulationService;
 
         /**
          * Get all performance metrics
@@ -286,5 +288,190 @@ public class PerformanceMetricsController {
         public ResponseEntity<List<CacheMetricsSnapshot>> getCacheMetricsHistory(
                         @Parameter(description = "Number of records to retrieve", example = "10") @RequestParam(defaultValue = "10") int limit) {
                 return ResponseEntity.ok(metricsService.getCacheMetricsHistory(limit));
+        }
+
+        /**
+         * Save current metrics as PRE_CACHE baseline (resets metrics after saving)
+         */
+        @PostMapping("/baseline")
+        @Operation(summary = "Save PRE_CACHE baseline", description = "Saves current metrics as PRE_CACHE baseline and resets metrics for fresh measurement. Use this BEFORE enabling caching or when measuring without cache.")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "PRE_CACHE baseline saved and metrics reset")
+        })
+        public ResponseEntity<PerformanceMetricsSnapshot> savePreCacheBaseline() {
+                return ResponseEntity.ok(metricsService.savePreCacheBaseline());
+        }
+
+        /**
+         * Save current metrics as POST_CACHE
+         */
+        @PostMapping("/postcache")
+        @Operation(summary = "Save POST_CACHE metrics", description = "Saves current metrics as POST_CACHE snapshot. Use this AFTER enabling caching to capture cached performance.")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "POST_CACHE metrics saved")
+        })
+        public ResponseEntity<PerformanceMetricsSnapshot> savePostCacheMetrics() {
+                return ResponseEntity.ok(metricsService.savePostCacheMetrics());
+        }
+
+        /**
+         * Get latest PRE_CACHE snapshot
+         */
+        @GetMapping("/baseline/latest")
+        @Operation(summary = "Get latest PRE_CACHE baseline", description = "Retrieves the most recent PRE_CACHE baseline snapshot")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "PRE_CACHE baseline retrieved"),
+                        @ApiResponse(responseCode = "400", description = "No PRE_CACHE baseline found")
+        })
+        public ResponseEntity<PerformanceMetricsSnapshot> getLatestPreCacheSnapshot() {
+                return ResponseEntity.ok(metricsService.getLatestPreCacheSnapshot());
+        }
+
+        /**
+         * Get latest POST_CACHE snapshot
+         */
+        @GetMapping("/postcache/latest")
+        @Operation(summary = "Get latest POST_CACHE metrics", description = "Retrieves the most recent POST_CACHE snapshot")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "POST_CACHE metrics retrieved"),
+                        @ApiResponse(responseCode = "400", description = "No POST_CACHE snapshot found")
+        })
+        public ResponseEntity<PerformanceMetricsSnapshot> getLatestPostCacheSnapshot() {
+                return ResponseEntity.ok(metricsService.getLatestPostCacheSnapshot());
+        }
+
+        /**
+         * Get all PRE_CACHE snapshots
+         */
+        @GetMapping("/baseline/history")
+        @Operation(summary = "Get PRE_CACHE baseline history", description = "Retrieves all PRE_CACHE baseline snapshots")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "PRE_CACHE history retrieved")
+        })
+        public ResponseEntity<List<PerformanceMetricsSnapshot>> getPreCacheSnapshots(
+                        @Parameter(description = "Number of records to retrieve", example = "10") @RequestParam(defaultValue = "10") int limit) {
+                return ResponseEntity.ok(metricsService.getPreCacheSnapshots(limit));
+        }
+
+        /**
+         * Get all POST_CACHE snapshots
+         */
+        @GetMapping("/postcache/history")
+        @Operation(summary = "Get POST_CACHE metrics history", description = "Retrieves all POST_CACHE snapshots")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "POST_CACHE history retrieved")
+        })
+        public ResponseEntity<List<PerformanceMetricsSnapshot>> getPostCacheSnapshots(
+                        @Parameter(description = "Number of records to retrieve", example = "10") @RequestParam(defaultValue = "10") int limit) {
+                return ResponseEntity.ok(metricsService.getPostCacheSnapshots(limit));
+        }
+
+        /**
+         * Compare latest PRE_CACHE vs POST_CACHE from database
+         */
+        @GetMapping("/comparison/database")
+        @Operation(summary = "Compare PRE_CACHE vs POST_CACHE from database", description = "Compares the latest PRE_CACHE and POST_CACHE snapshots stored in the database")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Comparison completed"),
+                        @ApiResponse(responseCode = "400", description = "Required snapshots not found")
+        })
+        public ResponseEntity<PerformanceComparisonDTO> compareFromDatabase() {
+                return ResponseEntity.ok(metricsService.compareFromDatabase());
+        }
+
+        /**
+         * Compare specific PRE_CACHE vs POST_CACHE by IDs
+         */
+        @GetMapping("/comparison/database/{preCacheId}/{postCacheId}")
+        @Operation(summary = "Compare specific snapshots by ID", description = "Compares specific PRE_CACHE and POST_CACHE snapshots by their database IDs")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Comparison completed"),
+                        @ApiResponse(responseCode = "400", description = "Snapshot not found")
+        })
+        public ResponseEntity<PerformanceComparisonDTO> compareFromDatabaseByIds(
+                        @Parameter(description = "PRE_CACHE snapshot ID") @PathVariable String preCacheId,
+                        @Parameter(description = "POST_CACHE snapshot ID") @PathVariable String postCacheId) {
+                return ResponseEntity.ok(metricsService.compareFromDatabase(preCacheId, postCacheId));
+        }
+
+        /**
+         * Run full PRE_CACHE vs POST_CACHE performance simulation
+         */
+        @PostMapping("/simulation/run")
+        @Operation(summary = "Run cache performance simulation", description = "Simulates PRE_CACHE vs POST_CACHE performance for getAllPosts, getPostById, getComments, getPopularTags. "
+                        +
+                        "Clears cache before each PRE_CACHE call (simulating no cache), then measures cache hits for POST_CACHE.")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Simulation completed successfully")
+        })
+        public ResponseEntity<java.util.Map<String, Object>> runCacheSimulation() {
+                return ResponseEntity.ok(simulationService.runFullSimulation());
+        }
+
+        /**
+         * Simulate a specific method
+         */
+        @PostMapping("/simulation/method/{methodType}")
+        @Operation(summary = "Simulate specific method", description = "Runs PRE_CACHE vs POST_CACHE simulation for a specific method. "
+                        +
+                        "Valid methodTypes: getAllPosts, getPostById, getCommentsByPostId, getPopularTags, getAllComments")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Method simulation completed"),
+                        @ApiResponse(responseCode = "400", description = "Invalid method type or missing resourceId")
+        })
+        public ResponseEntity<java.util.Map<String, Object>> simulateMethod(
+                        @Parameter(description = "Method type to simulate", example = "getAllPosts") @PathVariable String methodType,
+                        @Parameter(description = "Resource ID (required for getPostById, getCommentsByPostId)") @RequestParam(required = false) Long resourceId) {
+                return ResponseEntity.ok(simulationService.simulateMethod(methodType, resourceId));
+        }
+
+        /**
+         * Simulate getAllPosts
+         */
+        @PostMapping("/simulation/getAllPosts")
+        @Operation(summary = "Simulate getAllPosts", description = "Runs PRE_CACHE vs POST_CACHE simulation specifically for PostService.getAllPosts()")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Simulation completed")
+        })
+        public ResponseEntity<java.util.Map<String, Object>> simulateGetAllPosts() {
+                return ResponseEntity.ok(simulationService.simulateGetAllPosts());
+        }
+
+        /**
+         * Simulate getPostById
+         */
+        @PostMapping("/simulation/getPostById/{postId}")
+        @Operation(summary = "Simulate getPostById", description = "Runs PRE_CACHE vs POST_CACHE simulation specifically for PostService.getPostById()")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Simulation completed")
+        })
+        public ResponseEntity<java.util.Map<String, Object>> simulateGetPostById(
+                        @Parameter(description = "Post ID to simulate") @PathVariable Long postId) {
+                return ResponseEntity.ok(simulationService.simulateGetPostById(postId));
+        }
+
+        /**
+         * Simulate getCommentsByPostId
+         */
+        @PostMapping("/simulation/getCommentsByPostId/{postId}")
+        @Operation(summary = "Simulate getCommentsByPostId", description = "Runs PRE_CACHE vs POST_CACHE simulation specifically for CommentService.getAllCommentsByPostId()")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Simulation completed")
+        })
+        public ResponseEntity<java.util.Map<String, Object>> simulateGetCommentsByPostId(
+                        @Parameter(description = "Post ID to get comments for") @PathVariable Long postId) {
+                return ResponseEntity.ok(simulationService.simulateGetAllCommentsByPostId(postId));
+        }
+
+        /**
+         * Simulate getPopularTags
+         */
+        @PostMapping("/simulation/getPopularTags")
+        @Operation(summary = "Simulate getPopularTags", description = "Runs PRE_CACHE vs POST_CACHE simulation specifically for TagService.getPopularTags()")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Simulation completed")
+        })
+        public ResponseEntity<java.util.Map<String, Object>> simulateGetPopularTags() {
+                return ResponseEntity.ok(simulationService.simulateGetPopularTags());
         }
 }
