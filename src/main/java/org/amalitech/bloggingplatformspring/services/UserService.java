@@ -7,8 +7,11 @@ import org.amalitech.bloggingplatformspring.dtos.responses.*;
 import org.amalitech.bloggingplatformspring.entity.Comment;
 import org.amalitech.bloggingplatformspring.entity.Post;
 import org.amalitech.bloggingplatformspring.entity.User;
+import org.amalitech.bloggingplatformspring.enums.AuthProvider;
+import org.amalitech.bloggingplatformspring.enums.UserRoles;
 import org.amalitech.bloggingplatformspring.exceptions.BadRequestException;
 import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
+import org.amalitech.bloggingplatformspring.exceptions.UnauthorizedException;
 import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
@@ -19,8 +22,11 @@ import org.amalitech.bloggingplatformspring.utils.UserUtils;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -82,6 +88,40 @@ public class UserService {
         return userUtils.createUserProfileSummary(user, totalPosts, totalComments);
     }
 
+    public User processOAuth2User(OAuth2User oAuth2User) {
+        String email = oAuth2User.getAttribute("email");
+        String username = oAuth2User.getAttribute("name");
+        String providerId = oAuth2User.getAttribute("sub");
+
+        if (email == null) {
+            throw new UnauthorizedException("Email not found from OAuth2 provider");
+        }
+
+        return userRepository.findUserByEmailIgnoreCase(email)
+                .map(existingUser -> updateExistingUser(existingUser, username, providerId))
+                .orElseGet(() -> createNewUser(email, username, providerId));
+
+    }
+
+    private User updateExistingUser(User user, String name, String providerId) {
+        user.setUsername(name);
+        user.setAuthProvider(AuthProvider.GOOGLE);
+        user.setOauth2ProviderId(providerId);
+        return userRepository.save(user);
+    }
+
+    private User createNewUser(String email, String name, String providerId) {
+        User user = new User();
+        user.setUsername(name);
+        user.setEmail(email);
+        user.setOauth2ProviderId(providerId);
+        user.setAuthProvider(AuthProvider.GOOGLE);
+        user.setUserRoles(new ArrayList<>(Arrays.asList(
+                UserRoles.READER,
+                UserRoles.AUTHOR
+        )));
+        return userRepository.save(user);
+    }
 
     private boolean hasSearchTerm(String search) {
         return search != null && !search.isBlank();

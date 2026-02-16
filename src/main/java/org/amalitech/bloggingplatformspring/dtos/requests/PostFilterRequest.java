@@ -7,4 +7,7 @@ public record PostFilterRequest(
         String search,
         List<String> tags
 ) {
+    public boolean hasFilters() {
+        return author != null || search != null || (tags != null && !tags.isEmpty());
+    }
 }

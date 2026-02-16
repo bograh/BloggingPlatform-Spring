@@ -7,24 +7,33 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
+
 @Service
 public class RefreshCookieService {
 
     @Value("${app.cookie-secure}")
-    private boolean cookieSecure;
+    private String cookieSecure;
 
     public void setRefreshTokenCookie(String refreshToken, HttpServletResponse response) {
+        ResponseCookie cookie = buildCookie(refreshToken, Duration.ofDays(7));
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
 
-        ResponseCookie cookie = ResponseCookie
-                .from(Constants.REFRESH_TOKEN_COOKIE_NAME, refreshToken)
+    public void clearRefreshTokenCookie(HttpServletResponse response) {
+        ResponseCookie cookie = buildCookie("", Duration.ZERO);
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    private ResponseCookie buildCookie(String value, Duration maxAge) {
+        return ResponseCookie
+                .from(Constants.REFRESH_TOKEN_COOKIE_NAME, value)
                 .httpOnly(true)
+                .secure(Boolean.parseBoolean(cookieSecure))
+                .path("/")
                 .sameSite("Lax")
-                .secure(cookieSecure)
-                .maxAge(3600)
+                .maxAge(maxAge)
                 .build();
-
-        response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-
     }
 
 }

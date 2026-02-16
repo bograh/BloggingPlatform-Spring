@@ -2,6 +2,7 @@ package org.amalitech.bloggingplatformspring.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.amalitech.bloggingplatformspring.enums.AuthProvider;
 import org.amalitech.bloggingplatformspring.enums.UserRoles;
 
 import java.time.LocalDateTime;
@@ -10,6 +11,7 @@ import java.util.*;
 @Getter
 @Setter
 @ToString
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
@@ -30,8 +32,11 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(nullable = false)
     private String password;
+    private String oauth2ProviderId;
+
+    @Enumerated(EnumType.STRING)
+    private AuthProvider authProvider;
 
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))

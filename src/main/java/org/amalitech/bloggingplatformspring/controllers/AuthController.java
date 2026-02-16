@@ -101,4 +101,16 @@ public class AuthController {
                 ApiResponseGeneric.success("Access token refreshed successfully", authResponse);
         return new ResponseEntity<>(apiResponse, HttpStatus.OK);
     }
+
+    @PostMapping("/sign-out")
+    public ResponseEntity<Void> signOutUser(
+            @CookieValue(name = "refreshToken", required = false) String refreshToken,
+            HttpServletResponse response) {
+        /*if (refreshToken != null) {
+            // delete from storage
+        }*/
+
+        refreshCookieService.clearRefreshTokenCookie(response);
+        return ResponseEntity.noContent().build();
+    }
 }
