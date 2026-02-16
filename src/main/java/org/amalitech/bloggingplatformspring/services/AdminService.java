@@ -1,12 +1,14 @@
 package org.amalitech.bloggingplatformspring.services;
 
 import lombok.RequiredArgsConstructor;
+import org.amalitech.bloggingplatformspring.dtos.responses.SessionStats;
 import org.amalitech.bloggingplatformspring.dtos.responses.StatsResponse;
 import org.amalitech.bloggingplatformspring.entity.Post;
 import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
 import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
+import org.amalitech.bloggingplatformspring.security.TokenSessionService;
 import org.amalitech.bloggingplatformspring.utils.Constants;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
@@ -21,13 +23,15 @@ public class AdminService {
     private final UserRepository userRepository;
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
+    private final TokenSessionService tokenSessionService;
 
     public StatsResponse getStats() {
         long totalUsers = userRepository.count();
         long totalPosts = postRepository.count();
         long totalComments = commentRepository.count();
+        SessionStats sessionStats = tokenSessionService.getStatistics();
 
-        return new StatsResponse(totalUsers, totalPosts, totalComments);
+        return new StatsResponse(totalUsers, totalPosts, totalComments, sessionStats);
     }
 
     @Caching(evict = {
