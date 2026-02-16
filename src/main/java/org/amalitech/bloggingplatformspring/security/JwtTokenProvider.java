@@ -50,12 +50,20 @@ public class JwtTokenProvider {
         return getEmailFromToken(token, refreshTokenSecret);
     }
 
-    public boolean validAccessToken(String authToken) {
-        return validateToken(authToken, accessTokenSecret);
+    public boolean validAccessToken(String token) {
+        return validateToken(token, accessTokenSecret);
     }
 
-    public boolean validRefreshToken(String authToken) {
-        return validateToken(authToken, refreshTokenSecret);
+    public boolean validRefreshToken(String token) {
+        return validateToken(token, refreshTokenSecret);
+    }
+
+    public long getExpirationTimeFromAccessToken(String token) {
+        return getExpirationDateFromToken(token, accessTokenSecret);
+    }
+
+    public long getExpirationTimeFromRefreshToken(String token) {
+        return getExpirationDateFromToken(token, refreshTokenSecret);
     }
 
     public String getTokenFromRequest(HttpServletRequest request) {
@@ -89,6 +97,19 @@ public class JwtTokenProvider {
                 .getPayload();
 
         return claims.getSubject();
+    }
+
+    private long getExpirationDateFromToken(String token, String secret) {
+        Claims claims = Jwts.parser()
+                .verifyWith(getSigningKey(secret))
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+        Date expirationDate = claims.getExpiration();
+        if (expirationDate != null) {
+            return expirationDate.getTime();
+        }
+        return 0;
     }
 
     private boolean validateToken(String authToken, String secret) {

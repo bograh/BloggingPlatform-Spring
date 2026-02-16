@@ -14,7 +14,10 @@ import org.amalitech.bloggingplatformspring.dtos.responses.ApiResponseGeneric;
 import org.amalitech.bloggingplatformspring.dtos.responses.AuthResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.AuthResponseDTO;
 import org.amalitech.bloggingplatformspring.exceptions.ErrorResponse;
+import org.amalitech.bloggingplatformspring.exceptions.UnauthorizedException;
+import org.amalitech.bloggingplatformspring.security.JwtTokenProvider;
 import org.amalitech.bloggingplatformspring.security.RefreshCookieService;
+import org.amalitech.bloggingplatformspring.security.TokenSessionService;
 import org.amalitech.bloggingplatformspring.services.AuthService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,10 +30,14 @@ public class AuthController {
 
     private final AuthService authService;
     private final RefreshCookieService refreshCookieService;
+    private final TokenSessionService tokenSessionService;
+    private final JwtTokenProvider jwtTokenProvider;
 
-    public AuthController(AuthService authService, RefreshCookieService refreshCookieService) {
+    public AuthController(AuthService authService, RefreshCookieService refreshCookieService, TokenSessionService tokenSessionService, JwtTokenProvider jwtTokenProvider) {
         this.authService = authService;
         this.refreshCookieService = refreshCookieService;
+        this.tokenSessionService = tokenSessionService;
+        this.jwtTokenProvider = jwtTokenProvider;
     }
 
     @PostMapping("/register")
@@ -44,6 +51,10 @@ public class AuthController {
             HttpServletResponse httpServletResponse) {
         AuthResponseDTO authResponseDTO = authService.registerUser(registerUserDTO);
         AuthResponse authResponse = authResponseDTO.getAuthResponse();
+
+        String email = authResponse.user().getEmail();
+        tokenSessionService.createSession(email, authResponse.accessToken(), authResponseDTO.getRefreshToken());
+
         refreshCookieService.setRefreshTokenCookie(authResponseDTO.getRefreshToken(), httpServletResponse);
         ApiResponseGeneric<AuthResponse> apiResponse =
                 ApiResponseGeneric.success("User registration successful", authResponse);
@@ -74,6 +85,10 @@ public class AuthController {
             HttpServletResponse httpServletResponse) {
         AuthResponseDTO authResponseDTO = authService.signInUser(signInUserDTO);
         AuthResponse authResponse = authResponseDTO.getAuthResponse();
+
+        String email = authResponse.user().getEmail();
+        tokenSessionService.createSession(email, authResponse.accessToken(), authResponseDTO.getRefreshToken());
+
         refreshCookieService.setRefreshTokenCookie(authResponseDTO.getRefreshToken(), httpServletResponse);
         ApiResponseGeneric<AuthResponse> apiResponse =
                 ApiResponseGeneric.success("User sign in successful", authResponse);
@@ -94,8 +109,17 @@ public class AuthController {
     public ResponseEntity<ApiResponseGeneric<AuthResponse>> refreshAccessToken(
             @CookieValue(name = "refreshToken", required = false) String refreshToken,
             HttpServletResponse response) {
+
+        if (tokenSessionService.isTokenRevoked(refreshToken)) {
+            throw new UnauthorizedException("Refresh token has been revoked");
+        }
+
         AuthResponseDTO authResponseDTO = authService.refreshAccessToken(refreshToken);
         AuthResponse authResponse = authResponseDTO.getAuthResponse();
+
+        String email = authResponse.user().getEmail();
+        tokenSessionService.createSession(email, authResponse.accessToken(), authResponseDTO.getRefreshToken());
+
         refreshCookieService.setRefreshTokenCookie(authResponseDTO.getRefreshToken(), response);
         ApiResponseGeneric<AuthResponse> apiResponse =
                 ApiResponseGeneric.success("Access token refreshed successfully", authResponse);
@@ -103,14 +127,29 @@ public class AuthController {
     }
 
     @PostMapping("/sign-out")
-    public ResponseEntity<Void> signOutUser(
+    public ResponseEntity<ApiResponseGeneric<String>> signOutUser(
             @CookieValue(name = "refreshToken", required = false) String refreshToken,
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
             HttpServletResponse response) {
-        /*if (refreshToken != null) {
-            // delete from storage
-        }*/
+
+        String accessToken = null;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            accessToken = authHeader.substring(7);
+        }
+
+        if (accessToken != null) {
+            String email = jwtTokenProvider.getEmailFromAccessToken(accessToken);
+            tokenSessionService.removeSession(email);
+            tokenSessionService.revokeToken(accessToken);
+        }
+
+        if (refreshToken != null) {
+            tokenSessionService.revokeToken(refreshToken);
+        }
 
         refreshCookieService.clearRefreshTokenCookie(response);
-        return ResponseEntity.noContent().build();
+        ApiResponseGeneric<String> apiResponse =
+                ApiResponseGeneric.success("User signed out successfully", null);
+        return new ResponseEntity<>(apiResponse, HttpStatus.OK);
     }
 }

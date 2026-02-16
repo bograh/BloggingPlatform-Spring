@@ -14,6 +14,7 @@ import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.amalitech.bloggingplatformspring.security.JwtTokenProvider;
 import org.amalitech.bloggingplatformspring.utils.UserUtils;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -83,11 +84,14 @@ public class AuthService {
                 () -> new UnauthorizedException("Invalid email or password")
         );
 
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(email, password)
-        );
-
-        return authenticateUser(user, authentication);
+        try {
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(email, password)
+            );
+            return authenticateUser(user, authentication);
+        } catch (BadCredentialsException e) {
+            throw new UnauthorizedException("Invalid email or password");
+        }
     }
 
     public AuthResponseDTO refreshAccessToken(String refreshTokenFromCookie) {
