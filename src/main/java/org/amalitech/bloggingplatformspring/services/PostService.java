@@ -77,7 +77,11 @@ public class PostService {
 
     }
 
-    @Cacheable(cacheNames = Constants.POST_LIST_CACHE_NAME, key = "'page:' + #page + 'size:' + #size + 'sort:' + #sortBy + 'order:' + #order")
+    @Cacheable(
+            cacheNames = Constants.POST_LIST_CACHE_NAME,
+            key = "'page:' + #page + 'size:' + #size + 'sort:' + #sortBy + 'order:' + #order",
+            condition = "!#postFilterRequest.hasFilters()"
+    )
     public PageResponse<PostResponseDTO> getAllPosts(int page, int size, String sortBy, String order, PostFilterRequest postFilterRequest) {
         size = Math.min(size, 30);
         String entitySortField = postUtils.mapSortField(sortBy);
