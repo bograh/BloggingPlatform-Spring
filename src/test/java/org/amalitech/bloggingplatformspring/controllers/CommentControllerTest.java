@@ -43,14 +43,13 @@ class CommentControllerTest {
     private CommentController commentController;
 
     private ObjectMapper objectMapper;
-    private UUID userID;
     private User user;
 
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(commentController).build();
         objectMapper = new ObjectMapper();
-        userID = UUID.randomUUID();
+        UUID userID = UUID.randomUUID();
 
         user = new User();
         user.setId(userID);
@@ -63,7 +62,6 @@ class CommentControllerTest {
         CreateCommentDTO createCommentDTO = new CreateCommentDTO();
         createCommentDTO.setPostId(1L);
         createCommentDTO.setCommentContent("This is a test comment");
-        createCommentDTO.setAuthorId(String.valueOf(userID));
 
         CommentResponse commentResponse = new CommentResponse();
         commentResponse.setId("507f1f77bcf86cd799439011");
@@ -72,11 +70,11 @@ class CommentControllerTest {
         commentResponse.setAuthor(user.getUsername());
         commentResponse.setCreatedAt(String.valueOf(LocalDateTime.now()));
 
-        when(commentService.addCommentToPost(any(CreateCommentDTO.class))).thenReturn(commentResponse);
+        when(commentService.addCommentToPost(any(CreateCommentDTO.class), any())).thenReturn(commentResponse);
 
-        mockMvc.perform(post("/api/v1/comments")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createCommentDTO)))
+        mockMvc.perform(post("/api/comments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(createCommentDTO)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.message").value("Comment added to post successfully"))
                 .andExpect(jsonPath("$.data.id").value("507f1f77bcf86cd799439011"))
@@ -84,16 +82,16 @@ class CommentControllerTest {
                 .andExpect(jsonPath("$.data.content").value("This is a test comment"))
                 .andExpect(jsonPath("$.data.author").value("testuser"));
 
-        verify(commentService).addCommentToPost(any(CreateCommentDTO.class));
+        verify(commentService).addCommentToPost(any(CreateCommentDTO.class), any());
     }
 
     @Test
     void addCommentToPost_WithInvalidData_ShouldReturnBadRequest() throws Exception {
         CreateCommentDTO createCommentDTO = new CreateCommentDTO();
 
-        mockMvc.perform(post("/api/v1/comments")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createCommentDTO)))
+        mockMvc.perform(post("/api/comments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(createCommentDTO)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -102,17 +100,16 @@ class CommentControllerTest {
         CreateCommentDTO createCommentDTO = new CreateCommentDTO();
         createCommentDTO.setPostId(999L);
         createCommentDTO.setCommentContent("Test comment");
-        createCommentDTO.setAuthorId(String.valueOf(userID));
 
-        when(commentService.addCommentToPost(any(CreateCommentDTO.class)))
+        when(commentService.addCommentToPost(any(CreateCommentDTO.class), any()))
                 .thenThrow(new ResourceNotFoundException("Post not found"));
 
-        mockMvc.perform(post("/api/v1/comments")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createCommentDTO)))
+        mockMvc.perform(post("/api/comments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(createCommentDTO)))
                 .andExpect(status().is4xxClientError());
 
-        verify(commentService).addCommentToPost(any(CreateCommentDTO.class));
+        verify(commentService).addCommentToPost(any(CreateCommentDTO.class), any());
     }
 
     @Test
@@ -135,7 +132,7 @@ class CommentControllerTest {
 
         when(commentService.getAllCommentsByPostId(postId)).thenReturn(comments);
 
-        mockMvc.perform(get("/api/v1/comments/post/{postId}", postId))
+        mockMvc.perform(get("/api/comments/post/{postId}", postId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Comments for post retrieved successfully"))
                 .andExpect(jsonPath("$.data").isArray())
@@ -153,7 +150,7 @@ class CommentControllerTest {
         Long postId = 1L;
         when(commentService.getAllCommentsByPostId(postId)).thenReturn(Collections.emptyList());
 
-        mockMvc.perform(get("/api/v1/comments/post/{postId}", postId))
+        mockMvc.perform(get("/api/comments/post/{postId}", postId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Comments for post retrieved successfully"))
                 .andExpect(jsonPath("$.data").isArray())
@@ -168,7 +165,7 @@ class CommentControllerTest {
         when(commentService.getAllCommentsByPostId(postId))
                 .thenThrow(new ResourceNotFoundException("Post not found"));
 
-        mockMvc.perform(get("/api/v1/comments/post/{postId}", postId))
+        mockMvc.perform(get("/api/comments/post/{postId}", postId))
                 .andExpect(status().is4xxClientError());
 
         verify(commentService).getAllCommentsByPostId(postId);
@@ -187,7 +184,7 @@ class CommentControllerTest {
 
         when(commentService.getCommentById(commentId)).thenReturn(commentResponse);
 
-        mockMvc.perform(get("/api/v1/comments/{commentId}", commentId))
+        mockMvc.perform(get("/api/comments/{commentId}", commentId))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.message").value("Comment retrieved successfully"))
                 .andExpect(jsonPath("$.data.id").value(commentId))
@@ -204,7 +201,7 @@ class CommentControllerTest {
         when(commentService.getCommentById(commentId))
                 .thenThrow(new ResourceNotFoundException("Comment not found"));
 
-        mockMvc.perform(get("/api/v1/comments/{commentId}", commentId))
+        mockMvc.perform(get("/api/comments/{commentId}", commentId))
                 .andExpect(status().is4xxClientError());
 
         verify(commentService).getCommentById(commentId);
@@ -216,7 +213,7 @@ class CommentControllerTest {
         when(commentService.getCommentById(commentId))
                 .thenThrow(new ResourceNotFoundException("Comment not found"));
 
-        mockMvc.perform(get("/api/v1/comments/{commentId}", commentId))
+        mockMvc.perform(get("/api/comments/{commentId}", commentId))
                 .andExpect(status().is4xxClientError());
 
         verify(commentService).getCommentById(commentId);
@@ -226,50 +223,53 @@ class CommentControllerTest {
     void deleteComment_WithValidId_ShouldReturnNoContent() throws Exception {
         String commentId = "507f1f77bcf86cd799439011";
         DeleteCommentRequestDTO deleteRequest = new DeleteCommentRequestDTO();
-        deleteRequest.setAuthorId(String.valueOf(userID));
+        deleteRequest.setPostId(1L);
 
-        doNothing().when(commentService).deleteComment(eq(commentId), any(DeleteCommentRequestDTO.class));
+        doNothing().when(commentService).deleteComment(eq(commentId), any(DeleteCommentRequestDTO.class),
+                any());
 
-        mockMvc.perform(delete("/api/v1/comments/{commentId}", commentId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(deleteRequest)))
+        mockMvc.perform(delete("/api/comments/{commentId}", commentId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(deleteRequest)))
                 .andExpect(status().isNoContent())
                 .andExpect(jsonPath("$.message").value("Comment deleted successfully"));
 
-        verify(commentService).deleteComment(eq(commentId), any(DeleteCommentRequestDTO.class));
+        verify(commentService).deleteComment(eq(commentId), any(DeleteCommentRequestDTO.class), any());
     }
 
     @Test
     void deleteComment_WithNonExistentId_ShouldThrowException() throws Exception {
         String commentId = "507f1f77bcf86cd799439999";
         DeleteCommentRequestDTO deleteRequest = new DeleteCommentRequestDTO();
-        deleteRequest.setAuthorId(String.valueOf(userID));
+        deleteRequest.setPostId(1L);
 
         doThrow(new ResourceNotFoundException("Comment not found"))
-                .when(commentService).deleteComment(eq(commentId), any(DeleteCommentRequestDTO.class));
+                .when(commentService)
+                .deleteComment(eq(commentId), any(DeleteCommentRequestDTO.class), any());
 
-        mockMvc.perform(delete("/api/v1/comments/{commentId}", commentId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(deleteRequest)))
+        mockMvc.perform(delete("/api/comments/{commentId}", commentId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(deleteRequest)))
                 .andExpect(status().is4xxClientError());
 
-        verify(commentService).deleteComment(eq(commentId), any(DeleteCommentRequestDTO.class));
+        verify(commentService).deleteComment(eq(commentId), any(DeleteCommentRequestDTO.class), any());
     }
 
     @Test
     void deleteComment_WithUnauthorizedUser_ShouldThrowException() throws Exception {
         String commentId = "507f1f77bcf86cd799439011";
         DeleteCommentRequestDTO deleteRequest = new DeleteCommentRequestDTO();
-        deleteRequest.setAuthorId(String.valueOf(UUID.randomUUID()));
+        deleteRequest.setPostId(1L);
 
         doThrow(new UnauthorizedException("Unauthorized to delete this comment"))
-                .when(commentService).deleteComment(eq(commentId), any(DeleteCommentRequestDTO.class));
+                .when(commentService)
+                .deleteComment(eq(commentId), any(DeleteCommentRequestDTO.class), any());
 
-        mockMvc.perform(delete("/api/v1/comments/{commentId}", commentId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(deleteRequest)))
+        mockMvc.perform(delete("/api/comments/{commentId}", commentId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(deleteRequest)))
                 .andExpect(status().is4xxClientError());
 
-        verify(commentService).deleteComment(eq(commentId), any(DeleteCommentRequestDTO.class));
+        verify(commentService).deleteComment(eq(commentId), any(DeleteCommentRequestDTO.class), any());
     }
 }

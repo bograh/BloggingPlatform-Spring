@@ -1,8 +1,11 @@
 package org.amalitech.bloggingplatformspring.services;
 
-
 import org.amalitech.bloggingplatformspring.aop.PerformanceMonitoringAspect;
 import org.amalitech.bloggingplatformspring.aop.PerformanceMonitoringAspect.MethodMetrics;
+import org.amalitech.bloggingplatformspring.dtos.responses.AllMetricsDTO;
+import org.amalitech.bloggingplatformspring.dtos.responses.MethodMetricsDTO;
+import org.amalitech.bloggingplatformspring.dtos.responses.MetricsSummaryDTO;
+import org.amalitech.bloggingplatformspring.exceptions.BadRequestException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,11 +13,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Date;
-import java.util.Map;
+import java.time.LocalDateTime;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -58,13 +61,13 @@ class PerformanceMetricsServiceTest {
 
         when(performanceAspect.getAllMetrics()).thenReturn(mockMetricsMap);
 
-        Map<String, Object> result = performanceMetricsService.getAllMetrics();
+        AllMetricsDTO result = performanceMetricsService.getAllMetrics();
 
         assertThat(result).isNotNull();
-        assertThat(result).containsKeys("totalMethods", "timestamp", "metrics");
-        assertThat(result.get("totalMethods")).isEqualTo(2);
-        assertThat(result.get("timestamp")).isInstanceOf(Date.class);
-        assertThat(result.get("metrics")).isEqualTo(mockMetricsMap);
+        assertThat(result.totalMethods()).isEqualTo(2);
+        assertThat(result.timestamp()).isInstanceOf(LocalDateTime.class);
+        assertThat(result.metrics()).isNotNull();
+        assertThat(result.metrics()).hasSize(2);
 
         verify(performanceAspect).getAllMetrics();
     }
@@ -73,17 +76,13 @@ class PerformanceMetricsServiceTest {
     void getAllMetrics_ShouldReturnEmptyMetrics_WhenNoMetricsExist() {
         when(performanceAspect.getAllMetrics()).thenReturn(new ConcurrentHashMap<>());
 
-        Map<String, Object> result = performanceMetricsService.getAllMetrics();
+        AllMetricsDTO result = performanceMetricsService.getAllMetrics();
 
         assertThat(result).isNotNull();
-        assertThat(result.get("totalMethods")).isEqualTo(0);
-        assertThat(result.get("timestamp")).isInstanceOf(Date.class);
-        assertThat(result.get("metrics")).isInstanceOf(ConcurrentHashMap.class);
-
-        @SuppressWarnings("unchecked")
-        ConcurrentHashMap<String, MethodMetrics> metrics =
-                (ConcurrentHashMap<String, MethodMetrics>) result.get("metrics");
-        assertThat(metrics).isEmpty();
+        assertThat(result.totalMethods()).isEqualTo(0);
+        assertThat(result.timestamp()).isInstanceOf(LocalDateTime.class);
+        assertThat(result.metrics()).isNotNull();
+        assertThat(result.metrics()).isEmpty();
     }
 
     @Test
@@ -91,24 +90,26 @@ class PerformanceMetricsServiceTest {
         String methodName = "UserService.getUser(..)";
         when(performanceAspect.getMetrics(methodName)).thenReturn(mockMetrics1);
 
-        MethodMetrics result = performanceMetricsService.getMethodMetrics(methodName);
+        MethodMetricsDTO result = performanceMetricsService.getMethodMetrics(methodName);
 
         assertThat(result).isNotNull();
-        assertThat(result).isEqualTo(mockMetrics1);
-        assertThat(result.getMethodName()).isEqualTo(methodName);
-        assertThat(result.getTotalCalls()).isEqualTo(3);
+        assertThat(result.methodName()).isEqualTo(methodName);
+        assertThat(result.totalCalls()).isEqualTo(3);
+        assertThat(result.successfulCalls()).isEqualTo(3);
+        assertThat(result.failedCalls()).isEqualTo(0);
 
         verify(performanceAspect).getMetrics(methodName);
     }
 
     @Test
-    void getMethodMetrics_ShouldReturnNull_WhenMethodDoesNotExist() {
+    void getMethodMetrics_ShouldThrowException_WhenMethodDoesNotExist() {
         String methodName = "NonExistentService.method(..)";
         when(performanceAspect.getMetrics(methodName)).thenReturn(null);
 
-        MethodMetrics result = performanceMetricsService.getMethodMetrics(methodName);
+        assertThatThrownBy(() -> performanceMetricsService.getMethodMetrics(methodName))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("Method metrics not found");
 
-        assertThat(result).isNull();
         verify(performanceAspect).getMetrics(methodName);
     }
 
@@ -120,27 +121,17 @@ class PerformanceMetricsServiceTest {
 
         when(performanceAspect.getAllMetrics()).thenReturn(mockMetricsMap);
 
-        Map<String, Object> summary = performanceMetricsService.getMetricsSummary();
+        MetricsSummaryDTO summary = performanceMetricsService.getMetricsSummary();
 
         assertThat(summary).isNotNull();
-        assertThat(summary).containsKeys(
-                "totalMethodsMonitored",
-                "totalExecutions",
-                "totalFailures",
-                "overallAverageExecutionTime",
-                "timestamp"
-        );
+        assertThat(summary.totalMethodsMonitored()).isEqualTo(3);
+        assertThat(summary.totalExecutions()).isEqualTo(9L);
+        assertThat(summary.totalFailures()).isEqualTo(2L);
 
-        assertThat(summary.get("totalMethodsMonitored")).isEqualTo(3);
-
-        assertThat(summary.get("totalExecutions")).isEqualTo(9L);
-
-        assertThat(summary.get("totalFailures")).isEqualTo(2L);
-
-        String avgTime = (String) summary.get("overallAverageExecutionTime");
+        String avgTime = summary.overallAverageExecutionTime();
         assertThat(avgTime).matches("\\d+\\.\\d{2} ms");
 
-        assertThat(summary.get("timestamp")).isInstanceOf(Date.class);
+        assertThat(summary.timestamp()).isInstanceOf(LocalDateTime.class);
 
         verify(performanceAspect).getAllMetrics();
     }
@@ -149,14 +140,14 @@ class PerformanceMetricsServiceTest {
     void getMetricsSummary_ShouldReturnZeroValues_WhenNoMetricsExist() {
         when(performanceAspect.getAllMetrics()).thenReturn(new ConcurrentHashMap<>());
 
-        Map<String, Object> summary = performanceMetricsService.getMetricsSummary();
+        MetricsSummaryDTO summary = performanceMetricsService.getMetricsSummary();
 
         assertThat(summary).isNotNull();
-        assertThat(summary.get("totalMethodsMonitored")).isEqualTo(0);
-        assertThat(summary.get("totalExecutions")).isEqualTo(0L);
-        assertThat(summary.get("totalFailures")).isEqualTo(0L);
-        assertThat(summary.get("overallAverageExecutionTime")).isEqualTo("0.00 ms");
-        assertThat(summary.get("timestamp")).isInstanceOf(Date.class);
+        assertThat(summary.totalMethodsMonitored()).isEqualTo(0);
+        assertThat(summary.totalExecutions()).isEqualTo(0L);
+        assertThat(summary.totalFailures()).isEqualTo(0L);
+        assertThat(summary.overallAverageExecutionTime()).isEqualTo("0.00 ms");
+        assertThat(summary.timestamp()).isInstanceOf(LocalDateTime.class);
     }
 
     @Test
@@ -164,13 +155,13 @@ class PerformanceMetricsServiceTest {
         mockMetricsMap.put("UserService.getUser(..)", mockMetrics1);
         when(performanceAspect.getAllMetrics()).thenReturn(mockMetricsMap);
 
-        Map<String, Object> summary = performanceMetricsService.getMetricsSummary();
+        MetricsSummaryDTO summary = performanceMetricsService.getMetricsSummary();
 
-        assertThat(summary.get("totalMethodsMonitored")).isEqualTo(1);
-        assertThat(summary.get("totalExecutions")).isEqualTo(3L);
-        assertThat(summary.get("totalFailures")).isEqualTo(0L);
+        assertThat(summary.totalMethodsMonitored()).isEqualTo(1);
+        assertThat(summary.totalExecutions()).isEqualTo(3L);
+        assertThat(summary.totalFailures()).isEqualTo(0L);
 
-        String avgTime = (String) summary.get("overallAverageExecutionTime");
+        String avgTime = summary.overallAverageExecutionTime();
         assertThat(avgTime).isEqualTo("150.00 ms");
     }
 
@@ -189,9 +180,9 @@ class PerformanceMetricsServiceTest {
 
         when(performanceAspect.getAllMetrics()).thenReturn(mockMetricsMap);
 
-        Map<String, Object> summary = performanceMetricsService.getMetricsSummary();
+        MetricsSummaryDTO summary = performanceMetricsService.getMetricsSummary();
 
-        String avgTime = (String) summary.get("overallAverageExecutionTime");
+        String avgTime = summary.overallAverageExecutionTime();
         assertThat(avgTime).isEqualTo("275.00 ms");
     }
 
@@ -205,10 +196,10 @@ class PerformanceMetricsServiceTest {
         mockMetricsMap.put("FailingMethod", failingMetrics);
         when(performanceAspect.getAllMetrics()).thenReturn(mockMetricsMap);
 
-        Map<String, Object> summary = performanceMetricsService.getMetricsSummary();
+        MetricsSummaryDTO summary = performanceMetricsService.getMetricsSummary();
 
-        assertThat(summary.get("totalExecutions")).isEqualTo(3L);
-        assertThat(summary.get("totalFailures")).isEqualTo(3L);
+        assertThat(summary.totalExecutions()).isEqualTo(3L);
+        assertThat(summary.totalFailures()).isEqualTo(3L);
     }
 
     @Test
@@ -244,29 +235,29 @@ class PerformanceMetricsServiceTest {
     @Test
     void getAllMetrics_ShouldContainTimestampWithinReasonableTimeRange() {
         when(performanceAspect.getAllMetrics()).thenReturn(new ConcurrentHashMap<>());
-        Date beforeCall = new Date();
+        LocalDateTime beforeCall = LocalDateTime.now();
 
-        Map<String, Object> result = performanceMetricsService.getAllMetrics();
+        AllMetricsDTO result = performanceMetricsService.getAllMetrics();
 
-        Date afterCall = new Date();
-        Date timestamp = (Date) result.get("timestamp");
+        LocalDateTime afterCall = LocalDateTime.now();
+        LocalDateTime timestamp = result.timestamp();
 
         assertThat(timestamp).isNotNull();
-        assertThat(timestamp.getTime()).isBetween(beforeCall.getTime(), afterCall.getTime());
+        assertThat(timestamp).isBetween(beforeCall, afterCall);
     }
 
     @Test
     void getMetricsSummary_ShouldContainTimestampWithinReasonableTimeRange() {
         when(performanceAspect.getAllMetrics()).thenReturn(new ConcurrentHashMap<>());
-        Date beforeCall = new Date();
+        LocalDateTime beforeCall = LocalDateTime.now();
 
-        Map<String, Object> summary = performanceMetricsService.getMetricsSummary();
+        MetricsSummaryDTO summary = performanceMetricsService.getMetricsSummary();
 
-        Date afterCall = new Date();
-        Date timestamp = (Date) summary.get("timestamp");
+        LocalDateTime afterCall = LocalDateTime.now();
+        LocalDateTime timestamp = summary.timestamp();
 
         assertThat(timestamp).isNotNull();
-        assertThat(timestamp.getTime()).isBetween(beforeCall.getTime(), afterCall.getTime());
+        assertThat(timestamp).isBetween(beforeCall, afterCall);
     }
 
     @Test
@@ -277,9 +268,9 @@ class PerformanceMetricsServiceTest {
         mockMetricsMap.put("TestMethod", metrics);
         when(performanceAspect.getAllMetrics()).thenReturn(mockMetricsMap);
 
-        Map<String, Object> summary = performanceMetricsService.getMetricsSummary();
+        MetricsSummaryDTO summary = performanceMetricsService.getMetricsSummary();
 
-        String avgTime = (String) summary.get("overallAverageExecutionTime");
+        String avgTime = summary.overallAverageExecutionTime();
         assertThat(avgTime).matches("\\d+\\.\\d{2} ms");
         assertThat(avgTime).isEqualTo("333.00 ms");
     }
@@ -295,14 +286,10 @@ class PerformanceMetricsServiceTest {
 
         when(performanceAspect.getAllMetrics()).thenReturn(largeMetricsMap);
 
-        Map<String, Object> result = performanceMetricsService.getAllMetrics();
+        AllMetricsDTO result = performanceMetricsService.getAllMetrics();
 
-        assertThat(result.get("totalMethods")).isEqualTo(100);
-
-        @SuppressWarnings("unchecked")
-        ConcurrentHashMap<String, MethodMetrics> metrics =
-                (ConcurrentHashMap<String, MethodMetrics>) result.get("metrics");
-        assertThat(metrics).hasSize(100);
+        assertThat(result.totalMethods()).isEqualTo(100);
+        assertThat(result.metrics()).hasSize(100);
     }
 
     @Test
@@ -315,11 +302,11 @@ class PerformanceMetricsServiceTest {
         mockMetricsMap.put("PopularMethod", heavilyUsedMethod);
         when(performanceAspect.getAllMetrics()).thenReturn(mockMetricsMap);
 
-        Map<String, Object> summary = performanceMetricsService.getMetricsSummary();
+        MetricsSummaryDTO summary = performanceMetricsService.getMetricsSummary();
 
-        assertThat(summary.get("totalExecutions")).isEqualTo(1000L);
-        assertThat(summary.get("totalFailures")).isEqualTo(100L);
-        assertThat(summary.get("overallAverageExecutionTime")).isNotNull();
+        assertThat(summary.totalExecutions()).isEqualTo(1000L);
+        assertThat(summary.totalFailures()).isEqualTo(100L);
+        assertThat(summary.overallAverageExecutionTime()).isNotNull();
     }
 
     @Test
