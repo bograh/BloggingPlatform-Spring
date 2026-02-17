@@ -33,87 +33,83 @@ import java.util.List;
 @Service
 public class CommentService {
 
-    private final CommentRepository commentRepository;
-    private final PostRepository postRepository;
-    private final UserUtils userUtils;
-    private final CommentUtils commentUtils;
+        private final CommentRepository commentRepository;
+        private final PostRepository postRepository;
+        private final UserUtils userUtils;
+        private final CommentUtils commentUtils;
 
-    @Caching(evict = {
-            @CacheEvict(cacheNames = Constants.COMMENTS_CACHE_NAME, key = "'post:' + #newComment.postId"),
-            @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, key = "#newComment.postId"),
-            @CacheEvict(cacheNames = Constants.POST_LIST_CACHE_NAME, allEntries = true)
-    })
-    public CommentResponse addCommentToPost(CreateCommentDTO newComment, HttpServletRequest request) {
-        User user = userUtils.getUserFromRequest(request);
+        @Caching(evict = {
+                        @CacheEvict(cacheNames = Constants.COMMENTS_CACHE_NAME, key = "'post:' + #newComment.postId"),
+                        @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, key = "#newComment.postId"),
+                        @CacheEvict(cacheNames = Constants.POST_LIST_CACHE_NAME, allEntries = true)
+        })
+        public CommentResponse addCommentToPost(CreateCommentDTO newComment, HttpServletRequest request) {
+                User user = userUtils.getUserFromRequest(request);
 
-        Comment comment = new Comment();
-        comment.setContent(newComment.getCommentContent());
-        comment.setPostId(newComment.getPostId());
-        comment.setCommentedAt(LocalDateTime.now());
-        comment.setAuthorId(String.valueOf(user.getId()));
-        comment.setAuthor(user.getUsername());
-        commentRepository.save(comment);
+                Comment comment = new Comment();
+                comment.setContent(newComment.getCommentContent());
+                comment.setPostId(newComment.getPostId());
+                comment.setCommentedAt(LocalDateTime.now());
+                comment.setAuthorId(String.valueOf(user.getId()));
+                comment.setAuthor(user.getUsername());
+                commentRepository.save(comment);
 
-        return commentUtils.createCommentResponseFromComment(comment);
+                return commentUtils.createCommentResponseFromComment(comment);
 
-    }
-
-    @Cacheable(cacheNames = Constants.COMMENTS_CACHE_NAME, key = "'post:' + #postId")
-    public List<CommentResponse> getAllCommentsByPostId(Long postId) {
-        postRepository.findPostById(postId).orElseThrow(
-                () -> new ResourceNotFoundException("Post not found with ID: " + postId)
-        );
-        List<Comment> comments = commentRepository.findByPostIdOrderByCommentedAtDesc(postId);
-
-        return comments.stream()
-                .map(commentUtils::createCommentResponseFromComment)
-                .toList();
-    }
-
-    @Cacheable(cacheNames = Constants.COMMENTS_CACHE_NAME, key = "#commentId")
-    public CommentResponse getCommentById(String commentId) {
-
-        Comment comment = commentRepository.findById(commentId).orElseThrow(
-                () -> new ResourceNotFoundException("Comment not found with id: " + commentId)
-        );
-
-        return commentUtils.createCommentResponseFromComment(comment);
-    }
-
-    @Caching(evict = {
-            @CacheEvict(cacheNames = Constants.COMMENTS_CACHE_NAME, key = "'post:' + #deleteCommentRequestDTO.postId"),
-            @CacheEvict(cacheNames = Constants.COMMENTS_CACHE_NAME, key = "#commentId"),
-            @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, key = "#deleteCommentRequestDTO.postId"),
-            @CacheEvict(cacheNames = Constants.POST_LIST_CACHE_NAME, allEntries = true)
-    })
-    public void deleteComment(String commentId,
-                              DeleteCommentRequestDTO deleteCommentRequestDTO,
-                              HttpServletRequest request) {
-        User user = userUtils.getUserFromRequest(request);
-        Post post = postRepository.findPostById(deleteCommentRequestDTO.getPostId()).orElseThrow(
-                () -> new ResourceNotFoundException("Post not found")
-        );
-
-        Comment comment = commentRepository.findById(commentId).orElseThrow(
-                () -> new ResourceNotFoundException("Comment not found with id: " + commentId)
-        );
-
-        if (!comment.getAuthorId().equalsIgnoreCase(String.valueOf(user.getId()))
-                && !post.getId().equals(comment.getPostId())) {
-            throw new ForbiddenException("You cannot delete this comment");
         }
 
-        commentRepository.deleteCommentById(commentId);
+        @Cacheable(cacheNames = Constants.COMMENTS_CACHE_NAME, key = "'post:' + #postId")
+        public List<CommentResponse> getAllCommentsByPostId(Long postId) {
+                postRepository.findPostById(postId).orElseThrow(
+                                () -> new ResourceNotFoundException("Post not found with ID: " + postId));
+                List<Comment> comments = commentRepository.findByPostIdOrderByCommentedAtDesc(postId);
 
-    }
+                return comments.stream()
+                                .map(commentUtils::createCommentResponseFromComment)
+                                .toList();
+        }
 
-    public PageResponse<CommentResponse> getAllComments(int page, int size, String sortBy, String order, CommentFilterRequest commentFilterRequest) {
-        size = Math.min(size, 30);
+        @Cacheable(cacheNames = Constants.COMMENTS_CACHE_NAME, key = "#commentId")
+        public CommentResponse getCommentById(String commentId) {
 
-        Sort sort = commentUtils.createSort(sortBy, order);
-        Pageable pageable = PageRequest.of(page, size, sort);
-        Page<Comment> comments = commentUtils.findComments(commentFilterRequest, pageable);
-        return commentUtils.mapCommentsToResponse(comments);
+                Comment comment = commentRepository.findById(commentId).orElseThrow(
+                                () -> new ResourceNotFoundException("Comment not found with id: " + commentId));
 
-    }
+                return commentUtils.createCommentResponseFromComment(comment);
+        }
+
+        @Caching(evict = {
+                        @CacheEvict(cacheNames = Constants.COMMENTS_CACHE_NAME, key = "'post:' + #deleteCommentRequestDTO.postId"),
+                        @CacheEvict(cacheNames = Constants.COMMENTS_CACHE_NAME, key = "#commentId"),
+                        @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, key = "#deleteCommentRequestDTO.postId"),
+                        @CacheEvict(cacheNames = Constants.POST_LIST_CACHE_NAME, allEntries = true)
+        })
+        public void deleteComment(String commentId,
+                        DeleteCommentRequestDTO deleteCommentRequestDTO,
+                        HttpServletRequest request) {
+                User user = userUtils.getUserFromRequest(request);
+                Post post = postRepository.findPostById(deleteCommentRequestDTO.getPostId()).orElseThrow(
+                                () -> new ResourceNotFoundException("Post not found"));
+
+                Comment comment = commentRepository.findById(commentId).orElseThrow(
+                                () -> new ResourceNotFoundException("Comment not found with id: " + commentId));
+
+                if (!comment.getAuthorId().equalsIgnoreCase(String.valueOf(user.getId()))) {
+                        throw new ForbiddenException("You cannot delete this comment");
+                }
+
+                commentRepository.deleteCommentById(commentId);
+
+        }
+
+        public PageResponse<CommentResponse> getAllComments(int page, int size, String sortBy, String order,
+                        CommentFilterRequest commentFilterRequest) {
+                size = Math.min(size, 30);
+
+                Sort sort = commentUtils.createSort(sortBy, order);
+                Pageable pageable = PageRequest.of(page, size, sort);
+                Page<Comment> comments = commentUtils.findComments(commentFilterRequest, pageable);
+                return commentUtils.mapCommentsToResponse(comments);
+
+        }
 }

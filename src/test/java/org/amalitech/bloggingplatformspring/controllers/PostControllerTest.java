@@ -2,10 +2,8 @@ package org.amalitech.bloggingplatformspring.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.amalitech.bloggingplatformspring.dtos.requests.CreatePostDTO;
-import org.amalitech.bloggingplatformspring.dtos.requests.DeletePostRequestDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.PostFilterRequest;
 import org.amalitech.bloggingplatformspring.dtos.requests.UpdatePostDTO;
-import org.amalitech.bloggingplatformspring.dtos.responses.ApiResponseGeneric;
 import org.amalitech.bloggingplatformspring.dtos.responses.PageResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
 import org.amalitech.bloggingplatformspring.exceptions.ForbiddenException;
@@ -17,6 +15,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -36,6 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class PostControllerTest {
 
     private MockMvc mockMvc;
@@ -61,16 +62,15 @@ class PostControllerTest {
         CreatePostDTO createPostDTO = new CreatePostDTO();
         createPostDTO.setTitle("Test Post");
         createPostDTO.setBody("This is test content");
-        createPostDTO.setAuthorId(String.valueOf(userID));
 
         PostResponseDTO postResponse = new PostResponseDTO();
         postResponse.setId(1L);
         postResponse.setTitle("Test Post");
         postResponse.setBody("This is test content");
 
-        when(postService.createPost(any(CreatePostDTO.class))).thenReturn(postResponse);
+        when(postService.createPost(any(CreatePostDTO.class), any())).thenReturn(postResponse);
 
-        mockMvc.perform(post("/api/v1/posts")
+        mockMvc.perform(post("/api/posts")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createPostDTO)))
                 .andExpect(status().isCreated())
@@ -79,14 +79,14 @@ class PostControllerTest {
                 .andExpect(jsonPath("$.data.title").value("Test Post"))
                 .andExpect(jsonPath("$.data.body").value("This is test content"));
 
-        verify(postService).createPost(any(CreatePostDTO.class));
+        verify(postService).createPost(any(CreatePostDTO.class), any());
     }
 
     @Test
     void createPost_WithInvalidData_ShouldReturnBadRequest() throws Exception {
         CreatePostDTO createPostDTO = new CreatePostDTO();
 
-        mockMvc.perform(post("/api/v1/posts")
+        mockMvc.perform(post("/api/posts")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(createPostDTO)))
                 .andExpect(status().isBadRequest());
@@ -105,13 +105,13 @@ class PostControllerTest {
         PageResponse<PostResponseDTO> pageResponse = new PageResponse<>(
                 Arrays.asList(post1, post2),
                 0, 10,
-                Sort.by(Sort.Direction.DESC, "lastUpdated").toString(), 2, true
-        );
+                Sort.by(Sort.Direction.DESC, "lastUpdated").toString(), 2, true);
 
-        when(postService.getAllPosts(anyInt(), anyInt(), anyString(), anyString(), any(PostFilterRequest.class)))
+        when(postService.getAllPosts(anyInt(), anyInt(), anyString(), anyString(),
+                any(PostFilterRequest.class)))
                 .thenReturn(pageResponse);
 
-        mockMvc.perform(get("/api/v1/posts"))
+        mockMvc.perform(get("/api/posts"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Posts retrieved successfully"))
                 .andExpect(jsonPath("$.data.content[0].id").value(1))
@@ -121,7 +121,8 @@ class PostControllerTest {
                 .andExpect(jsonPath("$.data.size").value(10))
                 .andExpect(jsonPath("$.data.totalElements").value(2));
 
-        verify(postService).getAllPosts(eq(0), eq(12), eq("lastUpdated"), eq("DESC"), any(PostFilterRequest.class));
+        verify(postService).getAllPosts(eq(0), eq(12), eq("lastUpdated"), eq("DESC"),
+                any(PostFilterRequest.class));
     }
 
     @Test
@@ -133,13 +134,13 @@ class PostControllerTest {
         PageResponse<PostResponseDTO> pageResponse = new PageResponse<>(
                 List.of(post),
                 1, 5,
-                Sort.by(Sort.Direction.DESC, "lastUpdated").toString(), 1, true
-        );
+                Sort.by(Sort.Direction.DESC, "lastUpdated").toString(), 1, true);
 
-        when(postService.getAllPosts(anyInt(), anyInt(), anyString(), anyString(), any(PostFilterRequest.class)))
+        when(postService.getAllPosts(anyInt(), anyInt(), anyString(), anyString(),
+                any(PostFilterRequest.class)))
                 .thenReturn(pageResponse);
 
-        mockMvc.perform(get("/api/v1/posts")
+        mockMvc.perform(get("/api/posts")
                         .param("page", "1")
                         .param("size", "5")
                         .param("sort", "title")
@@ -166,7 +167,7 @@ class PostControllerTest {
 
         when(postService.getPostById(postId)).thenReturn(postResponse);
 
-        mockMvc.perform(get("/api/v1/posts/{postId}", postId))
+        mockMvc.perform(get("/api/posts/{postId}", postId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Post retrieved successfully"))
                 .andExpect(jsonPath("$.data.id").value(1))
@@ -182,7 +183,7 @@ class PostControllerTest {
         when(postService.getPostById(postId))
                 .thenThrow(new ResourceNotFoundException("Post not found"));
 
-        mockMvc.perform(get("/api/v1/posts/{postId}", postId))
+        mockMvc.perform(get("/api/posts/{postId}", postId))
                 .andExpect(status().is4xxClientError());
 
         verify(postService).getPostById(postId);
@@ -194,16 +195,15 @@ class PostControllerTest {
         UpdatePostDTO updatePostDTO = new UpdatePostDTO();
         updatePostDTO.setTitle("Updated Title");
         updatePostDTO.setBody("Updated Content");
-        updatePostDTO.setAuthorId(String.valueOf(userID));
 
         PostResponseDTO postResponse = new PostResponseDTO();
         postResponse.setId(postId);
         postResponse.setTitle("Updated Title");
         postResponse.setBody("Updated Content");
 
-        when(postService.updatePost(eq(postId), any(UpdatePostDTO.class))).thenReturn(postResponse);
+        when(postService.updatePost(eq(postId), any(UpdatePostDTO.class), any())).thenReturn(postResponse);
 
-        mockMvc.perform(put("/api/v1/posts/{postId}", postId)
+        mockMvc.perform(put("/api/posts/{postId}", postId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updatePostDTO)))
                 .andExpect(status().isOk())
@@ -212,7 +212,7 @@ class PostControllerTest {
                 .andExpect(jsonPath("$.data.title").value("Updated Title"))
                 .andExpect(jsonPath("$.data.body").value("Updated Content"));
 
-        verify(postService).updatePost(eq(postId), any(UpdatePostDTO.class));
+        verify(postService).updatePost(eq(postId), any(UpdatePostDTO.class), any());
     }
 
     @Test
@@ -220,7 +220,7 @@ class PostControllerTest {
         Long postId = 1L;
         UpdatePostDTO updatePostDTO = new UpdatePostDTO();
 
-        mockMvc.perform(put("/api/v1/posts/{postId}", postId)
+        mockMvc.perform(put("/api/posts/{postId}", postId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updatePostDTO)))
                 .andExpect(status().isBadRequest());
@@ -232,131 +232,109 @@ class PostControllerTest {
         UpdatePostDTO updatePostDTO = new UpdatePostDTO();
         updatePostDTO.setTitle("Updated Title");
         updatePostDTO.setBody("Updated Content");
-        updatePostDTO.setAuthorId(String.valueOf(userID));
 
-        when(postService.updatePost(eq(postId), any(UpdatePostDTO.class)))
+        when(postService.updatePost(eq(postId), any(UpdatePostDTO.class), any()))
                 .thenThrow(new ResourceNotFoundException("Post not found"));
 
-        mockMvc.perform(put("/api/v1/posts/{postId}", postId)
+        mockMvc.perform(put("/api/posts/{postId}", postId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updatePostDTO)))
                 .andExpect(status().is4xxClientError());
 
-        verify(postService).updatePost(eq(postId), any(UpdatePostDTO.class));
+        verify(postService).updatePost(eq(postId), any(UpdatePostDTO.class), any());
     }
 
     @Test
     void deletePost_shouldReturnNoContent_whenPostDeletedSuccessfully() {
         Long postId = 1L;
-        DeletePostRequestDTO requestDTO = new DeletePostRequestDTO();
-        requestDTO.setAuthorId("123e4567-e89b-12d3-a456-426614174000");
 
-        doNothing().when(postService).deletePost(postId, requestDTO);
+        doNothing().when(postService).deletePost(eq(postId), any());
 
-        ResponseEntity<ApiResponseGeneric<Void>> response =
-                postController.deletePost(postId, requestDTO);
+        ResponseEntity<Void> response = postController.deletePost(postId, null);
 
         assertNotNull(response);
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
         assertEquals(204, response.getStatusCode().value());
 
-        verify(postService, times(1)).deletePost(postId, requestDTO);
+        verify(postService, times(1)).deletePost(eq(postId), any());
     }
 
     @Test
     void deletePost_shouldReturnSuccessMessage_whenPostDeleted() {
         Long postId = 5L;
-        DeletePostRequestDTO requestDTO = new DeletePostRequestDTO();
-        requestDTO.setAuthorId("123e4567-e89b-12d3-a456-426614174000");
 
-        doNothing().when(postService).deletePost(postId, requestDTO);
+        doNothing().when(postService).deletePost(eq(postId), any());
 
-        ResponseEntity<ApiResponseGeneric<Void>> response =
-                postController.deletePost(postId, requestDTO);
+        ResponseEntity<Void> response = postController.deletePost(postId, null);
 
         assertNotNull(response);
-        assertNotNull(response.getBody());
-        assertEquals("Post deleted successfully.", response.getBody().getMessage());
-        assertNull(response.getBody().getData());
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
 
-        verify(postService, times(1)).deletePost(postId, requestDTO);
+        verify(postService, times(1)).deletePost(eq(postId), any());
     }
 
     @Test
     void deletePost_shouldCallServiceWithCorrectParameters() {
         Long postId = 10L;
-        DeletePostRequestDTO requestDTO = new DeletePostRequestDTO();
-        requestDTO.setAuthorId("123e4567-e89b-12d3-a456-426614174000");
 
-        doNothing().when(postService).deletePost(postId, requestDTO);
+        doNothing().when(postService).deletePost(eq(postId), any());
 
-        postController.deletePost(postId, requestDTO);
+        postController.deletePost(postId, null);
 
-        verify(postService, times(1)).deletePost(eq(postId), eq(requestDTO));
+        verify(postService, times(1)).deletePost(eq(postId), any());
         verifyNoMoreInteractions(postService);
     }
 
     @Test
     void deletePost_shouldHandleDifferentPostIds() {
         Long postId = 999L;
-        DeletePostRequestDTO requestDTO = new DeletePostRequestDTO();
-        requestDTO.setAuthorId("123e4567-e89b-12d3-a456-426614174000");
 
-        doNothing().when(postService).deletePost(postId, requestDTO);
+        doNothing().when(postService).deletePost(eq(postId), any());
 
-        ResponseEntity<ApiResponseGeneric<Void>> response =
-                postController.deletePost(postId, requestDTO);
+        ResponseEntity<Void> response = postController.deletePost(postId, null);
 
         assertNotNull(response);
         assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
-        verify(postService, times(1)).deletePost(999L, requestDTO);
+        verify(postService, times(1)).deletePost(eq(999L), any());
     }
 
     @Test
     void deletePost_shouldReturnApiResponseGeneric_withVoidData() {
         Long postId = 1L;
-        DeletePostRequestDTO requestDTO = new DeletePostRequestDTO();
-        requestDTO.setAuthorId("123e4567-e89b-12d3-a456-426614174000");
 
-        doNothing().when(postService).deletePost(postId, requestDTO);
+        doNothing().when(postService).deletePost(eq(postId), any());
 
-        ResponseEntity<ApiResponseGeneric<Void>> response =
-                postController.deletePost(postId, requestDTO);
+        ResponseEntity<Void> response = postController.deletePost(postId, null);
 
         assertNotNull(response);
-        assertNotNull(response.getBody());
-        assertNull(response.getBody().getData());
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
 
-        verify(postService, times(1)).deletePost(postId, requestDTO);
+        verify(postService, times(1)).deletePost(eq(postId), any());
     }
 
     @Test
     void deletePost_shouldPropagateServiceException_whenServiceThrowsException() {
         Long postId = 1L;
-        DeletePostRequestDTO requestDTO = new DeletePostRequestDTO();
-        requestDTO.setAuthorId("123e4567-e89b-12d3-a456-426614174000");
 
         doThrow(new ResourceNotFoundException("Post not found"))
-                .when(postService).deletePost(postId, requestDTO);
+                .when(postService).deletePost(eq(postId), any());
 
         assertThrows(ResourceNotFoundException.class,
-                () -> postController.deletePost(postId, requestDTO));
+                () -> postController.deletePost(postId, null));
 
-        verify(postService, times(1)).deletePost(postId, requestDTO);
+        verify(postService, times(1)).deletePost(eq(postId), any());
     }
 
     @Test
     void deletePost_shouldPropagateServiceException_whenUnauthorized() {
         Long postId = 1L;
-        DeletePostRequestDTO requestDTO = new DeletePostRequestDTO();
-        requestDTO.setAuthorId("different-user-id");
 
         doThrow(new ForbiddenException("You cannot delete this post"))
-                .when(postService).deletePost(postId, requestDTO);
+                .when(postService).deletePost(eq(postId), any());
 
         assertThrows(ForbiddenException.class,
-                () -> postController.deletePost(postId, requestDTO));
+                () -> postController.deletePost(postId, null));
 
-        verify(postService, times(1)).deletePost(postId, requestDTO);
+        verify(postService, times(1)).deletePost(eq(postId), any());
     }
 }

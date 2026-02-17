@@ -42,6 +42,21 @@ public class PerformanceMetricsController {
         }
 
         /**
+         * Get metrics for a specific method by layer and method name
+         */
+        @GetMapping("/{layer}/{methodName}")
+        @Operation(summary = "Get metrics for a specific method by layer and method name", description = "Retrieves detailed performance metrics for a specific method identified by its layer and name")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Method metrics successfully retrieved")
+        })
+        public ResponseEntity<MethodMetricsDTO> getMethodMetricsByLayerAndName(
+                        @Parameter(description = "Layer name (e.g., SERVICE, REPOSITORY, CONTROLLER)", example = "SERVICE") @PathVariable String layer,
+                        @Parameter(description = "Method name", example = "createPost") @PathVariable String methodName) {
+                String fullMethodName = layer.toUpperCase() + "::" + methodName;
+                return ResponseEntity.ok(metricsService.getMethodMetrics(fullMethodName));
+        }
+
+        /**
          * Get metrics for a specific method
          */
         @GetMapping("/method/{methodName}")
