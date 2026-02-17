@@ -35,6 +35,8 @@ import java.util.List;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    private final static String ADMIN_ROLE = "ADMIN";
+    private final static String AUTHOR_ROLE = "AUTHOR";
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthenticationEntryPoint authEntryPoint;
     private final JwtAccessDeniedHandler accessDeniedHandler;
@@ -72,24 +74,24 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/tags/**").permitAll()
 
-                        .requestMatchers(HttpMethod.POST, "/api/posts").hasRole("AUTHOR")
-                        .requestMatchers(HttpMethod.PUT, "/api/posts/**").hasRole("AUTHOR")
+                        .requestMatchers(HttpMethod.POST, "/api/posts").hasRole(AUTHOR_ROLE)
+                        .requestMatchers(HttpMethod.PUT, "/api/posts/**").hasRole(AUTHOR_ROLE)
                         .requestMatchers(HttpMethod.DELETE, "/api/posts/**")
-                        .hasAnyRole("AUTHOR", "ADMIN")
+                        .hasAnyRole(AUTHOR_ROLE, ADMIN_ROLE)
 
                         .requestMatchers(HttpMethod.POST, "/api/tags")
-                        .hasAnyRole("AUTHOR", "ADMIN")
+                        .hasAnyRole(AUTHOR_ROLE, ADMIN_ROLE)
                         .requestMatchers(HttpMethod.PUT, "/api/tags/**")
-                        .hasAnyRole("AUTHOR", "ADMIN")
+                        .hasAnyRole(AUTHOR_ROLE, ADMIN_ROLE)
                         .requestMatchers(HttpMethod.DELETE, "/api/tags/**")
-                        .hasAnyRole("AUTHOR", "ADMIN")
+                        .hasAnyRole(AUTHOR_ROLE, ADMIN_ROLE)
 
                         .requestMatchers("/api/users/profile").authenticated()
 
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/users/**").hasRole("ADMIN")
-                        .requestMatchers("/api/metrics/performance/**").hasRole("ADMIN")
-                        .requestMatchers("/api/security/audit/**").hasRole("ADMIN")
+                        .requestMatchers("/api/admin/**").hasRole(ADMIN_ROLE)
+                        .requestMatchers("/api/users/**").hasRole(ADMIN_ROLE)
+                        .requestMatchers("/api/metrics/performance/**").hasRole(ADMIN_ROLE)
+                        .requestMatchers("/api/security/audit/**").hasRole(ADMIN_ROLE)
 
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2
