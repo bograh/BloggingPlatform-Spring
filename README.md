@@ -1,11 +1,14 @@
 # Blogging Platform - Spring Boot
 
-A production-ready, enterprise-grade blogging platform built with Spring Boot 3.5.9 featuring dual API support (REST + GraphQL), comprehensive performance monitoring, intelligent caching, and advanced cross-cutting concerns through Aspect-Oriented Programming.
+A production-ready, enterprise-grade blogging platform built with Spring Boot 3.5.9 featuring dual API support (REST +
+GraphQL), comprehensive performance monitoring, intelligent caching, and advanced cross-cutting concerns through
+Aspect-Oriented Programming.
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Features](#features)
+- [Security Overview](#security-overview)
 - [Architecture](#architecture)
 - [Quick Start](#quick-start)
 - [API Documentation](#api-documentation)
@@ -20,7 +23,8 @@ A production-ready, enterprise-grade blogging platform built with Spring Boot 3.
 
 ## Overview
 
-This blogging platform is a full-featured content management system designed with modern software engineering practices. It demonstrates enterprise-level patterns including:
+This blogging platform is a full-featured content management system designed with modern software engineering practices.
+It demonstrates enterprise-level patterns including:
 
 - **Dual API Architecture** - REST and GraphQL for maximum flexibility
 - **Hybrid Database Strategy** - PostgreSQL for relational data, MongoDB for flexible documents
@@ -31,6 +35,7 @@ This blogging platform is a full-featured content management system designed wit
 ## Features
 
 ### Core Functionality
+
 - ✅ **User Management** - Registration, authentication, profile management
 - ✅ **Post Operations** - Create, read, update, delete with rich text support
 - ✅ **Comments System** - Threaded comments stored in MongoDB for flexibility
@@ -38,12 +43,14 @@ This blogging platform is a full-featured content management system designed wit
 - ✅ **Advanced Search** - Filtering, pagination, sorting by multiple criteria
 
 ### API & Integration
+
 - 🚀 **Dual API Support** - REST (OpenAPI 3.0) + GraphQL with schema introspection
 - 📚 **Interactive Documentation** - Swagger UI for REST, GraphiQL for GraphQL
 - 🔄 **Real-time Schema** - GraphQL schema with type-safe queries and mutations
 - 🌐 **CORS Support** - Configured for cross-origin requests
 
 ### Performance & Monitoring
+
 - 📊 **Performance Metrics** - Method-level execution time tracking
 - 💾 **Intelligent Caching** - Multi-level caching with hit/miss rate monitoring
 - 📈 **Cache Analytics** - Hit rates, miss rates, eviction tracking per cache
@@ -51,6 +58,7 @@ This blogging platform is a full-featured content management system designed wit
 - ⚡ **Query Optimization** - Indexed database queries with lazy loading
 
 ### Cross-Cutting Concerns (AOP)
+
 - 🔍 **Comprehensive Logging** - Request/response logging with execution tracking
 - 🎭 **Sensitive Data Masking** - Automatic PII protection in logs
 - 🛡️ **Exception Handling** - Centralized error handling with detailed responses
@@ -58,16 +66,50 @@ This blogging platform is a full-featured content management system designed wit
 - 🔔 **Slow Query Detection** - Automatic alerts for methods exceeding thresholds
 
 ### Data & Storage
+
 - 🗄️ **Hybrid Database** - PostgreSQL for structured data, MongoDB for flexible documents
 - 🔐 **Secure Storage** - Bcrypt password hashing
 - 📦 **Data Validation** - Jakarta Bean Validation throughout
 - 🔄 **Transaction Management** - ACID compliance for critical operations
 
+### Security
+
+- 🔑 **JWT Authentication** - Stateless, dual-token (access + refresh) architecture
+- 🌐 **OAuth2 Integration** - Google social login with internal JWT bridge
+- 👥 **Role-Based Access Control** - ADMIN, AUTHOR, READER roles with URL and method-level security
+- 🛡️ **CORS Protection** - Configured allowed origins for API access control
+- 🔒 **Secure Token Storage** - HttpOnly cookies for refresh tokens, SameSite protection
+- 🚫 **Token Revocation** - Immediate invalidation with in-memory blacklist
+
 ### Quality Assurance
+
 - ✅ **80%+ Test Coverage** - Comprehensive test suite with JaCoCo reporting
 - 🧪 **Multiple Test Types** - Unit, integration, and GraphQL tests
 - 🎯 **Continuous Testing** - Automated test execution with Maven
 - 📊 **Coverage Reports** - Detailed HTML coverage analysis
+
+## Security Overview
+
+The application implements a comprehensive, stateless security model:
+
+| Layer              | Implementation                                                          |
+|--------------------|-------------------------------------------------------------------------|
+| **Authentication** | JWT-based with separate access/refresh tokens                           |
+| **Social Login**   | OAuth2 with Google, bridged to internal JWT issuance                    |
+| **Authorization**  | Role-Based Access Control (ADMIN, AUTHOR, READER)                       |
+| **API Protection** | URL-level rules in SecurityConfig + method-level @PreAuthorize          |
+| **Token Storage**  | Access token in header, refresh token in HttpOnly cookie (SameSite=Lax) |
+| **Session**        | Stateless (no server sessions), with token revocation support           |
+| **CORS**           | Explicitly configured allowed origins with credentials support          |
+| **CSRF**           | Disabled (not required for stateless JWT authentication)                |
+
+**Detailed Documentation:**
+
+- [Security Architecture](docs/security/security-architecture.md) - Filter chain, configuration layers
+- [JWT Flow](docs/security/jwt-flow.md) - Token lifecycle, validation, refresh
+- [OAuth2 Flow](docs/security/oauth2-flow.md) - Google integration and JWT bridge
+- [RBAC](docs/security/rbac.md) - Roles, permissions, access matrix
+- [CORS vs CSRF](docs/security/cors-vs-csrf.md) - Protection mechanisms explained
 
 ## Architecture
 
@@ -158,44 +200,49 @@ mvn spring-boot:run
 
 Once running, access the application at:
 
-| Interface              | URL                                        | Description                           |
-|------------------------|--------------------------------------------|---------------------------------------|
-| **Swagger UI**         | http://localhost:8080/swagger-ui.html      | REST API documentation & testing      |
-| **GraphiQL**           | http://localhost:8080/graphiql             | GraphQL interactive query interface   |
-| **OpenAPI Spec**       | http://localhost:8080/v3/api-docs          | OpenAPI 3.0 JSON specification        |
-| **REST API**           | http://localhost:8080/api/v1/*             | RESTful endpoints base path           |
-| **GraphQL API**        | http://localhost:8080/graphql              | GraphQL endpoint                      |
-| **Performance Metrics**| http://localhost:8080/api/metrics/performance | Performance monitoring endpoints   |
-| **Cache Metrics**      | http://localhost:8080/api/metrics/performance/cache | Cache statistics            |
+| Interface               | URL                                                 | Description                         |
+|-------------------------|-----------------------------------------------------|-------------------------------------|
+| **Swagger UI**          | http://localhost:8080/swagger-ui.html               | REST API documentation & testing    |
+| **GraphiQL**            | http://localhost:8080/graphiql                      | GraphQL interactive query interface |
+| **OpenAPI Spec**        | http://localhost:8080/v3/api-docs                   | OpenAPI 3.0 JSON specification      |
+| **REST API**            | http://localhost:8080/api/*                         | RESTful endpoints base path         |
+| **GraphQL API**         | http://localhost:8080/graphql                       | GraphQL endpoint                    |
+| **Performance Metrics** | http://localhost:8080/api/metrics/performance       | Performance monitoring endpoints    |
+| **Cache Metrics**       | http://localhost:8080/api/metrics/performance/cache | Cache statistics                    |
 
 ## API Documentation
 
 ### REST API Endpoints
 
-#### Users API (`/api/v1/users`)
+#### Users API (`/api/users`)
+
 - `POST /register` - Register a new user
 - `GET /{userId}` - Get user by ID
 - `PUT /{userId}` - Update user information
 - `DELETE /{userId}` - Delete user account
 
-#### Posts API (`/api/v1/posts`)
+#### Posts API (`/api/posts`)
+
 - `POST /` - Create a new post
 - `GET /` - Get all posts (paginated, filterable, sortable)
 - `GET /{postId}` - Get post by ID
 - `PUT /{postId}` - Update existing post
 - `DELETE /{postId}` - Delete post
 
-#### Comments API (`/api/v1/comments`)
+#### Comments API (`/api/comments`)
+
 - `POST /` - Add comment to a post
 - `GET /post/{postId}` - Get all comments for a post
 - `GET /{commentId}` - Get specific comment
 - `DELETE /{commentId}` - Delete comment
 
-#### Tags API (`/api/v1/tags`)
+#### Tags API (`/api/tags`)
+
 - `GET /popular` - Get most used tags
 - `POST /refresh` - Refresh tag cache
 
 #### Performance Metrics API (`/api/metrics/performance`)
+
 - `GET /` - Get all performance metrics
 - `GET /summary` - Get metrics summary
 - `GET /{layer}/{methodName}` - Get specific method metrics
@@ -211,6 +258,7 @@ Once running, access the application at:
 ### GraphQL API
 
 **Query Operations:**
+
 ```graphql
 # Get all posts with pagination
 getAllPosts(page: Int, size: Int, sortBy: String, order: String): [Post!]!
@@ -226,6 +274,7 @@ getCommentsByPostId(postId: ID!): [Comment!]!
 ```
 
 **Mutation Operations:**
+
 ```graphql
 # Create a new post
 createPost(input: CreatePostInput!): Post!
@@ -241,80 +290,40 @@ createComment(input: CreateCommentInput!): Comment!
 ```
 
 **For detailed examples:**
+
 - **REST API**: Visit [Swagger UI](http://localhost:8080/swagger-ui.html) or see [ENDPOINTS.md](dev/ENDPOINTS.md)
-- **GraphQL**: Visit [GraphiQL](http://localhost:8080/graphiql) or see [GraphQL Test Queries](docs/graphql/GRAPHQL_TEST_QUERIES.md)
+- **GraphQL**: Visit [GraphiQL](http://localhost:8080/graphiql) or
+  see [GraphQL Test Queries](docs/graphql/GRAPHQL_TEST_QUERIES.md)
 
 ## Database Schema
 
 ### Entity Relationship Diagram
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         PostgreSQL Database                     │
-└─────────────────────────────────────────────────────────────────┘
-
-┌─────────────────┐                   ┌─────────────────┐
-│      User       │                   │      Post       │
-├─────────────────┤                   ├─────────────────┤
-│ PK id (UUID)    │◄───────┐          │ PK id (BIGINT)  │
-│    username     │        │          │    title        │
-│    email        │        │          │    body (TEXT)  │
-│    password     │        │          │ FK author_id    │
-│    created_at   │        └──────────┤    posted_at    │
-└─────────────────┘                   │    updated_at   │
-         │                            └────────┬────────┘
-         │ 1:N                                 │
-         │ (posts)                             │ M:N
-         │                                     │ (tags)
-         │                             ┌───────┴────────┐
-         │                             │                │
-         │                      ┌──────▼───────┐  ┌─────▼──────┐
-         │                      │  post_tags   │  │    Tag     │
-         │                      │ (Join Table) │  ├────────────┤
-         │                      ├──────────────┤  │ PK id      │
-         │                      │ FK post_id   │  │    name    │
-         │                      │ FK tag_id    │  └────────────┘
-         │                      └──────────────┘
-         │
-         │ Reference (author_id)
-         │
-         ▼
-┌──────────────────────────────────────────────────────────────────┐
-│                         MongoDB Database                         │
-└──────────────────────────────────────────────────────────────────┘
-
-         ┌──────────────────┐
-         │     Comment      │
-         ├──────────────────┤
-         │ PK _id (String)  │
-         │    post_id       │◄──── References Post.id
-         │    author_id     │◄──── References User.id
-         │    author        │
-         │    content       │
-         │    commented_at  │
-         └──────────────────┘
-```
+![Blog ER Diagram](docs/blog-er-diagram.png)
 
 ### Relationships
 
-| Relationship | Type  | Description |
-|-------------|-------|-------------|
-| User → Post | 1:N   | A user can create multiple posts |
-| Post → Tag  | M:N   | Posts can have multiple tags; tags can belong to multiple posts |
-| Post → Comment | 1:N (virtual) | Comments reference posts via post_id (stored in MongoDB) |
-| User → Comment | 1:N (virtual) | Comments reference users via author_id (stored in MongoDB) |
+| Relationship   | Type          | Description                                                     |
+|----------------|---------------|-----------------------------------------------------------------|
+| User → Post    | 1:N           | A user can create multiple posts                                |
+| Post → Tag     | M:N           | Posts can have multiple tags; tags can belong to multiple posts |
+| Post → Comment | 1:N (virtual) | Comments reference posts via post_id (stored in MongoDB)        |
+| User → Comment | 1:N (virtual) | Comments reference users via author_id (stored in MongoDB)      |
 
 ### Database Indexes
 
 **PostgreSQL:**
+
 - Users: `idx_username`, `idx_email`, `idx_created_at`
 - Posts: `idx_author_id`, `idx_posted_at`, `idx_author_posted`
 - Tags: `idx_name`
 
 **MongoDB:**
+
 - Comments: Auto-indexed on `_id`, indexed on `post_id`, `author_id`
 
 **For detailed database documentation:**
+
 - [Complete Database Schema](docs/DATABASE_SCHEMA.md) - Full schema with SQL, relationships, and data flow
 - [Entity Relationship Diagram](docs/ER_DIAGRAM.md) - Visual ER diagrams with detailed cardinality
 - [Database Quick Reference](docs/DATABASE_QUICK_REFERENCE.md) - Quick lookup for tables and queries
@@ -331,6 +340,7 @@ The application tracks detailed performance metrics for all service-layer method
 - **Slow Query Detection**: Automatic logging of methods exceeding 1000ms
 
 **Access metrics:**
+
 ```bash
 # Get all performance metrics
 curl http://localhost:8080/api/metrics/performance
@@ -347,6 +357,7 @@ curl -X POST http://localhost:8080/api/metrics/performance/export-log
 Intelligent caching with comprehensive statistics tracking:
 
 **Caches:**
+
 - `users` - User profile caching
 - `posts` - Individual post caching
 - `allPosts` - Post list caching
@@ -354,6 +365,7 @@ Intelligent caching with comprehensive statistics tracking:
 - `tags` - Popular tags caching
 
 **Metrics tracked per cache:**
+
 - Hit/Miss counts and rates
 - Total requests
 - Cache puts (additions)
@@ -361,6 +373,7 @@ Intelligent caching with comprehensive statistics tracking:
 - Cache clears
 
 **Access cache metrics:**
+
 ```bash
 # Get all cache metrics
 curl http://localhost:8080/api/metrics/performance/cache
@@ -379,6 +392,7 @@ curl -X POST http://localhost:8080/api/metrics/performance/export-all
 ```
 
 **Example cache summary response:**
+
 ```json
 {
   "totalCaches": 5,
@@ -437,6 +451,16 @@ Comprehensive documentation is available in the `docs/` directory:
 - **[Sensitive Data Masking](docs/aop/SENSITIVE_DATA_MASKING.md)** - Security and privacy features
 - **[Request Masking Examples](docs/aop/REQUEST_MASKING_EXAMPLES.md)** - Examples of data masking in action
 
+### Security Documentation
+
+- **[Security Architecture](docs/security/security-architecture.md)** - High-level security design, filter chain flow,
+  and configuration layers
+- **[JWT Authentication Flow](docs/security/jwt-flow.md)** - Token generation, validation, refresh, and revocation
+  mechanisms
+- **[OAuth2 Integration](docs/security/oauth2-flow.md)** - Google OAuth2 authorization code flow and JWT bridge
+- **[Role-Based Access Control](docs/security/rbac.md)** - Role hierarchy, permission mapping, and access matrix
+- **[CORS vs CSRF](docs/security/cors-vs-csrf.md)** - Cross-origin and request forgery protection explained
+
 ### Additional Documentation
 
 - **[API Endpoints Reference](dev/ENDPOINTS.md)** - Complete REST API endpoint reference with request/response examples
@@ -447,20 +471,20 @@ Comprehensive documentation is available in the `docs/` directory:
 
 ```bash
 # Register a user
-curl -X POST http://localhost:8080/api/v1/users/register \
+curl -X POST http://localhost:8080/api/users/register \
   -H "Content-Type: application/json" \
   -d '{"username":"john_doe","email":"john@example.com","password":"SecurePass123!"}'
 
 # Create a post
-curl -X POST http://localhost:8080/api/v1/posts \
+curl -X POST http://localhost:8080/api/posts \
   -H "Content-Type: application/json" \
   -d '{"title":"My First Post","body":"This is the content of my post","authorId":"<uuid>","tags":["tech","spring"]}'
 
 # Get all posts with pagination and sorting
-curl "http://localhost:8080/api/v1/posts?page=0&size=10&sortBy=postedAt&order=desc"
+curl "http://localhost:8080/api/posts?page=0&size=10&sortBy=postedAt&order=desc"
 
 # Add a comment
-curl -X POST http://localhost:8080/api/v1/comments \
+curl -X POST http://localhost:8080/api/comments \
   -H "Content-Type: application/json" \
   -d '{"postId":1,"authorId":"<uuid>","author":"john_doe","content":"Great post!"}'
 
@@ -531,36 +555,43 @@ see [GraphQL Test Queries](docs/graphql/GRAPHQL_TEST_QUERIES.md)**
 ## Technology Stack
 
 ### Core Framework
+
 - **Spring Boot** 3.5.9 (Latest stable release)
 - **Java** 21 (LTS with modern features)
 - **Maven** 3.6+ (Dependency management and build)
 
 ### Databases
+
 - **PostgreSQL** 12+ (Relational data: Users, Posts, Tags)
 - **MongoDB** 4.0+ (Document storage: Comments)
 - **H2** 2.2.224 (In-memory database for testing)
 
 ### APIs & Documentation
+
 - **Spring Web** - RESTful API implementation
 - **Spring GraphQL** - GraphQL API implementation
 - **SpringDoc OpenAPI** 2.8.15 - OpenAPI 3.0 specification + Swagger UI
 - **GraphiQL** - Interactive GraphQL interface
 
 ### Data Access
+
 - **Spring Data JPA** - PostgreSQL repository abstraction
 - **Spring Data MongoDB** - MongoDB repository abstraction
 - **Hibernate** - JPA implementation with optimizations
 
 ### Cross-Cutting Concerns
+
 - **Spring AOP** - Aspect-Oriented Programming
 - **Spring Boot Actuator** - Production monitoring
 - **Spring Cache** - Caching abstraction with statistics
 
 ### Security & Validation
+
 - **Jakarta Bean Validation** - Input validation
 - **BCrypt** 0.10.2 - Secure password hashing
 
 ### Testing
+
 - **JUnit 5** - Unit testing framework
 - **Mockito** - Mocking framework
 - **Spring Test** - Integration testing support
@@ -568,6 +599,7 @@ see [GraphQL Test Queries](docs/graphql/GRAPHQL_TEST_QUERIES.md)**
 - **JaCoCo** 0.8.12 - Code coverage analysis
 
 ### Additional Libraries
+
 - **Lombok** - Boilerplate code reduction
 - **SLF4J/Logback** - Logging framework
 
@@ -694,6 +726,7 @@ open target/site/jacoco/index.html
 ### Test Configuration
 
 Tests use:
+
 - **H2 in-memory database** for PostgreSQL tests
 - **Embedded MongoDB** for MongoDB tests
 - **MockMvc** for controller testing
@@ -704,6 +737,7 @@ Tests use:
 ### Database Configuration
 
 **PostgreSQL** (`application-dev.properties`):
+
 ```properties
 spring.datasource.url=jdbc:postgresql://localhost:5432/blogging_db
 spring.datasource.username=your_username
@@ -712,6 +746,7 @@ spring.jpa.hibernate.ddl-auto=update
 ```
 
 **MongoDB** (`application-dev.properties`):
+
 ```properties
 spring.data.mongodb.uri=mongodb://localhost:27017/blogging_platform
 spring.data.mongodb.database=blogging_platform
@@ -720,6 +755,7 @@ spring.data.mongodb.database=blogging_platform
 ### Cache Configuration
 
 Caches are pre-configured in `CacheConfig.java`:
+
 - `users` - User profile cache
 - `posts` - Individual posts
 - `allPosts` - Post listings
@@ -729,6 +765,7 @@ Caches are pre-configured in `CacheConfig.java`:
 ### Performance Monitoring
 
 Performance thresholds and settings in `PerformanceMonitoringAspect.java`:
+
 ```java
 private static final long SLOW_THRESHOLD_MS = 1000; // Log slow queries
 ```
@@ -736,6 +773,7 @@ private static final long SLOW_THRESHOLD_MS = 1000; // Log slow queries
 ### CORS Configuration
 
 CORS is configured in `CorsConfig.java` for cross-origin requests:
+
 - Allowed origins: Configurable
 - Allowed methods: GET, POST, PUT, DELETE, OPTIONS
 - Allowed headers: All

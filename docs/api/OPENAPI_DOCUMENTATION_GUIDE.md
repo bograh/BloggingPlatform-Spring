@@ -42,7 +42,7 @@ available endpoints.
 #### 1. User Management
 
 **Tag**: User Management
-**Base Path**: `/api/v1/users`
+**Base Path**: `/api/users`
 
 | Method | Endpoint    | Description                        |
 |--------|-------------|------------------------------------|
@@ -52,7 +52,7 @@ available endpoints.
 #### 2. Post Management
 
 **Tag**: Post Management
-**Base Path**: `/api/v1/posts`
+**Base Path**: `/api/posts`
 
 | Method | Endpoint    | Description                                 |
 |--------|-------------|---------------------------------------------|
@@ -75,7 +75,7 @@ available endpoints.
 #### 3. Comment Management
 
 **Tag**: Comment Management
-**Base Path**: `/api/v1/comments`
+**Base Path**: `/api/comments`
 
 | Method | Endpoint         | Description                  |
 |--------|------------------|------------------------------|
@@ -116,7 +116,7 @@ available endpoints.
 #### Example: Creating a User
 
 1. Expand the **User Management** section
-2. Click on `POST /api/v1/users/register`
+2. Click on `POST /api/users/register`
 3. Click the **Try it out** button
 4. Edit the request body JSON:
 
@@ -135,7 +135,7 @@ available endpoints.
 #### Example: Getting Posts with Filters
 
 1. Expand the **Post Management** section
-2. Click on `GET /api/v1/posts`
+2. Click on `GET /api/posts`
 3. Click **Try it out**
 4. Fill in optional parameters:
     - `page`: 0
@@ -175,7 +175,7 @@ Example response codes:
 Most list endpoints support pagination:
 
 ```
-GET /api/v1/posts?page=0&size=10&sort=lastUpdated&order=DESC
+GET /api/posts?page=0&size=10&sort=lastUpdated&order=DESC
 ```
 
 Response includes:
@@ -207,7 +207,7 @@ Posts can be filtered by:
 Combine filters:
 
 ```
-GET /api/v1/posts?author=John&tags=java,spring&search=tutorial&page=0&size=10
+GET /api/posts?author=John&tags=java,spring&search=tutorial&page=0&size=10
 ```
 
 ### 3. Error Handling
@@ -243,7 +243,7 @@ All endpoints return consistent error responses:
 #### Register User
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/users/register \
+curl -X POST http://localhost:8080/api/users/register \
   -H "Content-Type: application/json" \
   -d '{
     "firstName": "John",
@@ -256,13 +256,13 @@ curl -X POST http://localhost:8080/api/v1/users/register \
 #### Get Posts
 
 ```bash
-curl -X GET "http://localhost:8080/api/v1/posts?page=0&size=10&sort=lastUpdated&order=DESC"
+curl -X GET "http://localhost:8080/api/posts?page=0&size=10&sort=lastUpdated&order=DESC"
 ```
 
 #### Create Post
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/posts \
+curl -X POST http://localhost:8080/api/posts \
   -H "Content-Type: application/json" \
   -d '{
     "title": "Getting Started with Spring Boot",
@@ -275,7 +275,7 @@ curl -X POST http://localhost:8080/api/v1/posts \
 #### Add Comment
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/comments \
+curl -X POST http://localhost:8080/api/comments \
   -H "Content-Type: application/json" \
   -d '{
     "postId": 1,
