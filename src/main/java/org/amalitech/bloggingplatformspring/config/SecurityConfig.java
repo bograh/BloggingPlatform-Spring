@@ -7,7 +7,6 @@ import org.amalitech.bloggingplatformspring.security.JwtAuthenticationFilter;
 import org.amalitech.bloggingplatformspring.security.oauth.CustomOAuth2UserService;
 import org.amalitech.bloggingplatformspring.security.oauth.OAuth2AuthenticationFailureHandler;
 import org.amalitech.bloggingplatformspring.security.oauth.OAuth2AuthenticationSuccessHandler;
-import org.amalitech.bloggingplatformspring.services.CustomUserDetailsService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -35,8 +34,20 @@ import java.util.List;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    private final static String ADMIN_ROLE = "ADMIN";
-    private final static String AUTHOR_ROLE = "AUTHOR";
+    private static final String ADMIN_ROLE = "ADMIN";
+    private static final String AUTHOR_ROLE = "AUTHOR";
+    private static final String POSTS_PATH = "/api/posts/**";
+    private static final String TAGS_PATH = "/api/tags/**";
+    private static final String[] PUBLIC_ENDPOINTS = {
+            "/api/auth/**",
+            "/oauth2/**",
+            "/login/oauth2/**",
+            "/graphql", "/graphiql",
+            "/favicon.ico",
+            "/actuator/**",
+            "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**",
+            "/error"
+    };
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthenticationEntryPoint authEntryPoint;
     private final JwtAccessDeniedHandler accessDeniedHandler;
@@ -56,42 +67,30 @@ public class SecurityConfig {
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, CustomUserDetailsService customUserDetailsService)
+    SecurityFilterChain securityFilterChain(HttpSecurity http)
             throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/api/auth/**",
-                                "/oauth2/**",
-                                "/login/oauth2/**",
-                                "/graphql",
-                                "/graphiql",
-                                "/favicon.ico",
-                                "/actuator/**",
-                                "/error")
-                        .permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/tags/**").permitAll()
+                        .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+                        .requestMatchers(HttpMethod.GET, POSTS_PATH, TAGS_PATH).permitAll()
 
                         .requestMatchers(HttpMethod.POST, "/api/posts").hasRole(AUTHOR_ROLE)
-                        .requestMatchers(HttpMethod.PUT, "/api/posts/**").hasRole(AUTHOR_ROLE)
-                        .requestMatchers(HttpMethod.DELETE, "/api/posts/**")
-                        .hasAnyRole(AUTHOR_ROLE, ADMIN_ROLE)
+                        .requestMatchers(HttpMethod.PUT, POSTS_PATH).hasRole(AUTHOR_ROLE)
+                        .requestMatchers(HttpMethod.DELETE, POSTS_PATH).hasAnyRole(AUTHOR_ROLE, ADMIN_ROLE)
 
-                        .requestMatchers(HttpMethod.POST, "/api/tags")
-                        .hasAnyRole(AUTHOR_ROLE, ADMIN_ROLE)
-                        .requestMatchers(HttpMethod.PUT, "/api/tags/**")
-                        .hasAnyRole(AUTHOR_ROLE, ADMIN_ROLE)
-                        .requestMatchers(HttpMethod.DELETE, "/api/tags/**")
-                        .hasAnyRole(AUTHOR_ROLE, ADMIN_ROLE)
+                        .requestMatchers(HttpMethod.POST, "/api/tags").hasAnyRole(AUTHOR_ROLE, ADMIN_ROLE)
+                        .requestMatchers(HttpMethod.PUT, TAGS_PATH).hasAnyRole(AUTHOR_ROLE, ADMIN_ROLE)
+                        .requestMatchers(HttpMethod.DELETE, TAGS_PATH).hasAnyRole(AUTHOR_ROLE, ADMIN_ROLE)
 
                         .requestMatchers("/api/users/profile").authenticated()
 
-                        .requestMatchers("/api/admin/**").hasRole(ADMIN_ROLE)
-                        .requestMatchers("/api/users/**").hasRole(ADMIN_ROLE)
-                        .requestMatchers("/api/metrics/performance/**").hasRole(ADMIN_ROLE)
-                        .requestMatchers("/api/security/audit/**").hasRole(ADMIN_ROLE)
+                        .requestMatchers(
+                                "/api/admin/**",
+                                "/api/users/**",
+                                "/api/metrics/performance/**",
+                                "/api/security/audit/**"
+                        ).hasRole(ADMIN_ROLE)
 
                         .anyRequest().authenticated())
                 .oauth2Login(oauth2 -> oauth2
