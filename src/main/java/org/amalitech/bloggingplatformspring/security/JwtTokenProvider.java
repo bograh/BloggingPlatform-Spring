@@ -7,11 +7,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -58,6 +61,14 @@ public class JwtTokenProvider {
         return validateToken(token, refreshTokenSecret);
     }
 
+    public List<String> getRolesFromAccessToken(String token) {
+        return getRolesFromToken(token, accessTokenSecret);
+    }
+
+    public List<String> getRolesFromRefreshToken(String token) {
+        return getRolesFromToken(token, refreshTokenSecret);
+    }
+
     public long getExpirationTimeFromAccessToken(String token) {
         return getExpirationDateFromToken(token, accessTokenSecret);
     }
@@ -84,6 +95,9 @@ public class JwtTokenProvider {
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .subject(email)
+                .claim("roles", authentication.getAuthorities().stream()
+                        .map(GrantedAuthority::getAuthority)
+                        .toList())
                 .id(String.valueOf(UUID.randomUUID()))
                 .signWith(getSigningKey(secret))
                 .compact();
@@ -97,6 +111,21 @@ public class JwtTokenProvider {
                 .getPayload();
 
         return claims.getSubject();
+    }
+
+    private List<String> getRolesFromToken(String token, String secret) {
+        Claims claims = Jwts.parser()
+                .verifyWith(getSigningKey(secret))
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        List<?> roles = claims.get("roles", List.class);
+
+        return roles.stream()
+                .filter(role -> role instanceof String)
+                .map(role -> (String) role)
+                .collect(Collectors.toList());
     }
 
     private long getExpirationDateFromToken(String token, String secret) {

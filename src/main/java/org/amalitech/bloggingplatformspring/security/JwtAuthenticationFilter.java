@@ -46,7 +46,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String endpoint = request.getRequestURI();
 
             if (tokenSessionService.isTokenRevoked(token)) {
-                // Log revoked token attempt
                 securityAuditService.logTokenValidationFailure(
                         ipAddress, userAgent, endpoint, "Token has been revoked");
 
@@ -76,7 +75,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             } else {
-                // Log invalid token attempt
                 securityAuditService.logTokenValidationFailure(
                         ipAddress, userAgent, endpoint, "Invalid or expired access token");
             }
