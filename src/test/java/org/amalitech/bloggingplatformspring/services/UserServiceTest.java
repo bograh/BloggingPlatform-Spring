@@ -27,9 +27,9 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.Executor;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -60,6 +60,9 @@ class UserServiceTest {
   private CommentUtils commentUtils;
 
   @Mock
+  private Executor applicationTaskExecutor;
+
+  @Mock
   private HttpServletRequest request;
 
   @InjectMocks
@@ -74,6 +77,12 @@ class UserServiceTest {
     user.setUsername("testuser");
     user.setEmail("test@example.com");
     user.setUserRoles(new ArrayList<>(List.of(UserRoles.AUTHOR, UserRoles.READER)));
+
+    lenient().doAnswer(invocation -> {
+      Runnable runnable = invocation.getArgument(0);
+      runnable.run();
+      return null;
+    }).when(applicationTaskExecutor).execute(any(Runnable.class));
   }
 
   @Test

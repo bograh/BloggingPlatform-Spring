@@ -12,6 +12,7 @@ import org.amalitech.bloggingplatformspring.entity.PerformanceMetricsSnapshot;
 import org.amalitech.bloggingplatformspring.exceptions.BadRequestException;
 import org.amalitech.bloggingplatformspring.repository.CacheMetricsRepository;
 import org.amalitech.bloggingplatformspring.repository.PerformanceMetricsRepository;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -20,6 +21,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Matcher;
@@ -110,6 +112,12 @@ public class PerformanceMetricsService {
         performanceAspect.exportPerformanceSummary();
     }
 
+    @Async("applicationTaskExecutor")
+    public CompletableFuture<Void> exportPerformanceSummaryAsync() {
+        exportPerformanceSummary();
+        return CompletableFuture.completedFuture(null);
+    }
+
     /**
      * Export combined performance and cache metrics summary to logs and file
      */
@@ -117,11 +125,23 @@ public class PerformanceMetricsService {
         performanceAspect.exportCombinedMetrics(buildCacheMetricsMap(), buildCacheSummaryMap());
     }
 
+    @Async("applicationTaskExecutor")
+    public CompletableFuture<Void> exportAllMetricsAsync() {
+        exportAllMetrics();
+        return CompletableFuture.completedFuture(null);
+    }
+
     /**
      * Export only cache metrics to logs and file
      */
     public void exportCacheMetrics() {
         performanceAspect.exportCacheMetricsToFile(buildCacheMetricsMap(), buildCacheSummaryMap());
+    }
+
+    @Async("applicationTaskExecutor")
+    public CompletableFuture<Void> exportCacheMetricsAsync() {
+        exportCacheMetrics();
+        return CompletableFuture.completedFuture(null);
     }
 
     /**
@@ -401,6 +421,11 @@ public class PerformanceMetricsService {
         return compareWithPreCache(files.get(0));
     }
 
+    @Async("applicationTaskExecutor")
+    public CompletableFuture<PerformanceComparisonDTO> compareWithLatestPreCacheAsync() {
+        return CompletableFuture.completedFuture(compareWithLatestPreCache());
+    }
+
     /**
      * Save current performance metrics to database
      */
@@ -505,6 +530,12 @@ public class PerformanceMetricsService {
     public void saveAllMetricsSnapshot(String snapshotType) {
         savePerformanceMetricsSnapshot(snapshotType);
         saveCacheMetricsSnapshot(snapshotType);
+    }
+
+    @Async("applicationTaskExecutor")
+    public CompletableFuture<Void> saveAllMetricsSnapshotAsync(String snapshotType) {
+        saveAllMetricsSnapshot(snapshotType);
+        return CompletableFuture.completedFuture(null);
     }
 
     /**

@@ -107,7 +107,7 @@ public class PerformanceMetricsController {
                         @ApiResponse(responseCode = "200", description = "Metrics successfully exported to log")
         })
         public ResponseEntity<StatusResponse> exportToLog() {
-                metricsService.exportPerformanceSummary();
+                metricsService.exportPerformanceSummaryAsync();
                 return ResponseEntity.ok(StatusResponse
                                 .success("Performance metrics exported to application log and metrics folder"));
         }
@@ -123,7 +123,7 @@ public class PerformanceMetricsController {
                         @ApiResponse(responseCode = "200", description = "Cache metrics successfully exported to log")
         })
         public ResponseEntity<StatusResponse> exportCacheToLog() {
-                metricsService.exportCacheMetrics();
+                metricsService.exportCacheMetricsAsync();
                 return ResponseEntity.ok(
                                 StatusResponse.success("Cache metrics exported to application log and metrics folder"));
         }
@@ -139,7 +139,7 @@ public class PerformanceMetricsController {
                         @ApiResponse(responseCode = "200", description = "All metrics successfully exported to log")
         })
         public ResponseEntity<StatusResponse> exportAllMetrics() {
-                metricsService.exportAllMetrics();
+                metricsService.exportAllMetricsAsync();
                 return ResponseEntity.ok(StatusResponse.success(
                                 "Combined performance and cache metrics exported to application log and metrics folder"));
         }
@@ -275,7 +275,7 @@ public class PerformanceMetricsController {
         })
         public ResponseEntity<StatusResponse> saveAllMetrics(
                         @Parameter(description = "Snapshot type (MANUAL, SCHEDULED, etc.)", example = "MANUAL") @RequestParam(defaultValue = "MANUAL") String snapshotType) {
-                metricsService.saveAllMetricsSnapshot(snapshotType);
+                metricsService.saveAllMetricsSnapshotAsync(snapshotType);
                 return ResponseEntity.ok(StatusResponse.success("All metrics saved to database"));
         }
 

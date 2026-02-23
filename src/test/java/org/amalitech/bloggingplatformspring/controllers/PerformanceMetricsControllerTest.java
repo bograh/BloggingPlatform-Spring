@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.*;
@@ -257,7 +258,8 @@ class PerformanceMetricsControllerTest {
 
         @Test
         void exportToLog_ShouldReturnOkWithSuccessMessage() throws Exception {
-                doNothing().when(metricsService).exportPerformanceSummary();
+                when(metricsService.exportPerformanceSummaryAsync())
+                                .thenReturn(CompletableFuture.completedFuture(null));
 
                 mockMvc.perform(post("/api/metrics/performance/export-log")
                                 .contentType(MediaType.APPLICATION_JSON))
@@ -266,18 +268,19 @@ class PerformanceMetricsControllerTest {
                                 .andExpect(jsonPath("$.message").value(
                                                 "Performance metrics exported to application log and metrics folder"));
 
-                verify(metricsService).exportPerformanceSummary();
+                verify(metricsService).exportPerformanceSummaryAsync();
         }
 
         @Test
         void exportToLog_ShouldCallServiceOnce() throws Exception {
-                doNothing().when(metricsService).exportPerformanceSummary();
+                when(metricsService.exportPerformanceSummaryAsync())
+                                .thenReturn(CompletableFuture.completedFuture(null));
 
                 mockMvc.perform(post("/api/metrics/performance/export-log")
                                 .contentType(MediaType.APPLICATION_JSON))
                                 .andExpect(status().isOk());
 
-                verify(metricsService, times(1)).exportPerformanceSummary();
+                verify(metricsService, times(1)).exportPerformanceSummaryAsync();
                 verifyNoMoreInteractions(metricsService);
         }
 
@@ -323,7 +326,8 @@ class PerformanceMetricsControllerTest {
 
         @Test
         void exportToLog_ShouldReturnCorrectContentType() throws Exception {
-                doNothing().when(metricsService).exportPerformanceSummary();
+                when(metricsService.exportPerformanceSummaryAsync())
+                                .thenReturn(CompletableFuture.completedFuture(null));
 
                 mockMvc.perform(post("/api/metrics/performance/export-log"))
                                 .andExpect(status().isOk())
@@ -401,7 +405,8 @@ class PerformanceMetricsControllerTest {
 
         @Test
         void exportToLog_ShouldReturnMapWithTwoKeys() throws Exception {
-                doNothing().when(metricsService).exportPerformanceSummary();
+                when(metricsService.exportPerformanceSummaryAsync())
+                                .thenReturn(CompletableFuture.completedFuture(null));
 
                 mockMvc.perform(post("/api/metrics/performance/export-log"))
                                 .andExpect(status().isOk())
@@ -465,7 +470,8 @@ class PerformanceMetricsControllerTest {
 
         @Test
         void exportToLog_ShouldOnlyAcceptPostRequest() throws Exception {
-                doNothing().when(metricsService).exportPerformanceSummary();
+                when(metricsService.exportPerformanceSummaryAsync())
+                                .thenReturn(CompletableFuture.completedFuture(null));
 
                 mockMvc.perform(post("/api/metrics/performance/export-log"))
                                 .andExpect(status().isOk());

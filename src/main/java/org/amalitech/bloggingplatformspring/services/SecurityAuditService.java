@@ -8,11 +8,13 @@ import org.amalitech.bloggingplatformspring.repository.SecurityAuditEventReposit
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -40,7 +42,8 @@ public class SecurityAuditService {
   /**
    * Log a successful sign-in attempt
    */
-  public void logSuccessfulSignIn(String email, String ipAddress, String userAgent) {
+  @Async("applicationTaskExecutor")
+  public CompletableFuture<Void> logSuccessfulSignIn(String email, String ipAddress, String userAgent) {
     SecurityAuditEvent event = SecurityAuditEvent.builder()
         .eventType(EventType.SIGN_IN_SUCCESS.name())
         .email(email)
@@ -56,12 +59,14 @@ public class SecurityAuditService {
 
     // Reset failed attempts on successful login
     resetFailedAttempts(email, ipAddress);
+    return CompletableFuture.completedFuture(null);
   }
 
   /**
    * Log a failed sign-in attempt
    */
-  public void logFailedSignIn(String email, String ipAddress, String userAgent, String reason) {
+  @Async("applicationTaskExecutor")
+  public CompletableFuture<Void> logFailedSignIn(String email, String ipAddress, String userAgent, String reason) {
     SecurityAuditEvent event = SecurityAuditEvent.builder()
         .eventType(EventType.SIGN_IN_FAILURE.name())
         .email(email)
@@ -78,12 +83,15 @@ public class SecurityAuditService {
 
     // Track failed attempts
     trackFailedAttempt(email, ipAddress, userAgent);
+    return CompletableFuture.completedFuture(null);
   }
 
   /**
    * Log a token validation failure
    */
-  public void logTokenValidationFailure(String ipAddress, String userAgent, String endpoint, String reason) {
+  @Async("applicationTaskExecutor")
+  public CompletableFuture<Void> logTokenValidationFailure(String ipAddress, String userAgent, String endpoint,
+      String reason) {
     SecurityAuditEvent event = SecurityAuditEvent.builder()
         .eventType(EventType.TOKEN_VALIDATION_FAILURE.name())
         .ipAddress(ipAddress)
@@ -97,12 +105,14 @@ public class SecurityAuditService {
     auditEventRepository.save(event);
     log.warn("[SECURITY] Token validation failure: ip={}, endpoint={}, reason={}",
         maskIp(ipAddress), endpoint, reason);
+    return CompletableFuture.completedFuture(null);
   }
 
   /**
    * Log access to restricted endpoint
    */
-  public void logRestrictedEndpointAccess(String email, String ipAddress, String userAgent,
+  @Async("applicationTaskExecutor")
+  public CompletableFuture<Void> logRestrictedEndpointAccess(String email, String ipAddress, String userAgent,
       String endpoint, String method, boolean success) {
     SecurityAuditEvent event = SecurityAuditEvent.builder()
         .eventType(EventType.RESTRICTED_ENDPOINT_ACCESS.name())
@@ -124,12 +134,14 @@ public class SecurityAuditService {
       log.warn("[SECURITY] Restricted endpoint access: email={}, endpoint={} {}, status=DENIED",
           maskEmail(email), method, endpoint);
     }
+    return CompletableFuture.completedFuture(null);
   }
 
   /**
    * Log access denied events
    */
-  public void logAccessDenied(String email, String ipAddress, String userAgent,
+  @Async("applicationTaskExecutor")
+  public CompletableFuture<Void> logAccessDenied(String email, String ipAddress, String userAgent,
       String endpoint, String method) {
     SecurityAuditEvent event = SecurityAuditEvent.builder()
         .eventType(EventType.ACCESS_DENIED.name())
@@ -146,6 +158,7 @@ public class SecurityAuditService {
     auditEventRepository.save(event);
     log.warn("[SECURITY] Access denied: email={}, ip={}, endpoint={} {}",
         maskEmail(email), maskIp(ipAddress), method, endpoint);
+    return CompletableFuture.completedFuture(null);
   }
 
   /**

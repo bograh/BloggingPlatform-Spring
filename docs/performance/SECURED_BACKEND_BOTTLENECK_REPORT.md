@@ -181,3 +181,36 @@ EMAIL=admin@example.com PASSWORD='your-password' REQUESTS=200 CONCURRENCY=40 POS
 3. Set tighter Mongo client timeouts and add graceful fallback for comments-dependent paths.
 4. Remove unnecessary post lookup in `CommentService.deleteComment(...)`.
 5. Reduce hot-path performance logging verbosity in production.
+
+## Concurrent API Test Update
+
+Latest concurrent run (`metrics/profiling/20260223-163105`) used:
+
+- Requests per endpoint: `150`
+- Concurrency: `40`
+- Admin-authenticated token for secured analytics endpoint
+
+Observed response latency:
+
+| Endpoint | Avg | P95 | P99 | Max |
+|---|---:|---:|---:|---:|
+| Posts (`/api/posts`) | 0.468 s | 1.168 s | 1.408 s | 1.713 s |
+| Comments (`/api/comments/post/{postId}`) | 0.982 s | 3.383 s | 3.484 s | 3.714 s |
+| Analytics (`/api/metrics/performance/summary`) | 1.198 s | 3.186 s | 3.260 s | 3.455 s |
+
+Integrity and failure checks:
+
+- `overallSuccessRate = 100.0%`
+- `totalFailures = 0`
+- No endpoint error files generated for the run
+
+Comparison vs prior admin baseline (`metrics/profiling/20260223-162132`):
+
+- Posts improved (`1.114 s` -> `0.468 s` average)
+- Analytics remained stable (`1.202 s` -> `1.198 s` average)
+- Comments regressed under heavier load (`0.260 s` -> `0.982 s` average)
+
+Conclusion:
+
+- Primary hotspot under concurrent pressure is comments retrieval path.
+- Follow-up optimization should prioritize comment query path and related cache behavior under burst load.

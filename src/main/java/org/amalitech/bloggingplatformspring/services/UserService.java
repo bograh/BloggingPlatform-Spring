@@ -15,10 +15,10 @@ import org.amalitech.bloggingplatformspring.exceptions.UnauthorizedException;
 import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
-import org.amalitech.bloggingplatformspring.security.JwtTokenProvider;
 import org.amalitech.bloggingplatformspring.utils.CommentUtils;
 import org.amalitech.bloggingplatformspring.utils.PostUtils;
 import org.amalitech.bloggingplatformspring.utils.UserUtils;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -29,6 +29,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 @Slf4j
 @AllArgsConstructor
@@ -40,32 +42,66 @@ public class UserService {
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final PostUtils postUtils;
-    private final JwtTokenProvider jwtTokenProvider;
     private final CommentUtils commentUtils;
+    @Qualifier("applicationTaskExecutor")
+    private final Executor applicationTaskExecutor;
 
     public UserProfileResponse getUserProfile(HttpServletRequest httpServletRequest) {
         User user = userUtils.getUserFromRequest(httpServletRequest);
-        String userID = String.valueOf(user.getId());
+        String userId = String.valueOf(user.getId());
 
-        if (userID.isBlank())
+        if (userId.isBlank())
             throw new BadRequestException("User ID cannot be empty");
 
-        List<Post> recentPosts = postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(4));
-        List<PostResponseDTO> recentPostsResponse = recentPosts.stream()
-                .map(post -> {
-                    Long totalComments = commentRepository.countByPostId(post.getId());
-                    return postUtils.createPostResponseFromPost(post, totalComments);
-                }).toList();
+        CompletableFuture<List<PostResponseDTO>> recentPostsFuture = getRecentPostsResponseAsync(user);
+        CompletableFuture<List<CommentResponse>> recentCommentsFuture = getRecentCommentsResponseAsync(user);
+        CompletableFuture<Long> totalPostsFuture = getTotalPostsAsync(user);
+        CompletableFuture<Long> totalCommentsFuture = getTotalCommentsAsync(user.getUsername());
 
-        List<Comment> recentComments = commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(5));
-        List<CommentResponse> recentCommentsResponse = recentComments.stream()
-                .map(commentUtils::createCommentResponseFromComment).toList();
+        CompletableFuture.allOf(
+                recentPostsFuture,
+                recentCommentsFuture,
+                totalPostsFuture,
+                totalCommentsFuture).join();
 
-        Long totalPosts = postRepository.countByAuthor(user);
-        Long totalComments = commentRepository.countByAuthor(user.getUsername());
+        List<PostResponseDTO> recentPostsResponse = recentPostsFuture.join();
+        List<CommentResponse> recentCommentsResponse = recentCommentsFuture.join();
+        Long totalPosts = totalPostsFuture.join();
+        Long totalComments = totalCommentsFuture.join();
 
-        return userUtils.createUserProfileResponse(user, recentPostsResponse, recentCommentsResponse, totalPosts, totalComments);
+        return userUtils.createUserProfileResponse(user, recentPostsResponse, recentCommentsResponse, totalPosts,
+                totalComments);
 
+    }
+
+    private CompletableFuture<List<PostResponseDTO>> getRecentPostsResponseAsync(User user) {
+        return CompletableFuture.supplyAsync(() -> {
+            List<Post> recentPosts = postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(4));
+            return recentPosts.stream()
+                    .map(post -> {
+                        Long totalComments = commentRepository.countByPostId(post.getId());
+                        return postUtils.createPostResponseFromPost(post, totalComments);
+                    })
+                    .toList();
+        }, applicationTaskExecutor);
+    }
+
+    private CompletableFuture<List<CommentResponse>> getRecentCommentsResponseAsync(User user) {
+        return CompletableFuture.supplyAsync(() -> {
+            List<Comment> recentComments = commentRepository
+                    .findCommentsByAuthorOrderByCommentedAtDesc(user.getUsername(), Limit.of(5));
+            return recentComments.stream()
+                    .map(commentUtils::createCommentResponseFromComment)
+                    .toList();
+        }, applicationTaskExecutor);
+    }
+
+    private CompletableFuture<Long> getTotalPostsAsync(User user) {
+        return CompletableFuture.supplyAsync(() -> postRepository.countByAuthor(user), applicationTaskExecutor);
+    }
+
+    private CompletableFuture<Long> getTotalCommentsAsync(String username) {
+        return CompletableFuture.supplyAsync(() -> commentRepository.countByAuthor(username), applicationTaskExecutor);
     }
 
     public PageResponse<UserResponseDTO> getAllUsers(int page, int size, String sortBy, String order, String search) {
@@ -80,8 +116,7 @@ public class UserService {
 
     public UserProfileSummary getUserSummary(String userId) {
         User user = userRepository.findById(UUID.fromString(userId)).orElseThrow(
-                () -> new ResourceNotFoundException("User not found with id: " + userId)
-        );
+                () -> new ResourceNotFoundException("User not found with id: " + userId));
 
         Long totalPosts = postRepository.countByAuthor(user);
         Long totalComments = commentRepository.countByAuthor(user.getUsername());
@@ -118,8 +153,7 @@ public class UserService {
         user.setAuthProvider(AuthProvider.GOOGLE);
         user.setUserRoles(new ArrayList<>(Arrays.asList(
                 UserRoles.READER,
-                UserRoles.AUTHOR
-        )));
+                UserRoles.AUTHOR)));
         return userRepository.save(user);
     }
 
