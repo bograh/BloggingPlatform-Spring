@@ -55,10 +55,9 @@ public class TokenSessionService {
     }
 
     public void updateSessionActivity(String email) {
-        SessionInfo sessionInfo = activeSessions.get(email);
-        if (sessionInfo != null) {
-            sessionInfo.setLastActivityTimestamp(System.currentTimeMillis());
-        }
+        activeSessions.computeIfPresent(email, (key, sessionInfo) -> sessionInfo.toBuilder()
+                .lastActivityTimestamp(System.currentTimeMillis())
+                .build());
     }
 
     public void removeSession(String email) {
@@ -111,7 +110,6 @@ public class TokenSessionService {
     public SessionStats getStatistics() {
         return new SessionStats(
                 activeSessions.size(),
-                revokedTokens.size()
-        );
+                revokedTokens.size());
     }
 }

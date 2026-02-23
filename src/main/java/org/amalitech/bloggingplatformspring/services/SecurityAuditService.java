@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Service for managing security audit events, tracking failed attempts,
@@ -180,18 +181,22 @@ public class SecurityAuditService {
 
     // Check for rapid attempts (potential automated attack)
     String attemptKey = ipAddress + ":" + (email != null ? email : "unknown");
-    LocalDateTime lastAttempt = lastFailedAttemptTime.get(attemptKey);
-    boolean rapidAttempt = lastAttempt != null &&
-        java.time.Duration.between(lastAttempt, now).getSeconds() < RAPID_ATTEMPT_THRESHOLD_SECONDS;
-    lastFailedAttemptTime.put(attemptKey, now);
+    AtomicBoolean rapidAttempt = new AtomicBoolean(false);
+    lastFailedAttemptTime.compute(attemptKey, (key, lastAttempt) -> {
+      if (lastAttempt != null &&
+          java.time.Duration.between(lastAttempt, now).getSeconds() < RAPID_ATTEMPT_THRESHOLD_SECONDS) {
+        rapidAttempt.set(true);
+      }
+      return now;
+    });
 
     // Check database for historical failed attempts
     long dbFailedCount = checkDatabaseFailedAttempts(email, ipAddress);
 
     // Detect brute force
     if (ipCount >= MAX_FAILED_ATTEMPTS || emailCount >= MAX_FAILED_ATTEMPTS ||
-        dbFailedCount >= MAX_FAILED_ATTEMPTS || rapidAttempt) {
-      logBruteForceWarning(email, ipAddress, userAgent, ipCount, emailCount, rapidAttempt);
+        dbFailedCount >= MAX_FAILED_ATTEMPTS || rapidAttempt.get()) {
+      logBruteForceWarning(email, ipAddress, userAgent, ipCount, emailCount, rapidAttempt.get());
     }
   }
 
