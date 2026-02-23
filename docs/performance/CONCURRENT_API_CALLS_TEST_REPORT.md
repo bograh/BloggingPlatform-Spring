@@ -114,6 +114,32 @@ Sources:
 - `metrics/profiling/20260223-181435-opt-admin/comments-times.txt`
 - `metrics/profiling/20260223-181435-opt-admin/analytics-times.txt`
 
+## Simultaneous Requests Results (Latest Wrapper Rerun)
+
+Run metadata:
+
+- Run directory: `metrics/profiling/20260223-183509-opt-admin`
+- Execution command: `bash dev/performance-tests/run-admin-profile.sh`
+- Requests per endpoint: `120`
+- Concurrency: `30`
+- Resolved post id for comments endpoint: `3`
+
+| Endpoint | Successful Requests | Avg Response | P95 | P99 | Max | Notes |
+|---|---:|---:|---:|---:|---:|---|
+| Posts (`/api/posts`) | 120 | 0.227 s | 0.697 s | 0.707 s | 0.718 s | Successful |
+| Popular (`/api/posts/popular?limit=10`) | 120 | 0.347 s | 0.752 s | 0.809 s | 0.829 s | Successful |
+| Trending (`/api/posts/trending?limit=10`) | 120 | 0.220 s | 0.493 s | 0.506 s | 0.520 s | Successful |
+| Comments (`/api/comments/post/{postId}`) | 120 | 0.144 s | 0.452 s | 0.460 s | 0.462 s | Successful |
+| Analytics (`/api/metrics/performance/summary`) | 120 | 0.335 s | 0.618 s | 0.734 s | 0.740 s | Successful |
+
+Sources:
+
+- `metrics/profiling/20260223-183509-opt-admin/posts-times.txt`
+- `metrics/profiling/20260223-183509-opt-admin/popular-times.txt`
+- `metrics/profiling/20260223-183509-opt-admin/trending-times.txt`
+- `metrics/profiling/20260223-183509-opt-admin/comments-times.txt`
+- `metrics/profiling/20260223-183509-opt-admin/analytics-times.txt`
+
 Sources:
 
 - `metrics/profiling/20260223-163105/posts-times.txt`
