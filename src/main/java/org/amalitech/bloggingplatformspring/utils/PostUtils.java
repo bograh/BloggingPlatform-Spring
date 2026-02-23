@@ -8,13 +8,16 @@ import org.amalitech.bloggingplatformspring.entity.Post;
 import org.amalitech.bloggingplatformspring.entity.Tag;
 import org.amalitech.bloggingplatformspring.enums.PostSortField;
 import org.amalitech.bloggingplatformspring.repository.CommentRepository;
+import org.amalitech.bloggingplatformspring.repository.PostCommentCountProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 
 @Component
 public class PostUtils {
@@ -25,7 +28,8 @@ public class PostUtils {
         this.commentRepository = commentRepository;
     }
 
-    public PostResponseDTO createResponseFromPostAndTags(Post post, String authorName, List<String> tags, Long totalComments) {
+    public PostResponseDTO createResponseFromPostAndTags(Post post, String authorName, List<String> tags,
+            Long totalComments) {
         return new PostResponseDTO(
                 post.getId(),
                 post.getTitle(),
@@ -35,8 +39,7 @@ public class PostUtils {
                 tags,
                 formatDate(post.getPostedAt()),
                 formatDate(post.getUpdatedAt()),
-                totalComments
-        );
+                totalComments);
     }
 
     public PostResponseDTO createPostResponseFromPost(Post post, Long totalComments) {
@@ -51,14 +54,19 @@ public class PostUtils {
                         .toList(),
                 formatDate(post.getPostedAt()),
                 formatDate(post.getUpdatedAt()),
-                totalComments
-        );
+                totalComments);
     }
 
     public PageResponse<PostResponseDTO> mapPostPageToPostResponsePage(Page<Post> postPage) {
+        List<Long> postIds = postPage.getContent().stream()
+                .map(Post::getId)
+                .toList();
+
+        Map<Long, Long> commentsCountByPostId = countCommentsByPostId(postIds);
+
         List<PostResponseDTO> postsResponse = postPage.getContent().stream()
                 .map(post -> {
-                    Long totalComments = commentRepository.countByPostId(post.getId());
+                    Long totalComments = commentsCountByPostId.getOrDefault(post.getId(), 0L);
                     return createPostResponseFromPost(post, totalComments);
                 })
                 .toList();
@@ -69,16 +77,30 @@ public class PostUtils {
                 postPage.getSize(),
                 postPage.getSort().toString(),
                 postPage.getTotalElements(),
-                postPage.isLast()
-        );
+                postPage.isLast());
+    }
+
+    private Map<Long, Long> countCommentsByPostId(List<Long> postIds) {
+        if (postIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, Long> commentsCountByPostId = new HashMap<>();
+        List<PostCommentCountProjection> groupedCounts = commentRepository.countCommentsByPostIds(postIds);
+
+        for (PostCommentCountProjection projection : groupedCounts) {
+            commentsCountByPostId.put(projection.getPostId(), projection.getTotalComments());
+        }
+
+        return commentsCountByPostId;
     }
 
     public Specification<Post> buildSpecification(PostFilterRequest filter) {
         return Specification.allOf(
                 filter.author() != null ? PostSpecifications.hasAuthor(filter.author()) : null,
                 filter.search() != null ? PostSpecifications.searchByContent(filter.search()) : null,
-                filter.tags() != null && !filter.tags().isEmpty() ? PostSpecifications.hasTags(filter.tags()) : null
-        ).and(Specification.allOf());
+                filter.tags() != null && !filter.tags().isEmpty() ? PostSpecifications.hasTags(filter.tags()) : null)
+                .and(Specification.allOf());
     }
 
     public String mapSortField(String sortBy) {
@@ -108,9 +130,7 @@ public class PostUtils {
 
     private String formatDate(LocalDateTime localDateTime) {
         return localDateTime.format(
-                DateTimeFormatter.ofPattern(Constants.DATE_TIME_FORMAT_PATTERN)
-        );
+                DateTimeFormatter.ofPattern(Constants.DATE_TIME_FORMAT_PATTERN));
     }
-
 
 }

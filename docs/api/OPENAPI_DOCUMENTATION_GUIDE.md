@@ -59,6 +59,8 @@ available endpoints.
 | POST   | `/`         | Create a new blog post                      |
 | GET    | `/`         | Get all posts with pagination and filtering |
 | GET    | `/{postId}` | Get a specific post by ID                   |
+| GET    | `/popular`  | Get top popular posts (indexed + cached)    |
+| GET    | `/trending` | Get top trending posts (indexed + cached)   |
 | PUT    | `/{postId}` | Update an existing post                     |
 | DELETE | `/{postId}` | Delete a post                               |
 
@@ -71,6 +73,14 @@ available endpoints.
 - `author`: Filter by author name
 - `tags`: Filter by tag names (comma-separated)
 - `search`: Search in title and content
+
+**Query Parameters for GET /popular and GET /trending**:
+
+- `limit`: Maximum number of posts to return (default: 10, max: 50)
+
+**Optimization Reference:**
+
+- [Data & Algorithmic Optimization Report](../performance/RETRIEVAL_OPTIMIZATION_REPORT.md)
 
 #### 3. Comment Management
 

@@ -8,7 +8,6 @@ import org.amalitech.bloggingplatformspring.dtos.requests.DeleteCommentRequestDT
 import org.amalitech.bloggingplatformspring.dtos.responses.CommentResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.PageResponse;
 import org.amalitech.bloggingplatformspring.entity.Comment;
-import org.amalitech.bloggingplatformspring.entity.Post;
 import org.amalitech.bloggingplatformspring.entity.User;
 import org.amalitech.bloggingplatformspring.exceptions.ForbiddenException;
 import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
@@ -37,11 +36,14 @@ public class CommentService {
         private final PostRepository postRepository;
         private final UserUtils userUtils;
         private final CommentUtils commentUtils;
+        private final PostRankingIndexService postRankingIndexService;
 
         @Caching(evict = {
                         @CacheEvict(cacheNames = Constants.COMMENTS_CACHE_NAME, key = "'post:' + #newComment.postId"),
                         @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, key = "#newComment.postId"),
-                        @CacheEvict(cacheNames = Constants.POST_LIST_CACHE_NAME, allEntries = true)
+                        @CacheEvict(cacheNames = Constants.POST_LIST_CACHE_NAME, allEntries = true),
+                        @CacheEvict(cacheNames = Constants.POPULAR_POSTS_CACHE_NAME, allEntries = true),
+                        @CacheEvict(cacheNames = Constants.TRENDING_POSTS_CACHE_NAME, allEntries = true)
         })
         public CommentResponse addCommentToPost(CreateCommentDTO newComment, HttpServletRequest request) {
                 User user = userUtils.getUserFromRequest(request);
@@ -53,6 +55,7 @@ public class CommentService {
                 comment.setAuthorId(String.valueOf(user.getId()));
                 comment.setAuthor(user.getUsername());
                 commentRepository.save(comment);
+                postRankingIndexService.rebuildIndexes();
 
                 return commentUtils.createCommentResponseFromComment(comment);
 
@@ -82,13 +85,15 @@ public class CommentService {
                         @CacheEvict(cacheNames = Constants.COMMENTS_CACHE_NAME, key = "'post:' + #deleteCommentRequestDTO.postId"),
                         @CacheEvict(cacheNames = Constants.COMMENTS_CACHE_NAME, key = "#commentId"),
                         @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, key = "#deleteCommentRequestDTO.postId"),
-                        @CacheEvict(cacheNames = Constants.POST_LIST_CACHE_NAME, allEntries = true)
+                        @CacheEvict(cacheNames = Constants.POST_LIST_CACHE_NAME, allEntries = true),
+                        @CacheEvict(cacheNames = Constants.POPULAR_POSTS_CACHE_NAME, allEntries = true),
+                        @CacheEvict(cacheNames = Constants.TRENDING_POSTS_CACHE_NAME, allEntries = true)
         })
         public void deleteComment(String commentId,
                         DeleteCommentRequestDTO deleteCommentRequestDTO,
                         HttpServletRequest request) {
                 User user = userUtils.getUserFromRequest(request);
-                Post post = postRepository.findPostById(deleteCommentRequestDTO.getPostId()).orElseThrow(
+                postRepository.findPostById(deleteCommentRequestDTO.getPostId()).orElseThrow(
                                 () -> new ResourceNotFoundException("Post not found"));
 
                 Comment comment = commentRepository.findById(commentId).orElseThrow(
@@ -99,6 +104,7 @@ public class CommentService {
                 }
 
                 commentRepository.deleteCommentById(commentId);
+                postRankingIndexService.rebuildIndexes();
 
         }
 

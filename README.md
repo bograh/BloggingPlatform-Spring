@@ -226,6 +226,8 @@ Once running, access the application at:
 - `POST /` - Create a new post
 - `GET /` - Get all posts (paginated, filterable, sortable)
 - `GET /{postId}` - Get post by ID
+- `GET /popular?limit=10` - Get popular posts (index + cache optimized)
+- `GET /trending?limit=10` - Get trending posts (index + cache optimized)
 - `PUT /{postId}` - Update existing post
 - `DELETE /{postId}` - Delete post
 
@@ -360,9 +362,21 @@ Intelligent caching with comprehensive statistics tracking:
 
 - `users` - User profile caching
 - `posts` - Individual post caching
-- `allPosts` - Post list caching
+- `postsList` - Post list caching
 - `comments` - Comment caching
 - `tags` - Popular tags caching
+- `popularPosts` - Popular post ranking caching
+- `trendingPosts` - Trending post ranking caching
+
+### Retrieval Optimization Notes
+
+- Popular/trending retrieval now uses in-memory ranking indexes plus cache-backed top-K reads.
+- Post list mapping avoids N+1 comment-count queries via bulk aggregation.
+- Method comparison lookups now use indexed matching instead of linear scans.
+
+Detailed benchmark report:
+
+- [Data & Algorithmic Optimization Report](docs/performance/RETRIEVAL_OPTIMIZATION_REPORT.md)
 
 **Metrics tracked per cache:**
 

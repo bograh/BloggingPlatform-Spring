@@ -7,5 +7,7 @@ public class Constants {
     public static final String USERS_CACHE_NAME = "users";
     public static final String TAGS_CACHE_NAME = "tags";
     public static final String COMMENTS_CACHE_NAME = "comments";
+    public static final String POPULAR_POSTS_CACHE_NAME = "popularPosts";
+    public static final String TRENDING_POSTS_CACHE_NAME = "trendingPosts";
     public static final String REFRESH_TOKEN_COOKIE_NAME = "refreshToken";
 }

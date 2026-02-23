@@ -61,6 +61,9 @@ class PostServiceTest {
     private UserUtils userUtils;
 
     @Mock
+    private PostRankingIndexService postRankingIndexService;
+
+    @Mock
     private HttpServletRequest request;
 
     @InjectMocks

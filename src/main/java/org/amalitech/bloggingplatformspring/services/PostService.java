@@ -16,8 +16,6 @@ import org.amalitech.bloggingplatformspring.exceptions.ForbiddenException;
 import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
 import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
-import org.amalitech.bloggingplatformspring.repository.UserRepository;
-import org.amalitech.bloggingplatformspring.security.JwtTokenProvider;
 import org.amalitech.bloggingplatformspring.utils.Constants;
 import org.amalitech.bloggingplatformspring.utils.PostUtils;
 import org.amalitech.bloggingplatformspring.utils.UserUtils;
@@ -34,6 +32,7 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -43,14 +42,18 @@ import java.util.Set;
 public class PostService {
 
     private final PostRepository postRepository;
-    private final UserRepository userRepository;
     private final CommentRepository commentRepository;
     private final PostUtils postUtils;
     private final TagService tagService;
-    private final JwtTokenProvider jwtTokenProvider;
     private final UserUtils userUtils;
+    private final PostRankingIndexService postRankingIndexService;
 
-    @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, allEntries = true),
+            @CacheEvict(cacheNames = Constants.POST_LIST_CACHE_NAME, allEntries = true),
+            @CacheEvict(cacheNames = Constants.POPULAR_POSTS_CACHE_NAME, allEntries = true),
+            @CacheEvict(cacheNames = Constants.TRENDING_POSTS_CACHE_NAME, allEntries = true)
+    })
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public PostResponseDTO createPost(CreatePostDTO createPostDTO, HttpServletRequest request) {
         User user = userUtils.getUserFromRequest(request);
@@ -67,22 +70,19 @@ public class PostService {
         }
 
         postRepository.save(post);
+        postRankingIndexService.rebuildIndexes();
 
         return postUtils.createResponseFromPostAndTags(
                 post,
                 user.getUsername(),
                 createPostDTO.getTags(),
-                0L
-        );
+                0L);
 
     }
 
-    @Cacheable(
-            cacheNames = Constants.POST_LIST_CACHE_NAME,
-            key = "'page:' + #page + 'size:' + #size + 'sort:' + #sortBy + 'order:' + #order",
-            condition = "!#postFilterRequest.hasFilters()"
-    )
-    public PageResponse<PostResponseDTO> getAllPosts(int page, int size, String sortBy, String order, PostFilterRequest postFilterRequest) {
+    @Cacheable(cacheNames = Constants.POST_LIST_CACHE_NAME, key = "'page:' + #page + 'size:' + #size + 'sort:' + #sortBy + 'order:' + #order", condition = "!#postFilterRequest.hasFilters()")
+    public PageResponse<PostResponseDTO> getAllPosts(int page, int size, String sortBy, String order,
+            PostFilterRequest postFilterRequest) {
         size = Math.min(size, 30);
         String entitySortField = postUtils.mapSortField(sortBy);
         String orderBy = postUtils.mapOrderField(order);
@@ -101,8 +101,7 @@ public class PostService {
             throw new BadRequestException("Post ID must be a positive number");
         }
         Post post = postRepository.findPostById(postId).orElseThrow(
-                () -> new ResourceNotFoundException("Post not found with id: " + postId)
-        );
+                () -> new ResourceNotFoundException("Post not found with id: " + postId));
 
         Long totalComments = commentRepository.countByPostId(postId);
         return postUtils.createPostResponseFromPost(post, totalComments);
@@ -110,15 +109,16 @@ public class PostService {
 
     @Caching(evict = {
             @CacheEvict(cacheNames = Constants.POST_LIST_CACHE_NAME, allEntries = true),
-            @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, key = "#postId")
+            @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, key = "#postId"),
+            @CacheEvict(cacheNames = Constants.POPULAR_POSTS_CACHE_NAME, allEntries = true),
+            @CacheEvict(cacheNames = Constants.TRENDING_POSTS_CACHE_NAME, allEntries = true)
     })
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public PostResponseDTO updatePost(Long postId, UpdatePostDTO updatePostDTO, HttpServletRequest request) {
         User user = userUtils.getUserFromRequest(request);
 
         Post post = postRepository.findPostById(postId).orElseThrow(
-                () -> new ResourceNotFoundException("Post with ID: " + postId + " not found.")
-        );
+                () -> new ResourceNotFoundException("Post with ID: " + postId + " not found."));
 
         if (!user.getId().equals(post.getAuthor().getId())) {
             throw new ForbiddenException("You are not permitted to edit this post.");
@@ -140,6 +140,7 @@ public class PostService {
         post.setUpdatedAt(LocalDateTime.now());
 
         Post savedPost = postRepository.save(post);
+        postRankingIndexService.rebuildIndexes();
         long totalComments = commentRepository.countByPostId(savedPost.getId());
 
         return postUtils.createPostResponseFromPost(savedPost, totalComments);
@@ -147,14 +148,15 @@ public class PostService {
 
     @Caching(evict = {
             @CacheEvict(cacheNames = Constants.POST_LIST_CACHE_NAME, allEntries = true),
-            @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, key = "#postId")
+            @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, key = "#postId"),
+            @CacheEvict(cacheNames = Constants.POPULAR_POSTS_CACHE_NAME, allEntries = true),
+            @CacheEvict(cacheNames = Constants.TRENDING_POSTS_CACHE_NAME, allEntries = true)
     })
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public void deletePost(Long postId, HttpServletRequest request) {
         User user = userUtils.getUserFromRequest(request);
         Post post = postRepository.findPostById(postId).orElseThrow(
-                () -> new ResourceNotFoundException("Post with ID: " + postId + " not found.")
-        );
+                () -> new ResourceNotFoundException("Post with ID: " + postId + " not found."));
 
         if (!user.getId().equals(post.getAuthor().getId())) {
             throw new ForbiddenException("You are not permitted to delete this post.");
@@ -162,5 +164,14 @@ public class PostService {
 
         postRepository.delete(post);
         commentRepository.deleteCommentsByPostId(postId);
+        postRankingIndexService.rebuildIndexes();
+    }
+
+    public List<PostResponseDTO> getPopularPosts(int limit) {
+        return postRankingIndexService.getPopularPosts(limit);
+    }
+
+    public List<PostResponseDTO> getTrendingPosts(int limit) {
+        return postRankingIndexService.getTrendingPosts(limit);
     }
 }

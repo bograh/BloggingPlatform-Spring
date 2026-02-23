@@ -51,6 +51,9 @@ class CommentServiceTest {
     private CommentUtils commentUtils;
 
     @Mock
+    private PostRankingIndexService postRankingIndexService;
+
+    @Mock
     private HttpServletRequest request;
 
     @InjectMocks

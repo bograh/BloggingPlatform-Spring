@@ -3,13 +3,14 @@ package org.amalitech.bloggingplatformspring.config;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.Getter;
 import org.amalitech.bloggingplatformspring.utils.Constants;
-import org.jspecify.annotations.NonNull;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.caffeine.CaffeineCache;
 import org.springframework.cache.support.SimpleCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 
 import java.util.Arrays;
 import java.util.List;
@@ -52,12 +53,12 @@ public class CacheConfig {
                 Constants.POSTS_CACHE_NAME,
                 Constants.POST_LIST_CACHE_NAME,
                 Constants.TAGS_CACHE_NAME,
-                Constants.COMMENTS_CACHE_NAME
+                Constants.COMMENTS_CACHE_NAME,
+                Constants.POPULAR_POSTS_CACHE_NAME,
+                Constants.TRENDING_POSTS_CACHE_NAME
         };
 
-        Arrays.stream(cacheNames).forEach(name ->
-                cacheStats.putIfAbsent(name, new CacheStatistics(name))
-        );
+        Arrays.stream(cacheNames).forEach(name -> cacheStats.putIfAbsent(name, new CacheStatistics(name)));
 
         cacheManager.setCaches(List.of(
                 new MonitoredCaffeineCache(Constants.USERS_CACHE_NAME,
@@ -93,8 +94,21 @@ public class CacheConfig {
                                 .expireAfterWrite(5, TimeUnit.MINUTES)
                                 .recordStats()
                                 .build(),
-                        cacheStats.get(Constants.COMMENTS_CACHE_NAME))
-        ));
+                        cacheStats.get(Constants.COMMENTS_CACHE_NAME)),
+
+                new MonitoredCaffeineCache(Constants.POPULAR_POSTS_CACHE_NAME,
+                        Caffeine.newBuilder()
+                                .expireAfterWrite(3, TimeUnit.MINUTES)
+                                .recordStats()
+                                .build(),
+                        cacheStats.get(Constants.POPULAR_POSTS_CACHE_NAME)),
+
+                new MonitoredCaffeineCache(Constants.TRENDING_POSTS_CACHE_NAME,
+                        Caffeine.newBuilder()
+                                .expireAfterWrite(2, TimeUnit.MINUTES)
+                                .recordStats()
+                                .build(),
+                        cacheStats.get(Constants.TRENDING_POSTS_CACHE_NAME))));
 
         return cacheManager;
     }
@@ -106,7 +120,7 @@ public class CacheConfig {
         private final CacheStatistics statistics;
 
         public MonitoredCaffeineCache(String name, com.github.benmanes.caffeine.cache.Cache<Object, Object> cache,
-                                      CacheStatistics statistics) {
+                CacheStatistics statistics) {
             super(name, cache);
             this.statistics = statistics;
         }
@@ -123,7 +137,7 @@ public class CacheConfig {
         }
 
         @Override
-        public <T> T get(@NonNull Object key, Class<T> type) {
+        public <T> T get(@NonNull Object key, @Nullable Class<T> type) {
             T value = super.get(key, type);
             if (value != null) {
                 statistics.recordHit();
@@ -134,7 +148,7 @@ public class CacheConfig {
         }
 
         @Override
-        public void put(@NonNull Object key, Object value) {
+        public void put(@NonNull Object key, @Nullable Object value) {
             super.put(key, value);
             statistics.recordPut();
         }
