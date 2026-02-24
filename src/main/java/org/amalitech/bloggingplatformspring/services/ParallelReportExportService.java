@@ -6,7 +6,7 @@ import org.amalitech.bloggingplatformspring.dtos.requests.ReportExportRequest;
 import org.amalitech.bloggingplatformspring.dtos.responses.ReportExportDTO;
 import org.amalitech.bloggingplatformspring.entity.ReportExport;
 import org.amalitech.bloggingplatformspring.entity.User;
-import org.amalitech.bloggingplatformspring.enums.ReportType;
+import org.amalitech.bloggingplatformspring.exceptions.BadRequestException;
 import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
 import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
@@ -84,6 +84,27 @@ public class ParallelReportExportService {
    * @param limit  max reports to return
    * @return list of report DTOs
    */
+  /**
+   * Downloads the content of a completed report.
+   *
+   * @param reportId report UUID
+   * @return report text content
+   */
+  public String downloadReport(UUID reportId) {
+    ReportExport report = reportExportRepository.findById(reportId)
+        .orElseThrow(() -> new ResourceNotFoundException("Report not found: " + reportId));
+
+    if (!"COMPLETED".equals(report.getExportStatus())) {
+      throw new BadRequestException("Report is not ready for download: " + report.getExportStatus());
+    }
+
+    if (report.getFileContent() == null) {
+      throw new ResourceNotFoundException("Report content unavailable for: " + reportId);
+    }
+
+    return report.getFileContent();
+  }
+
   public List<ReportExportDTO> getUserReports(UUID userId, int limit) {
     int effectiveLimit = Math.min(Math.max(limit, 1), 50);
     List<ReportExport> reports = reportExportRepository
@@ -111,7 +132,7 @@ public class ParallelReportExportService {
       String filePath = saveReportToFile(reportId, reportContent);
       String downloadUrl = DOWNLOAD_URL_PREFIX + reportId;
 
-      report.markCompleted(filePath, downloadUrl);
+      report.markCompleted(filePath, downloadUrl, reportContent);
       report.setFileSize((long) reportContent.length());
       reportExportRepository.save(report);
 

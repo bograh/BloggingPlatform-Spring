@@ -61,6 +61,9 @@ public class ReportExport {
   @Column(name = "filter_params", columnDefinition = "TEXT")
   private String filterParams;
 
+  @Column(name = "file_content", columnDefinition = "TEXT")
+  private String fileContent;
+
   @Column(name = "created_at", nullable = false)
   private LocalDateTime createdAt;
 
@@ -87,10 +90,11 @@ public class ReportExport {
     this.startedAt = LocalDateTime.now();
   }
 
-  public void markCompleted(String filePath, String downloadUrl) {
+  public void markCompleted(String filePath, String downloadUrl, String fileContent) {
     this.exportStatus = STATUS_COMPLETED;
     this.filePath = filePath;
     this.downloadUrl = downloadUrl;
+    this.fileContent = fileContent;
     this.progressPercentage = 100;
     this.completedAt = LocalDateTime.now();
   }

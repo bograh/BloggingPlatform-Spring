@@ -9,12 +9,14 @@ import org.amalitech.bloggingplatformspring.dtos.requests.UpdatePostDTO;
 import org.amalitech.bloggingplatformspring.dtos.responses.PageResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
 import org.amalitech.bloggingplatformspring.entity.Post;
+import org.amalitech.bloggingplatformspring.entity.PostImage;
 import org.amalitech.bloggingplatformspring.entity.Tag;
 import org.amalitech.bloggingplatformspring.entity.User;
 import org.amalitech.bloggingplatformspring.exceptions.BadRequestException;
 import org.amalitech.bloggingplatformspring.exceptions.ForbiddenException;
 import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
 import org.amalitech.bloggingplatformspring.repository.CommentRepository;
+import org.amalitech.bloggingplatformspring.repository.PostImageRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.utils.Constants;
 import org.amalitech.bloggingplatformspring.utils.PostUtils;
@@ -30,6 +32,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -47,6 +50,8 @@ public class PostService {
     private final TagService tagService;
     private final UserUtils userUtils;
     private final PostRankingIndexService postRankingIndexService;
+    private final AsyncImageUploadService asyncImageUploadService;
+    private final PostImageRepository postImageRepository;
 
     @Caching(evict = {
             @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, allEntries = true),
@@ -56,6 +61,17 @@ public class PostService {
     })
     @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
     public PostResponseDTO createPost(CreatePostDTO createPostDTO, HttpServletRequest request) {
+        return createPost(createPostDTO, request, null);
+    }
+
+    @Caching(evict = {
+            @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, allEntries = true),
+            @CacheEvict(cacheNames = Constants.POST_LIST_CACHE_NAME, allEntries = true),
+            @CacheEvict(cacheNames = Constants.POPULAR_POSTS_CACHE_NAME, allEntries = true),
+            @CacheEvict(cacheNames = Constants.TRENDING_POSTS_CACHE_NAME, allEntries = true)
+    })
+    @Transactional(isolation = Isolation.READ_COMMITTED, rollbackFor = Exception.class)
+    public PostResponseDTO createPost(CreatePostDTO createPostDTO, HttpServletRequest request, MultipartFile image) {
         User user = userUtils.getUserFromRequest(request);
         Post post = new Post();
         post.setTitle(createPostDTO.getTitle());
@@ -69,15 +85,21 @@ public class PostService {
             post.setTags(new HashSet<>());
         }
 
-        postRepository.save(post);
+        Post savedPost = postRepository.save(post);
+
+        if (image != null && !image.isEmpty()) {
+            asyncImageUploadService.initiateUpload(savedPost.getId(), image);
+        }
+
         postRankingIndexService.rebuildIndexes();
 
-        return postUtils.createResponseFromPostAndTags(
-                post,
+        PostResponseDTO response = postUtils.createResponseFromPostAndTags(
+                savedPost,
                 user.getUsername(),
                 createPostDTO.getTags(),
                 0L);
 
+        return attachImageUrls(response);
     }
 
     @Cacheable(cacheNames = Constants.POST_LIST_CACHE_NAME, key = "'page:' + #page + 'size:' + #size + 'sort:' + #sortBy + 'order:' + #order", condition = "!#postFilterRequest.hasFilters()")
@@ -92,7 +114,18 @@ public class PostService {
         Specification<Post> spec = postUtils.buildSpecification(postFilterRequest);
 
         Page<Post> postPage = postRepository.findAll(spec, pageable);
-        return postUtils.mapPostPageToPostResponsePage(postPage);
+        PageResponse<PostResponseDTO> pageResponse = postUtils.mapPostPageToPostResponsePage(postPage);
+        List<PostResponseDTO> contentWithImages = pageResponse.content().stream()
+                .map(this::attachImageUrls)
+                .toList();
+
+        return new PageResponse<>(
+                contentWithImages,
+                pageResponse.page(),
+                pageResponse.size(),
+                pageResponse.sort(),
+                pageResponse.totalElements(),
+                pageResponse.last());
     }
 
     @Cacheable(cacheNames = Constants.POSTS_CACHE_NAME, key = "#postId")
@@ -104,7 +137,8 @@ public class PostService {
                 () -> new ResourceNotFoundException("Post not found with id: " + postId));
 
         Long totalComments = commentRepository.countByPostId(postId);
-        return postUtils.createPostResponseFromPost(post, totalComments);
+        PostResponseDTO response = postUtils.createPostResponseFromPost(post, totalComments);
+        return attachImageUrls(response);
     }
 
     @Caching(evict = {
@@ -143,7 +177,8 @@ public class PostService {
         postRankingIndexService.rebuildIndexes();
         long totalComments = commentRepository.countByPostId(savedPost.getId());
 
-        return postUtils.createPostResponseFromPost(savedPost, totalComments);
+        PostResponseDTO response = postUtils.createPostResponseFromPost(savedPost, totalComments);
+        return attachImageUrls(response);
     }
 
     @Caching(evict = {
@@ -162,16 +197,38 @@ public class PostService {
             throw new ForbiddenException("You are not permitted to delete this post.");
         }
 
+        asyncImageUploadService.deleteAllImagesForPost(postId);
         postRepository.delete(post);
         commentRepository.deleteCommentsByPostId(postId);
         postRankingIndexService.rebuildIndexes();
     }
 
     public List<PostResponseDTO> getPopularPosts(int limit) {
-        return postRankingIndexService.getPopularPosts(limit);
+        return postRankingIndexService.getPopularPosts(limit)
+                .stream()
+                .map(this::attachImageUrls)
+                .toList();
     }
 
     public List<PostResponseDTO> getTrendingPosts(int limit) {
-        return postRankingIndexService.getTrendingPosts(limit);
+        return postRankingIndexService.getTrendingPosts(limit)
+                .stream()
+                .map(this::attachImageUrls)
+                .toList();
+    }
+
+    private PostResponseDTO attachImageUrls(PostResponseDTO postResponseDTO) {
+        if (postResponseDTO == null || postResponseDTO.getId() == null) {
+            return postResponseDTO;
+        }
+
+        List<String> imageUrls = postImageRepository.findByPostId(postResponseDTO.getId())
+                .stream()
+                .map(PostImage::getCdnUrl)
+                .filter(url -> url != null && !url.isBlank())
+                .toList();
+
+        postResponseDTO.setImageUrls(imageUrls);
+        return postResponseDTO;
     }
 }

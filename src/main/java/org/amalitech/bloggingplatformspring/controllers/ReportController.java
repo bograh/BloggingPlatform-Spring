@@ -17,7 +17,9 @@ import org.amalitech.bloggingplatformspring.entity.User;
 import org.amalitech.bloggingplatformspring.exceptions.ErrorResponse;
 import org.amalitech.bloggingplatformspring.services.ParallelReportExportService;
 import org.amalitech.bloggingplatformspring.utils.UserUtils;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -54,6 +56,28 @@ public class ReportController {
     return new ResponseEntity<>(
         ApiResponseGeneric.success("Report export initiated", report),
         HttpStatus.ACCEPTED);
+  }
+
+  @GetMapping("/download/{reportId}")
+  @PreAuthorize("hasRole('ADMIN')")
+  @Operation(summary = "Download report file", description = "Downloads the generated report content as a text file. Report must be COMPLETED.")
+  @ApiResponses(value = {
+      @ApiResponse(responseCode = "200", description = "Report file returned"),
+      @ApiResponse(responseCode = "404", description = "Report not found or content unavailable", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+      @ApiResponse(responseCode = "409", description = "Report not yet completed", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+  })
+  public ResponseEntity<byte[]> downloadReport(
+      @Parameter(description = "Report UUID") @PathVariable UUID reportId) {
+
+    String content = reportExportService.downloadReport(reportId);
+    byte[] contentBytes = content.getBytes();
+
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(MediaType.TEXT_PLAIN);
+    headers.setContentDispositionFormData("attachment", "report-" + reportId + ".txt");
+    headers.setContentLength(contentBytes.length);
+
+    return ResponseEntity.ok().headers(headers).body(contentBytes);
   }
 
   @GetMapping("/{reportId}")

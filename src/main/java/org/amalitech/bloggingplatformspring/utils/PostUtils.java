@@ -41,7 +41,8 @@ public class PostUtils {
                 tags,
                 formatDate(post.getPostedAt()),
                 formatDate(post.getUpdatedAt()),
-                totalComments);
+                totalComments,
+                List.of());
     }
 
     public PostResponseDTO createPostResponseFromPost(Post post, Long totalComments) {
@@ -56,7 +57,8 @@ public class PostUtils {
                         .toList(),
                 formatDate(post.getPostedAt()),
                 formatDate(post.getUpdatedAt()),
-                totalComments);
+                totalComments,
+                List.of());
     }
 
     public PageResponse<PostResponseDTO> mapPostPageToPostResponsePage(Page<Post> postPage) {
