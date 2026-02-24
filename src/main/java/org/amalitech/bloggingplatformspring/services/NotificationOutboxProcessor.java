@@ -38,6 +38,7 @@ public class NotificationOutboxProcessor {
     private final NotificationOutboxRepository notificationRepository;
     private final EmailService emailService;
     private final EmailTemplates emailTemplates;
+    private final NotificationService notificationService;
 
     /**
      * Queues a notification for async processing.
@@ -56,6 +57,7 @@ public class NotificationOutboxProcessor {
         notification.setStatus(NotificationStatus.PENDING);
         notification.setMaxRetries(MAX_RETRY_COUNT);
 
+        notificationService.queueAllTemplates(request);
         NotificationOutbox saved = notificationRepository.save(notification);
         log.info("Queued notification {} for {}", saved.getId(), request.getRecipientEmail());
 
@@ -125,12 +127,6 @@ public class NotificationOutboxProcessor {
     @Async("applicationTaskExecutor")
     public CompletableFuture<Void> processNotificationAsync(NotificationOutbox notification) {
         log.debug("Processing notification {} for {}", notification.getId(), notification.getRecipientEmail());
-        String htmlBody = emailTemplates.welcomeEmail(
-                notification.getRecipientName(),
-                "DEVBLOG",
-                "http://localhost:3000"
-        );
-        notification.setBody(htmlBody);
 
         try {
             markAsProcessing(notification);
