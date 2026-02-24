@@ -9,6 +9,7 @@ import org.amalitech.bloggingplatformspring.entity.NotificationOutbox;
 import org.amalitech.bloggingplatformspring.enums.NotificationStatus;
 import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
 import org.amalitech.bloggingplatformspring.repository.NotificationOutboxRepository;
+import org.amalitech.bloggingplatformspring.utils.EmailTemplates;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -35,6 +36,8 @@ public class NotificationOutboxProcessor {
     private static final int CLEANUP_DAYS = 30;
 
     private final NotificationOutboxRepository notificationRepository;
+    private final EmailService emailService;
+    private final EmailTemplates emailTemplates;
 
     /**
      * Queues a notification for async processing.
@@ -122,10 +125,16 @@ public class NotificationOutboxProcessor {
     @Async("applicationTaskExecutor")
     public CompletableFuture<Void> processNotificationAsync(NotificationOutbox notification) {
         log.debug("Processing notification {} for {}", notification.getId(), notification.getRecipientEmail());
+        String htmlBody = emailTemplates.welcomeEmail(
+                notification.getRecipientName(),
+                "DEVBLOG",
+                "http://localhost:3000"
+        );
+        notification.setBody(htmlBody);
 
         try {
             markAsProcessing(notification);
-            sendEmail(notification);
+            emailService.sendEmail(notification);
             markAsSent(notification);
             log.info("Successfully sent notification {} to {}", notification.getId(), notification.getRecipientEmail());
         } catch (Exception e) {
@@ -147,12 +156,6 @@ public class NotificationOutboxProcessor {
         LocalDateTime cutoff = LocalDateTime.now().minusDays(CLEANUP_DAYS);
         int deleted = notificationRepository.deleteOldProcessedNotifications(NotificationStatus.SENT, cutoff);
         log.info("Cleaned up {} old notifications", deleted);
-    }
-
-    private void sendEmail(NotificationOutbox notification) {
-        log.info("Simulating email send to {} - Subject: {}",
-                notification.getRecipientEmail(),
-                notification.getSubject());
     }
 
     private void markAsProcessing(NotificationOutbox notification) {
