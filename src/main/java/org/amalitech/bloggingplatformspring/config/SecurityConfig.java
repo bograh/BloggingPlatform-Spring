@@ -38,6 +38,7 @@ public class SecurityConfig {
     private static final String AUTHOR_ROLE = "AUTHOR";
     private static final String POSTS_PATH = "/api/posts/**";
     private static final String TAGS_PATH = "/api/tags/**";
+    private static final String FEED_PATH = "/api/feed/**";
     private static final String[] PUBLIC_ENDPOINTS = {
             "/api/auth/**",
             "/oauth2/**",
@@ -74,6 +75,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
                         .requestMatchers(HttpMethod.GET, POSTS_PATH, TAGS_PATH).permitAll()
+                        .requestMatchers(FEED_PATH).permitAll()
 
                         .requestMatchers(HttpMethod.POST, "/api/posts").hasRole(AUTHOR_ROLE)
                         .requestMatchers(HttpMethod.PUT, POSTS_PATH).hasRole(AUTHOR_ROLE)
