@@ -15,9 +15,11 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Component
 public class PostUtils {
@@ -89,7 +91,16 @@ public class PostUtils {
         List<PostCommentCountProjection> groupedCounts = commentRepository.countCommentsByPostIds(postIds);
 
         for (PostCommentCountProjection projection : groupedCounts) {
-            commentsCountByPostId.put(projection.getPostId(), projection.getTotalComments());
+            if (projection.getPostId() != null && projection.getTotalComments() != null) {
+                commentsCountByPostId.put(projection.getPostId(), projection.getTotalComments());
+            }
+        }
+
+        Set<Long> missingPostIds = new HashSet<>(postIds);
+        missingPostIds.removeAll(commentsCountByPostId.keySet());
+
+        for (Long postId : missingPostIds) {
+            commentsCountByPostId.put(postId, commentRepository.countByPostId(postId));
         }
 
         return commentsCountByPostId;

@@ -107,51 +107,29 @@ GET http://localhost:8080/api/metrics/performance/summary
 }
 ```
 
-#### Get Slow Methods
+#### Get Runtime API Snapshot
 
 ```bash
-GET http://localhost:8080/api/metrics/performance/slow?thresholdMs=500
-
-# Default threshold is 1000ms if not specified
+GET http://localhost:8080/api/metrics/performance/runtime?limit=10
 ```
 
-#### Get Top N Slowest Methods
+#### Export Runtime Metrics (CSV)
 
 ```bash
-GET http://localhost:8080/api/metrics/performance/top?limit=10
-
-# Default limit is 10 if not specified
+POST http://localhost:8080/api/metrics/performance/runtime/export?limit=25
 ```
 
-#### Get Metrics by Layer
+#### Compare Baseline vs Optimized Snapshots
 
 ```bash
-GET http://localhost:8080/api/metrics/performance/layer/SERVICE
-GET http://localhost:8080/api/metrics/performance/layer/REPOSITORY
+GET http://localhost:8080/api/metrics/performance/comparison/database
 ```
 
-#### Get Failure Statistics
+#### Get Metrics by Explicit Method Path
 
 ```bash
-GET http://localhost:8080/api/metrics/performance/failures
-```
-
-**Response:**
-
-```json
-{
-  "totalFailures": 12,
-  "methodsWithFailures": 3,
-  "methods": [
-    {
-      "method": "SERVICE::UserServiceImpl.deleteUser(..)",
-      "totalCalls": 100,
-      "failedCalls": 8,
-      "successfulCalls": 92,
-      "failureRate": "8.00%"
-    }
-  ]
-}
+GET http://localhost:8080/api/metrics/performance/SERVICE/createPost
+GET http://localhost:8080/api/metrics/performance/method/PostService.getAllPosts(..)
 ```
 
 #### Reset Metrics
@@ -344,23 +322,24 @@ management.prometheus.metrics.export.enabled=true
 
 ### Using the Metrics
 
-#### 1. Identify Slow Methods
+#### 1. Identify Hot Endpoints and High Latency
 
 ```bash
-# Get all methods slower than 500ms
-curl http://localhost:8080/api/metrics/performance/slow?thresholdMs=500
+# Runtime latency + throughput snapshot
+curl "http://localhost:8080/api/metrics/performance/runtime?limit=10"
 ```
 
 **Analysis:**
 
-- Methods in the response need optimization
-- Check if the threshold is consistently exceeded
-- Review P95 and P99 to understand outliers
+- Identify endpoints with high average/max latency
+- Check whether throughput drops while latency rises
+- Correlate with memory and error-rate fields
 
 #### 2. Monitor Failure Rates
 
 ```bash
-curl http://localhost:8080/api/metrics/performance/failures
+curl http://localhost:8080/api/metrics/performance/summary
+curl "http://localhost:8080/api/metrics/performance/runtime?limit=10"
 ```
 
 **Analysis:**
@@ -369,19 +348,18 @@ curl http://localhost:8080/api/metrics/performance/failures
 - Check exception logs for failing methods
 - May indicate database issues, external service problems, or validation errors
 
-#### 3. Layer Performance Comparison
+#### 3. Snapshot Performance Comparison
 
 ```bash
-# Compare service vs repository layer
-curl http://localhost:8080/api/metrics/performance/layer/SERVICE
-curl http://localhost:8080/api/metrics/performance/layer/REPOSITORY
+# Compare PRE_CACHE and POST_CACHE snapshots
+curl http://localhost:8080/api/metrics/performance/comparison/database
 ```
 
 **Analysis:**
 
-- Repository layer should generally be faster
-- Slow repository methods may indicate database query issues
-- Service layer includes business logic, so some overhead is expected
+- Track overall improvement/degradation percentage
+- Identify best and worst changed methods
+- Validate optimization impact after deployment
 
 #### 4. Percentile Analysis
 
@@ -395,12 +373,12 @@ Large gaps between P50 and P99 indicate inconsistent performance.
 
 ### Performance Optimization Workflow
 
-1. **Identify**: Use `/top` or `/slow` endpoints to find problematic methods
-2. **Analyze**: Check percentiles and standard deviation
-3. **Monitor**: Track failure rates and error logs
-4. **Optimize**: Improve code, database queries, or caching
-5. **Verify**: Compare metrics before and after changes
-6. **Reset**: Use `/reset` to clear old metrics after changes
+1. **Baseline**: Save PRE_CACHE snapshot via `/baseline`
+2. **Run**: Execute workload/profile tests
+3. **Capture**: Save POST_CACHE snapshot via `/postcache`
+4. **Compare**: Use `/comparison/database` to quantify improvement
+5. **Observe**: Use `/runtime` for latency/throughput/memory view
+6. **Export**: Use `/runtime/export` and `/export-all` for artifacts
 
 ---
 
@@ -465,7 +443,7 @@ POST http://localhost:8080/api/metrics/performance/export-log
 
 # After deployment - compare
 GET http://localhost:8080/api/metrics/performance/summary
-GET http://localhost:8080/api/metrics/performance/top?limit=5
+GET http://localhost:8080/api/metrics/performance/runtime?limit=5
 ```
 
 ### Use Case 2: Database Query Optimization
@@ -473,11 +451,10 @@ GET http://localhost:8080/api/metrics/performance/top?limit=5
 **Scenario**: Identify slow database operations
 
 ```bash
-# Get all repository layer metrics
-GET http://localhost:8080/api/metrics/performance/layer/REPOSITORY
-
-# Focus on slow queries
-GET http://localhost:8080/api/metrics/performance/slow?thresholdMs=100
+# Save baseline and compare after optimization
+POST http://localhost:8080/api/metrics/performance/baseline
+POST http://localhost:8080/api/metrics/performance/postcache
+GET http://localhost:8080/api/metrics/performance/comparison/database
 ```
 
 ### Use Case 3: Service Health Check
@@ -488,11 +465,11 @@ GET http://localhost:8080/api/metrics/performance/slow?thresholdMs=100
 # Get summary
 GET http://localhost:8080/api/metrics/performance/summary
 
-# Check failures
-GET http://localhost:8080/api/metrics/performance/failures
+# Check runtime metrics
+GET http://localhost:8080/api/metrics/performance/runtime?limit=10
 
-# Verify no critical slow methods
-GET http://localhost:8080/api/metrics/performance/slow?thresholdMs=1000
+# Verify baseline vs optimized trend
+GET http://localhost:8080/api/metrics/performance/comparison/database
 ```
 
 ---

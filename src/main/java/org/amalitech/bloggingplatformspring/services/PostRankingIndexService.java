@@ -20,9 +20,11 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicLong;
@@ -130,7 +132,16 @@ public class PostRankingIndexService {
 
     Map<Long, Long> commentsCountByPostId = new HashMap<>();
     for (PostCommentCountProjection groupedCount : groupedCounts) {
-      commentsCountByPostId.put(groupedCount.getPostId(), groupedCount.getTotalComments());
+      if (groupedCount.getPostId() != null && groupedCount.getTotalComments() != null) {
+        commentsCountByPostId.put(groupedCount.getPostId(), groupedCount.getTotalComments());
+      }
+    }
+
+    Set<Long> missingPostIds = new HashSet<>(postIds);
+    missingPostIds.removeAll(commentsCountByPostId.keySet());
+
+    for (Long postId : missingPostIds) {
+      commentsCountByPostId.put(postId, commentRepository.countByPostId(postId));
     }
 
     return commentsCountByPostId;

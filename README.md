@@ -256,6 +256,9 @@ Once running, access the application at:
 - `DELETE /cache/reset` - Reset cache statistics
 - `POST /cache/export-log` - Export cache metrics to file
 - `POST /export-all` - Export combined metrics to file
+- `GET /runtime` - Get API runtime metrics (latency, req/sec, memory)
+- `POST /runtime/export` - Export runtime metrics to CSV table
+- `DELETE /runtime/reset` - Reset runtime metrics counters
 
 ### GraphQL API
 
@@ -352,7 +355,49 @@ curl http://localhost:8080/api/metrics/performance/summary
 
 # Export to file (creates metrics/YYYYMMDD-HHmmss-performance-summary.log)
 curl -X POST http://localhost:8080/api/metrics/performance/export-log
+
+# Get runtime API metrics (latency/throughput/memory)
+curl "http://localhost:8080/api/metrics/performance/runtime?limit=10"
+
+# Export runtime metrics CSV table (creates metrics/runtime/YYYYMMDD-HHmmss-runtime-metrics.csv)
+curl -X POST "http://localhost:8080/api/metrics/performance/runtime/export?limit=20"
 ```
+
+### Profiling Workflow (Baseline → Optimized)
+
+1. Save baseline and reset metrics:
+
+```bash
+curl -X POST http://localhost:8080/api/metrics/performance/baseline
+```
+
+2. Run concurrent profile workload:
+
+```bash
+bash dev/performance-tests/run-admin-profile.sh
+```
+
+3. Save optimized snapshot and compare:
+
+```bash
+curl -X POST http://localhost:8080/api/metrics/performance/postcache
+curl http://localhost:8080/api/metrics/performance/comparison/database
+```
+
+4. Export runtime + method/cache metrics tables:
+
+```bash
+curl -X POST "http://localhost:8080/api/metrics/performance/runtime/export?limit=25"
+curl -X POST http://localhost:8080/api/metrics/performance/export-all
+```
+
+Related reports:
+
+- `docs/performance/BASELINE_PERFORMANCE_SUMMARY.md`
+- `docs/performance/CONCURRENT_API_CALLS_TEST_REPORT.md`
+- `docs/performance/CONCURRENCY_THREAD_SAFETY_TUNING_REPORT.md`
+- `docs/performance/RETRIEVAL_OPTIMIZATION_REPORT.md`
+- `docs/performance/FINAL_OPTIMIZATION_REPORT.md`
 
 ### Cache Monitoring
 

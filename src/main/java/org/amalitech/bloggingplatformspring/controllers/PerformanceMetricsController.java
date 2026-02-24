@@ -11,6 +11,7 @@ import org.amalitech.bloggingplatformspring.entity.CacheMetricsSnapshot;
 import org.amalitech.bloggingplatformspring.entity.PerformanceMetricsSnapshot;
 import org.amalitech.bloggingplatformspring.services.CachePerformanceSimulationService;
 import org.amalitech.bloggingplatformspring.services.PerformanceMetricsService;
+import org.amalitech.bloggingplatformspring.services.RuntimeMetricsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,6 +29,7 @@ public class PerformanceMetricsController {
 
         private final PerformanceMetricsService metricsService;
         private final CachePerformanceSimulationService simulationService;
+        private final RuntimeMetricsService runtimeMetricsService;
 
         /**
          * Get all performance metrics
@@ -79,6 +81,46 @@ public class PerformanceMetricsController {
         })
         public ResponseEntity<MetricsSummaryDTO> getMetricsSummary() {
                 return ResponseEntity.ok(metricsService.getMetricsSummary());
+        }
+
+        /**
+         * Get runtime API metrics snapshot (latency, throughput, memory)
+         */
+        @GetMapping("/runtime")
+        @Operation(summary = "Get runtime API metrics", description = "Retrieves runtime API latency, throughput (req/sec), memory usage, and endpoint-level breakdown")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Runtime metrics retrieved successfully")
+        })
+        public ResponseEntity<RuntimeMetricsSnapshotDTO> getRuntimeMetrics(
+                        @Parameter(description = "Maximum number of endpoint rows to include", example = "10") @RequestParam(defaultValue = "10") int limit) {
+                return ResponseEntity.ok(runtimeMetricsService.getRuntimeSnapshot(limit));
+        }
+
+        /**
+         * Export runtime API metrics to CSV table
+         */
+        @PostMapping("/runtime/export")
+        @Operation(summary = "Export runtime API metrics", description = "Exports runtime API metrics as a CSV table under metrics/runtime")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Runtime metrics exported successfully")
+        })
+        public ResponseEntity<StatusResponse> exportRuntimeMetrics(
+                        @Parameter(description = "Maximum number of endpoint rows to include", example = "20") @RequestParam(defaultValue = "20") int limit) {
+                String exportPath = runtimeMetricsService.exportRuntimeMetrics(limit);
+                return ResponseEntity.ok(StatusResponse.success("Runtime metrics exported to " + exportPath));
+        }
+
+        /**
+         * Reset runtime API metrics
+         */
+        @DeleteMapping("/runtime/reset")
+        @Operation(summary = "Reset runtime API metrics", description = "Clears runtime API latency, throughput and memory trend counters")
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Runtime metrics reset successfully")
+        })
+        public ResponseEntity<StatusResponse> resetRuntimeMetrics() {
+                runtimeMetricsService.reset();
+                return ResponseEntity.ok(StatusResponse.success("Runtime API metrics have been reset"));
         }
 
         /**
