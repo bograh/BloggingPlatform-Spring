@@ -20,6 +20,7 @@ public class NotificationQueueService {
     private static final int MAX_RETRY_COUNT = 3;
     private final NotificationOutboxRepository notificationRepository;
     private final EmailTemplates emailTemplates;
+
     @Value("${frontend.base-url}")
     private String frontendBaseUrl;
     @Value("${app.platform-name}")

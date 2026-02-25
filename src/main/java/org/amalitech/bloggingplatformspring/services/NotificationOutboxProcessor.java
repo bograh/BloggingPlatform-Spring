@@ -27,10 +27,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-/**
- * Outbox pattern processor for reliable email notifications.
- * Handles async processing with retry logic and failure handling.
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -50,7 +46,7 @@ public class NotificationOutboxProcessor {
     private final NotificationQueueService notificationQueueService;
 
     /**
-     * Queues a notification for async processing.
+     * Queues a notification for processing.
      *
      * @param request notification request
      * @return notification DTO with tracking info
@@ -85,11 +81,6 @@ public class NotificationOutboxProcessor {
         return mapToDTO(notification);
     }
 
-    /**
-     * Gets notification processing statistics.
-     *
-     * @return stats DTO
-     */
     public NotificationStatsDTO getStats() {
         LocalDateTime last24Hours = LocalDateTime.now().minusHours(24);
 
@@ -107,9 +98,9 @@ public class NotificationOutboxProcessor {
 
     /**
      * Scheduled task to process pending notifications.
-     * Runs every 30 seconds.
+     * Runs every 15 seconds.
      */
-    @Scheduled(fixedRate = 30000)
+    @Scheduled(fixedRate = 15000)
     public void processPendingNotifications() {
         log.debug("Processing pending notifications batch");
         try {
@@ -153,9 +144,9 @@ public class NotificationOutboxProcessor {
 
     /**
      * Curates and queues weekly digest emails for all users.
-     * Runs every Friday at 9:00 AM UTC.
+     * Runs every Friday at 5:00 PM
      */
-    @Scheduled(cron = "0 0 9 * * FRI")
+    @Scheduled(cron = "0 0 17 * * FRI")
     @Transactional
     public void sendWeeklyDigests() {
         log.info("Starting weekly digest job");
@@ -186,7 +177,7 @@ public class NotificationOutboxProcessor {
     }
 
     /**
-     * Scheduled cleanup of old processed notifications.
+     * Scheduled cleanup of already processed notifications.
      * Runs daily at 3 AM.
      */
     @Scheduled(cron = "0 0 3 * * *")

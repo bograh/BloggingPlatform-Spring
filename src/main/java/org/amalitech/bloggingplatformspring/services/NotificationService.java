@@ -62,40 +62,40 @@ public class NotificationService {
         return switch (type) {
             case NEW_COMMENT -> emailTemplates.newComment(
                     recipientName,
-                    "Commenter Name",    // placeholder
-                    "Post Title",        // placeholder
-                    request.getBody(),   // use request body as comment
-                    "#"                  // placeholder URL
+                    "Commenter Name",
+                    "Post Title",
+                    request.getBody(),
+                    "#"
             );
             case POST_PUBLISHED -> emailTemplates.postPublished(
                     recipientName,
-                    request.getBody(),   // use body as post title
-                    "#"                  // placeholder URL
+                    request.getBody(),
+                    "#"
             );
             case MODERATION_ACTION -> emailTemplates.moderationAction(
                     recipientName,
-                    "Content Title",     // placeholder
-                    "Moderation Action", // placeholder
-                    request.getBody()    // reason
+                    "Content Title",
+                    "Moderation Action",
+                    request.getBody()
             );
             case WELCOME_EMAIL -> emailTemplates.welcomeEmail(
                     recipientName,
-                    "Platform Name",     // placeholder
-                    "#"                  // dashboard URL
+                    "Platform Name",
+                    "#"
             );
             case PASSWORD_RESET -> emailTemplates.passwordReset(
                     recipientName,
-                    "#",                 // reset URL placeholder
-                    "24 hours"           // expiry placeholder
+                    "#",
+                    "24 hours"
             );
             case WEEKLY_DIGEST -> emailTemplates.weeklyDigest(
                     recipientName,
-                    0,                   // newPosts
-                    0,                   // newComments
-                    0,                   // newFollowers
-                    "Top Post Title",    // placeholder
-                    request.getBody(),   // use body as post excerpt
-                    "#"                  // platform URL
+                    0,
+                    0,
+                    0,
+                    "Top Post Title",
+                    request.getBody(),
+                    "#"
             );
         };
     }
