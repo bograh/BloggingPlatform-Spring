@@ -19,6 +19,8 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -132,6 +134,7 @@ public class NotificationOutboxProcessor {
      * @param notification notification to process
      */
     @Async("applicationTaskExecutor")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public CompletableFuture<Void> processNotificationAsync(NotificationOutbox notification) {
         log.debug("Processing notification {} for {}", notification.getId(), notification.getRecipientEmail());
 
@@ -165,7 +168,7 @@ public class NotificationOutboxProcessor {
                 oneWeekAgo, PageRequest.of(0, 1));
 
         String topPostTitle = recentPosts.isEmpty() ? "No new posts this week" : recentPosts.get(0).getTitle();
-        String topPostExcerpt = recentPosts.isEmpty() ? "" : truncate(recentPosts.get(0).getBody(), 200);
+        String topPostExcerpt = recentPosts.isEmpty() ? "" : truncate(recentPosts.get(0).getBody());
 
         List<User> allUsers = userRepository.findAll();
         log.info("Sending weekly digest to {} users", allUsers.size());
@@ -176,10 +179,10 @@ public class NotificationOutboxProcessor {
         log.info("Weekly digest queued for {} users", allUsers.size());
     }
 
-    private String truncate(String text, int maxLength) {
-        if (text == null || text.length() <= maxLength)
+    private String truncate(String text) {
+        if (text == null || text.length() <= 200)
             return text;
-        return text.substring(0, maxLength) + "...";
+        return text.substring(0, 200) + "...";
     }
 
     /**
