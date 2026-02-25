@@ -1,11 +1,19 @@
 package org.amalitech.bloggingplatformspring.utils;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import java.time.LocalDateTime;
 
 @Component
 public class EmailTemplates {
 
+    @Value("${app.platform-name}")
+    private String platformName;
+
     private String baseTemplate(String title, String bodyContent) {
+        int copyrightYear = LocalDateTime.now().getYear();
+
         return """
                 <!DOCTYPE html>
                 <html>
@@ -19,7 +27,7 @@ public class EmailTemplates {
                               <h2 style="margin:0 0 20px 0;color:#111;">%s</h2>
                               %s
                               <p style="margin-top:40px;font-size:12px;color:#888;">
-                                © %s
+                                © %s - %s
                               </p>
                             </td>
                           </tr>
@@ -29,7 +37,7 @@ public class EmailTemplates {
                   </table>
                 </body>
                 </html>
-                """.formatted(title, bodyContent, "Your Platform");
+                """.formatted(title, bodyContent, copyrightYear, platformName);
     }
 
     public String newComment(String username,
@@ -41,7 +49,7 @@ public class EmailTemplates {
         String body = """
                 <p>Hello %s,</p>
                 
-                <p><strong>%s</strong> commented on your post 
+                <p><strong>%s</strong> commented on your post
                 <strong>"%s"</strong>.</p>
                 
                 <blockquote style="margin:20px 0;padding:15px;background:#f9f9f9;border-left:4px solid #ddd;color:#444;">

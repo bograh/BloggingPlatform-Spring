@@ -35,6 +35,7 @@ public class AuthService {
     private final UserUtils userUtils;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
+    private final NotificationQueueService notificationQueueService;
 
     public AuthResponseDTO registerUser(RegisterUserDTO registerUserDTO) {
         String username = registerUserDTO.getUsername().trim().toLowerCase();
@@ -61,13 +62,12 @@ public class AuthService {
         user.setPassword(hashedPassword);
         user.setUserRoles(new ArrayList<>(Arrays.asList(
                 UserRoles.READER,
-                UserRoles.AUTHOR
-        )));
+                UserRoles.AUTHOR)));
         user = userRepository.save(user);
+        notificationQueueService.queueWelcomeEmail(user);
 
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(email, password)
-        );
+                new UsernamePasswordAuthenticationToken(email, password));
 
         return authenticateUser(user, authentication);
     }
@@ -81,13 +81,11 @@ public class AuthService {
         }
 
         User user = userRepository.findUserByEmailIgnoreCase(email).orElseThrow(
-                () -> new UnauthorizedException("Invalid email or password")
-        );
+                () -> new UnauthorizedException("Invalid email or password"));
 
         try {
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(email, password)
-            );
+                    new UsernamePasswordAuthenticationToken(email, password));
             return authenticateUser(user, authentication);
         } catch (BadCredentialsException e) {
             throw new UnauthorizedException("Invalid email or password");
@@ -107,11 +105,10 @@ public class AuthService {
         UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
 
         User user = userRepository.findUserByEmailIgnoreCase(email).orElseThrow(
-                () -> new UnauthorizedException("Invalid email or password")
-        );
+                () -> new UnauthorizedException("Invalid email or password"));
 
-        Authentication authentication =
-                new UsernamePasswordAuthenticationToken(email, null, userDetails.getAuthorities());
+        Authentication authentication = new UsernamePasswordAuthenticationToken(email, null,
+                userDetails.getAuthorities());
 
         return authenticateUser(user, authentication);
     }

@@ -52,6 +52,7 @@ public class PostService {
     private final PostRankingIndexService postRankingIndexService;
     private final AsyncImageUploadService asyncImageUploadService;
     private final PostImageRepository postImageRepository;
+    private final NotificationQueueService notificationQueueService;
 
     @Caching(evict = {
             @CacheEvict(cacheNames = Constants.POSTS_CACHE_NAME, allEntries = true),
@@ -86,6 +87,7 @@ public class PostService {
         }
 
         Post savedPost = postRepository.save(post);
+        notificationQueueService.queuePostPublishedEmail(savedPost);
 
         if (image != null && !image.isEmpty()) {
             asyncImageUploadService.initiateUpload(savedPost.getId(), image);

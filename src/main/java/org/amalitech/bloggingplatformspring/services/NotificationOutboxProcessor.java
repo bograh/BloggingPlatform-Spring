@@ -6,10 +6,14 @@ import org.amalitech.bloggingplatformspring.dtos.requests.NotificationRequest;
 import org.amalitech.bloggingplatformspring.dtos.responses.NotificationDTO;
 import org.amalitech.bloggingplatformspring.dtos.responses.NotificationStatsDTO;
 import org.amalitech.bloggingplatformspring.entity.NotificationOutbox;
+import org.amalitech.bloggingplatformspring.entity.Post;
+import org.amalitech.bloggingplatformspring.entity.User;
 import org.amalitech.bloggingplatformspring.enums.NotificationStatus;
 import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
+import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.amalitech.bloggingplatformspring.repository.NotificationOutboxRepository;
-import org.amalitech.bloggingplatformspring.utils.EmailTemplates;
+import org.amalitech.bloggingplatformspring.repository.PostRepository;
+import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -37,8 +41,11 @@ public class NotificationOutboxProcessor {
 
     private final NotificationOutboxRepository notificationRepository;
     private final EmailService emailService;
-    private final EmailTemplates emailTemplates;
     private final NotificationService notificationService;
+    private final UserRepository userRepository;
+    private final PostRepository postRepository;
+    private final CommentRepository commentRepository;
+    private final NotificationQueueService notificationQueueService;
 
     /**
      * Queues a notification for async processing.
@@ -142,6 +149,40 @@ public class NotificationOutboxProcessor {
     }
 
     /**
+     * Curates and queues weekly digest emails for all users.
+     * Runs every Friday at 9:00 AM UTC.
+     */
+    @Scheduled(cron = "0 0 9 * * FRI")
+    @Transactional
+    public void sendWeeklyDigests() {
+        log.info("Starting weekly digest job");
+        LocalDateTime oneWeekAgo = LocalDateTime.now().minusWeeks(1);
+
+        int newPosts = (int) postRepository.countPostsCreatedAfter(oneWeekAgo);
+        int newComments = (int) commentRepository.countByCommentedAtAfter(oneWeekAgo);
+
+        List<Post> recentPosts = postRepository.findRecentPostsForDigest(
+                oneWeekAgo, PageRequest.of(0, 1));
+
+        String topPostTitle = recentPosts.isEmpty() ? "No new posts this week" : recentPosts.get(0).getTitle();
+        String topPostExcerpt = recentPosts.isEmpty() ? "" : truncate(recentPosts.get(0).getBody(), 200);
+
+        List<User> allUsers = userRepository.findAll();
+        log.info("Sending weekly digest to {} users", allUsers.size());
+
+        allUsers.forEach(user -> notificationQueueService.queueWeeklyDigestEmail(
+                user, newPosts, newComments, topPostTitle, topPostExcerpt));
+
+        log.info("Weekly digest queued for {} users", allUsers.size());
+    }
+
+    private String truncate(String text, int maxLength) {
+        if (text == null || text.length() <= maxLength)
+            return text;
+        return text.substring(0, maxLength) + "...";
+    }
+
+    /**
      * Scheduled cleanup of old processed notifications.
      * Runs daily at 3 AM.
      */
@@ -171,7 +212,8 @@ public class NotificationOutboxProcessor {
         if (notification.canRetry()) {
             notification.incrementRetryCount();
             notification.setStatus(NotificationStatus.RETRY);
-            notification.setNextRetryAt(LocalDateTime.now().plusMinutes((long) RETRY_DELAY_MINUTES * notification.getRetryCount()));
+            notification.setNextRetryAt(
+                    LocalDateTime.now().plusMinutes((long) RETRY_DELAY_MINUTES * notification.getRetryCount()));
             log.info("Scheduled notification {} for retry {} at {}",
                     notification.getId(),
                     notification.getRetryCount(),

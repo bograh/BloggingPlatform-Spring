@@ -5,6 +5,7 @@ import org.amalitech.bloggingplatformspring.entity.User;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import java.time.LocalDateTime;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -36,4 +37,10 @@ public interface PostRepository extends JpaRepository<Post, Long>, JpaSpecificat
     List<Post> findPostsByAuthorOrderByUpdatedAtDesc(User author, Limit limit);
 
     Long countByAuthor(User user);
+
+    @Query("SELECT COUNT(p) FROM Post p WHERE p.postedAt >= :since")
+    long countPostsCreatedAfter(@Param("since") LocalDateTime since);
+
+    @Query("SELECT p FROM Post p WHERE p.postedAt >= :since ORDER BY p.postedAt DESC")
+    List<Post> findRecentPostsForDigest(@Param("since") LocalDateTime since, Pageable pageable);
 }

@@ -37,6 +37,7 @@ public class CommentService {
         private final UserUtils userUtils;
         private final CommentUtils commentUtils;
         private final PostRankingIndexService postRankingIndexService;
+        private final NotificationQueueService notificationQueueService;
 
         @Caching(evict = {
                         @CacheEvict(cacheNames = Constants.COMMENTS_CACHE_NAME, key = "'post:' + #newComment.postId"),
@@ -55,6 +56,14 @@ public class CommentService {
                 comment.setAuthorId(String.valueOf(user.getId()));
                 comment.setAuthor(user.getUsername());
                 commentRepository.save(comment);
+
+                postRepository.findPostById(newComment.getPostId()).ifPresent(post -> {
+                        if (!String.valueOf(post.getAuthor().getId()).equals(String.valueOf(user.getId()))) {
+                                notificationQueueService.queueNewCommentNotification(
+                                                post, user.getUsername(), newComment.getCommentContent());
+                        }
+                });
+
                 postRankingIndexService.rebuildIndexes();
 
                 return commentUtils.createCommentResponseFromComment(comment);
