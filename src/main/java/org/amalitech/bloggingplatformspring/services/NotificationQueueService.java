@@ -10,6 +10,7 @@ import org.amalitech.bloggingplatformspring.enums.NotificationType;
 import org.amalitech.bloggingplatformspring.repository.NotificationOutboxRepository;
 import org.amalitech.bloggingplatformspring.utils.EmailTemplates;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -26,6 +27,7 @@ public class NotificationQueueService {
     @Value("${app.platform-name}")
     private String platformName;
 
+    @Async(value = "applicationTaskExecutor")
     public void queueWelcomeEmail(User user) {
         String dashboardUrl = frontendBaseUrl;
         String body = emailTemplates.welcomeEmail(user.getUsername(), platformName, dashboardUrl);
@@ -33,6 +35,7 @@ public class NotificationQueueService {
                 "Welcome to " + platformName, body);
     }
 
+    @Async(value = "applicationTaskExecutor")
     public void queueNewCommentNotification(Post post, String commenterName, String commentPreview) {
         User author = post.getAuthor();
         String postUrl = frontendBaseUrl + "/posts/" + post.getId();
@@ -42,6 +45,7 @@ public class NotificationQueueService {
                 "New Comment on Your Post", body);
     }
 
+    @Async(value = "applicationTaskExecutor")
     public void queuePostPublishedEmail(Post post) {
         User author = post.getAuthor();
         String postUrl = frontendBaseUrl + "/posts/" + post.getId();
@@ -50,6 +54,7 @@ public class NotificationQueueService {
                 "Your Post is Live", body);
     }
 
+    @Async(value = "applicationTaskExecutor")
     public void queueWeeklyDigestEmail(User user, int newPosts, int newComments,
                                        String topPostTitle, String topPostExcerpt) {
         String body = emailTemplates.weeklyDigest(
