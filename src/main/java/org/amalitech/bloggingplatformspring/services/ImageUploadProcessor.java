@@ -93,7 +93,6 @@ public class ImageUploadProcessor {
     private void completeUpload(PostImage image, String storedPath, String cdnUrl) {
         image.setUploadStatus(ImageUploadStatus.COMPLETED);
         image.setStoragePath(storedPath);
-        image.setThumbnailPath(null);
         image.setCdnUrl(cdnUrl);
         image.setUploadCompletedAt(LocalDateTime.now());
         postImageRepository.save(image);

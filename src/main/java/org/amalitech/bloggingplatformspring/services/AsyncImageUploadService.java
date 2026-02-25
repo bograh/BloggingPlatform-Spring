@@ -10,6 +10,7 @@ import org.amalitech.bloggingplatformspring.exceptions.BadRequestException;
 import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
 import org.amalitech.bloggingplatformspring.repository.PostImageRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -131,7 +132,6 @@ public class AsyncImageUploadService {
                 .orElseThrow(() -> new ResourceNotFoundException("Image not found: " + imageId));
 
         imageUploadProcessor.deleteObjectIfPresent(image.getStoragePath());
-        imageUploadProcessor.deleteObjectIfPresent(image.getThumbnailPath());
 
         postImageRepository.delete(image);
         log.info("Deleted image: {}", imageId);
@@ -142,12 +142,12 @@ public class AsyncImageUploadService {
      *
      * @param postId post ID whose images should be removed
      */
+    @Async("applicationTaskExecutor")
     @Transactional
     public void deleteAllImagesForPost(Long postId) {
         List<PostImage> images = postImageRepository.findByPostId(postId);
         for (PostImage image : images) {
             imageUploadProcessor.deleteObjectIfPresent(image.getStoragePath());
-            imageUploadProcessor.deleteObjectIfPresent(image.getThumbnailPath());
         }
         postImageRepository.deleteAll(images);
         log.info("Deleted {} image(s) for post {}", images.size(), postId);
@@ -199,7 +199,6 @@ public class AsyncImageUploadService {
                 .originalFilename(image.getOriginalFilename())
                 .status(image.getUploadStatus())
                 .cdnUrl(image.getCdnUrl())
-                .thumbnailUrl(image.getThumbnailPath())
                 .fileSize(image.getFileSize())
                 .contentType(image.getContentType())
                 .errorMessage(image.getErrorMessage())
