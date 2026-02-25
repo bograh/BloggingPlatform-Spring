@@ -45,7 +45,7 @@ public class SecurityConfig {
             "/login/oauth2/**",
             "/graphql", "/graphiql",
             "/favicon.ico",
-            "/actuator/**",
+            "/actuator/health",
             "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**",
             "/error"
     };
@@ -91,7 +91,8 @@ public class SecurityConfig {
                                 "/api/admin/**",
                                 "/api/users/**",
                                 "/api/metrics/performance/**",
-                                "/api/security/audit/**"
+                                "/api/security/audit/**",
+                                "/actuator/**"
                         ).hasRole(ADMIN_ROLE)
 
                         .anyRequest().authenticated())
