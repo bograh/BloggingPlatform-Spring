@@ -4,6 +4,7 @@ import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.amalitech.bloggingplatformspring.entity.NotificationOutbox;
+import org.amalitech.bloggingplatformspring.exceptions.EmailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -32,7 +33,7 @@ public class EmailService {
 
         } catch (Exception e) {
             log.error("Failed to send email to {}", notification.getRecipientEmail(), e);
-            throw new RuntimeException("Email sending failed", e);
+            throw new EmailSendException("Email sending failed: " + e.getMessage());
         }
     }
 }

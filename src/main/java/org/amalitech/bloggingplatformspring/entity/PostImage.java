@@ -16,8 +16,8 @@ import java.util.UUID;
  */
 @Entity
 @Table(name = "post_images", indexes = {
-    @Index(name = "idx_image_post", columnList = "post_id"),
-    @Index(name = "idx_image_status", columnList = "upload_status")
+        @Index(name = "idx_image_post", columnList = "post_id"),
+        @Index(name = "idx_image_status", columnList = "upload_status")
 })
 @Getter
 @Setter
@@ -25,61 +25,51 @@ import java.util.UUID;
 @AllArgsConstructor
 public class PostImage {
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.UUID)
-  private UUID id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "post_id", nullable = false)
-  private Post post;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "post_id", nullable = false)
+    private Post post;
 
-  @Column(name = "original_filename", nullable = false)
-  private String originalFilename;
+    @Column(name = "original_filename", nullable = false)
+    private String originalFilename;
 
-  @Column(name = "stored_filename")
-  private String storedFilename;
+    @Column(name = "content_type")
+    private String contentType;
 
-  @Column(name = "content_type")
-  private String contentType;
+    @Column(name = "file_size")
+    private Long fileSize;
 
-  @Column(name = "file_size")
-  private Long fileSize;
+    @Column(name = "storage_path")
+    private String storagePath;
 
-  @Column(name = "storage_path")
-  private String storagePath;
+    @Column(name = "cdn_url")
+    private String cdnUrl;
 
-  @Column(name = "thumbnail_path")
-  private String thumbnailPath;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "upload_status", nullable = false)
+    private ImageUploadStatus uploadStatus = ImageUploadStatus.PENDING;
 
-  @Column(name = "cdn_url")
-  private String cdnUrl;
+    @Column(name = "error_message")
+    private String errorMessage;
 
-  @Enumerated(EnumType.STRING)
-  @Column(name = "upload_status", nullable = false)
-  private ImageUploadStatus uploadStatus = ImageUploadStatus.PENDING;
+    @Column(name = "upload_started_at")
+    private LocalDateTime uploadStartedAt;
 
-  @Column(name = "error_message")
-  private String errorMessage;
+    @Column(name = "upload_completed_at")
+    private LocalDateTime uploadCompletedAt;
 
-  @Column(name = "upload_started_at")
-  private LocalDateTime uploadStartedAt;
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt;
 
-  @Column(name = "upload_completed_at")
-  private LocalDateTime uploadCompletedAt;
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+    }
 
-  @Column(name = "created_at", nullable = false)
-  private LocalDateTime createdAt;
-
-  @PrePersist
-  protected void onCreate() {
-    this.createdAt = LocalDateTime.now();
-  }
-
-  public boolean isUploadComplete() {
-    return uploadStatus == ImageUploadStatus.COMPLETED;
-  }
-
-  public boolean isFailed() {
-    return uploadStatus == ImageUploadStatus.FAILED;
-  }
+    public boolean isFailed() {
+        return uploadStatus == ImageUploadStatus.FAILED;
+    }
 }
