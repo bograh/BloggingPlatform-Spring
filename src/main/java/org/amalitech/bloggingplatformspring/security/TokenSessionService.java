@@ -1,5 +1,6 @@
 package org.amalitech.bloggingplatformspring.security;
 
+import io.jsonwebtoken.Claims;
 import lombok.extern.slf4j.Slf4j;
 import org.amalitech.bloggingplatformspring.dtos.SessionInfo;
 import org.amalitech.bloggingplatformspring.dtos.responses.SessionStats;
@@ -28,7 +29,8 @@ public class TokenSessionService {
     public void revokeToken(String token) {
         if (token != null && !token.isBlank()) {
             try {
-                String email = jwtTokenProvider.getEmailFromAccessToken(token);
+                Claims claims = jwtTokenProvider.parseAccessToken(token);
+                String email = claims.getSubject();
                 revokedTokens.put(token, email);
                 log.info("Token revoked for user: {}", email);
             } catch (Exception e) {
@@ -91,7 +93,8 @@ public class TokenSessionService {
         revokedTokens.entrySet().removeIf(entry -> {
             try {
                 String token = entry.getKey();
-                long expirationTime = jwtTokenProvider.getExpirationTimeFromAccessToken(token);
+                Claims claims = jwtTokenProvider.parseAccessToken(token);
+                long expirationTime = claims.getExpiration().getTime();
                 boolean isExpired = currentTime > expirationTime;
 
                 if (isExpired) {

@@ -1,5 +1,6 @@
 package org.amalitech.bloggingplatformspring.utils;
 
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletRequest;
 import org.amalitech.bloggingplatformspring.dtos.responses.*;
 import org.amalitech.bloggingplatformspring.entity.User;
@@ -19,6 +20,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -60,7 +62,8 @@ public class UserUtils {
 
     public User getUserFromRequest(HttpServletRequest request) {
         String token = jwtTokenProvider.getTokenFromRequest(request);
-        String email = jwtTokenProvider.getEmailFromAccessToken(token);
+        Claims claims = jwtTokenProvider.parseAccessToken(token);
+        String email = claims.getSubject();
         return userRepository.findUserByEmailIgnoreCase(email).orElseThrow(
                 () -> new ResourceNotFoundException("User not found with email: " + email)
         );
@@ -149,5 +152,18 @@ public class UserUtils {
         return userRoles.stream()
                 .map(role -> new SimpleGrantedAuthority("ROLE_" + role.name()))
                 .collect(Collectors.toList());
+    }
+
+    public List<String> extractRoles(Claims claims) {
+        Object rolesObject = claims.get("roles");
+
+        if (rolesObject instanceof List<?> rawList) {
+            return rawList.stream()
+                    .filter(String.class::isInstance)
+                    .map(String.class::cast)
+                    .toList();
+        }
+
+        return Collections.emptyList();
     }
 }
