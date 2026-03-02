@@ -11,6 +11,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -42,9 +43,12 @@ public class FeedAggregationService {
         long startTime = System.currentTimeMillis();
         int effectiveLimit = Math.min(Math.max(limit, 1), MAX_FEED_LIMIT);
 
-        CompletableFuture<List<FeedItemDTO>> recentFuture = fetchRecentPostsAsync(effectiveLimit);
-        CompletableFuture<List<FeedItemDTO>> trendingFuture = fetchTrendingPostsAsync(effectiveLimit);
-        CompletableFuture<List<FeedItemDTO>> popularFuture = fetchPopularPostsAsync(effectiveLimit);
+        CompletableFuture<List<FeedItemDTO>> recentFuture = fetchRecentPostsAsync(effectiveLimit)
+                .exceptionally(ex -> List.of());
+        CompletableFuture<List<FeedItemDTO>> trendingFuture = fetchTrendingPostsAsync(effectiveLimit)
+                .exceptionally(ex -> List.of());
+        CompletableFuture<List<FeedItemDTO>> popularFuture = fetchPopularPostsAsync(effectiveLimit)
+                .exceptionally(ex -> List.of());
 
         CompletableFuture.allOf(recentFuture, trendingFuture, popularFuture).join();
 
@@ -69,6 +73,7 @@ public class FeedAggregationService {
     }
 
     @Async("applicationTaskExecutor")
+    @Transactional(readOnly = true)
     public CompletableFuture<List<FeedItemDTO>> fetchRecentPostsAsync(int limit) {
         log.debug("Fetching recent posts asynchronously, limit: {}", limit);
         try {
@@ -80,11 +85,12 @@ public class FeedAggregationService {
             return CompletableFuture.completedFuture(feedItems);
         } catch (Exception e) {
             log.error("Error fetching recent posts: {}", e.getMessage(), e);
-            return CompletableFuture.completedFuture(List.of());
+            return CompletableFuture.failedFuture(e);
         }
     }
 
     @Async("applicationTaskExecutor")
+    @Transactional(readOnly = true)
     public CompletableFuture<List<FeedItemDTO>> fetchTrendingPostsAsync(int limit) {
         log.debug("Fetching trending posts asynchronously, limit: {}", limit);
         try {
@@ -95,11 +101,12 @@ public class FeedAggregationService {
             return CompletableFuture.completedFuture(feedItems);
         } catch (Exception e) {
             log.error("Error fetching trending posts: {}", e.getMessage(), e);
-            return CompletableFuture.completedFuture(List.of());
+            return CompletableFuture.failedFuture(e);
         }
     }
 
     @Async("applicationTaskExecutor")
+    @Transactional(readOnly = true)
     public CompletableFuture<List<FeedItemDTO>> fetchPopularPostsAsync(int limit) {
         log.debug("Fetching popular posts asynchronously, limit: {}", limit);
         try {
@@ -110,7 +117,7 @@ public class FeedAggregationService {
             return CompletableFuture.completedFuture(feedItems);
         } catch (Exception e) {
             log.error("Error fetching popular posts: {}", e.getMessage(), e);
-            return CompletableFuture.completedFuture(List.of());
+            return CompletableFuture.failedFuture(e);
         }
     }
 

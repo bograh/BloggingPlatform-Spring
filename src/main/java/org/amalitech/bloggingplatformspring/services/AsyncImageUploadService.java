@@ -171,11 +171,16 @@ public class AsyncImageUploadService {
     private PostImage createImageRecord(Post post, MultipartFile file) {
         PostImage image = new PostImage();
         image.setPost(post);
-        image.setOriginalFilename(file.getOriginalFilename());
+        image.setOriginalFilename(sanitizeForLog(file.getOriginalFilename()));
         image.setContentType(file.getContentType());
         image.setFileSize(file.getSize());
         image.setUploadStatus(ImageUploadStatus.PENDING);
         return image;
+    }
+
+    private String sanitizeForLog(String input) {
+        if (input == null) return null;
+        return input.replaceAll("[\\r\\n]", "");
     }
 
     private void triggerUploadAfterCommit(UUID imageId, byte[] fileBytes) {
@@ -187,6 +192,7 @@ public class AsyncImageUploadService {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
+                log.debug("Triggering async upload for image: {}", sanitizeForLog(imageId.toString()));
                 imageUploadProcessor.processUploadAsync(imageId, fileBytes);
             }
         });
