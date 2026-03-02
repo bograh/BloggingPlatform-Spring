@@ -13,6 +13,7 @@ import org.amalitech.bloggingplatformspring.exceptions.BadRequestException;
 import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
 import org.amalitech.bloggingplatformspring.exceptions.UnauthorizedException;
 import org.amalitech.bloggingplatformspring.repository.CommentRepository;
+import org.amalitech.bloggingplatformspring.repository.PostCommentCountProjection;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.amalitech.bloggingplatformspring.utils.CommentUtils;
@@ -29,9 +30,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.stream.Collectors;
 
 @Slf4j
 @AllArgsConstructor
@@ -79,11 +82,24 @@ public class UserService {
     private CompletableFuture<List<PostResponseDTO>> getRecentPostsResponseAsync(User user) {
         return CompletableFuture.supplyAsync(() -> {
             List<Post> recentPosts = postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(4));
+            if (recentPosts.isEmpty()) {
+                return List.of();
+            }
+
+            List<Long> postIds = recentPosts.stream()
+                    .map(Post::getId)
+                    .toList();
+
+            Map<Long, Long> commentCountsByPostId = commentRepository.countCommentsByPostIds(postIds)
+                    .stream()
+                    .collect(Collectors.toMap(
+                            PostCommentCountProjection::getPostId,
+                            PostCommentCountProjection::getTotalComments));
+
             return recentPosts.stream()
-                    .map(post -> {
-                        Long totalComments = commentRepository.countByPostId(post.getId());
-                        return postUtils.createPostResponseFromPost(post, totalComments);
-                    })
+                    .map(post -> postUtils.createPostResponseFromPost(
+                            post,
+                            commentCountsByPostId.getOrDefault(post.getId(), 0L)))
                     .toList();
         }, applicationTaskExecutor);
     }

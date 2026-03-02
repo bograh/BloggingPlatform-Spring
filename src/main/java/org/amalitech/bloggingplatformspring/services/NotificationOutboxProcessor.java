@@ -15,12 +15,12 @@ import org.amalitech.bloggingplatformspring.repository.NotificationOutboxReposit
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -44,6 +44,8 @@ public class NotificationOutboxProcessor {
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final NotificationQueueService notificationQueueService;
+    @Lazy
+    private final NotificationOutboxProcessor self;
 
     /**
      * Queues a notification for processing.
@@ -112,7 +114,7 @@ public class NotificationOutboxProcessor {
 
             if (!pending.isEmpty()) {
                 log.info("Processing {} pending notifications", pending.size());
-                pending.forEach(this::processNotificationAsync);
+                pending.forEach(self::processNotificationAsync);
             }
         } catch (Exception e) {
             log.error("Error processing pending notifications: {}", e.getMessage(), e);
@@ -125,7 +127,7 @@ public class NotificationOutboxProcessor {
      * @param notification notification to process
      */
     @Async("applicationTaskExecutor")
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public CompletableFuture<Void> processNotificationAsync(NotificationOutbox notification) {
         log.debug("Processing notification {} for {}", notification.getId(), notification.getRecipientEmail());
 
