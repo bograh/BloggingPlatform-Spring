@@ -40,6 +40,9 @@ public class TokenSessionService {
     }
 
     public boolean isTokenRevoked(String token) {
+        if (token == null) {
+            return false;
+        }
         return revokedTokens.containsKey(token);
     }
 
