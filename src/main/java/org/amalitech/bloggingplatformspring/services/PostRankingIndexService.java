@@ -47,6 +47,7 @@ public class PostRankingIndexService {
   private final NavigableSet<RankedPost> popularIndex = new ConcurrentSkipListSet<>(rankComparator());
   private final NavigableSet<RankedPost> trendingIndex = new ConcurrentSkipListSet<>(rankComparator());
   private final AtomicLong lastRefreshEpochMillis = new AtomicLong(0);
+  private final Object rebuildLock = new Object();
 
   @Cacheable(cacheNames = Constants.POPULAR_POSTS_CACHE_NAME, key = "#limit")
   @Transactional(readOnly = true)
@@ -98,10 +99,20 @@ public class PostRankingIndexService {
   }
 
   private void ensureFreshIndex() {
-    long ageMillis = System.currentTimeMillis() - lastRefreshEpochMillis.get();
-    if (popularIndex.isEmpty() || trendingIndex.isEmpty() || ageMillis > INDEX_TTL_MILLIS) {
-      rebuildIndexes();
+    if (!isIndexStale()) {
+      return;
     }
+
+    synchronized (rebuildLock) {
+      if (isIndexStale()) {
+        rebuildIndexes();
+      }
+    }
+  }
+
+  private boolean isIndexStale() {
+    long ageMillis = System.currentTimeMillis() - lastRefreshEpochMillis.get();
+    return popularIndex.isEmpty() || trendingIndex.isEmpty() || ageMillis > INDEX_TTL_MILLIS;
   }
 
   private List<PostResponseDTO> buildTopPosts(NavigableSet<RankedPost> index, int limit) {
