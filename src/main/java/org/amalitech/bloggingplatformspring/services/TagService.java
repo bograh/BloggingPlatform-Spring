@@ -26,6 +26,7 @@ public class TagService {
         this.tagRepository = tagRepository;
     }
 
+    @Transactional(readOnly = true)
     @Cacheable(cacheNames = Constants.TAGS_CACHE_NAME, key = "'popular'")
     public List<TagResponse> getPopularTags() {
         List<Tag> tags = tagRepository.findMostPopularTags(PageRequest.of(0, 5));

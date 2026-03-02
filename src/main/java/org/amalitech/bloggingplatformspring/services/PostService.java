@@ -35,8 +35,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @RequiredArgsConstructor
@@ -104,9 +104,10 @@ public class PostService {
         return attachImageUrls(response);
     }
 
+    @Transactional(readOnly = true)
     @Cacheable(cacheNames = Constants.POST_LIST_CACHE_NAME, key = "'page:' + #page + 'size:' + #size + 'sort:' + #sortBy + 'order:' + #order", condition = "!#postFilterRequest.hasFilters()")
     public PageResponse<PostResponseDTO> getAllPosts(int page, int size, String sortBy, String order,
-            PostFilterRequest postFilterRequest) {
+                                                     PostFilterRequest postFilterRequest) {
         size = Math.min(size, 30);
         String entitySortField = postUtils.mapSortField(sortBy);
         String orderBy = postUtils.mapOrderField(order);
@@ -130,6 +131,7 @@ public class PostService {
                 pageResponse.last());
     }
 
+    @Transactional(readOnly = true)
     @Cacheable(cacheNames = Constants.POSTS_CACHE_NAME, key = "#postId")
     public PostResponseDTO getPostById(Long postId) {
         if (postId <= 0) {
@@ -205,6 +207,7 @@ public class PostService {
         postRankingIndexService.rebuildIndexes();
     }
 
+    @Transactional(readOnly = true)
     public List<PostResponseDTO> getPopularPosts(int limit) {
         return postRankingIndexService.getPopularPosts(limit)
                 .stream()
@@ -212,6 +215,7 @@ public class PostService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public List<PostResponseDTO> getTrendingPosts(int limit) {
         return postRankingIndexService.getTrendingPosts(limit)
                 .stream()

@@ -24,6 +24,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -46,6 +47,7 @@ public class UserService {
     @Qualifier("applicationTaskExecutor")
     private final Executor applicationTaskExecutor;
 
+    @Transactional(readOnly = true)
     public UserProfileResponse getUserProfile(HttpServletRequest httpServletRequest) {
         User user = userUtils.getUserFromRequest(httpServletRequest);
         String userId = String.valueOf(user.getId());
@@ -104,6 +106,7 @@ public class UserService {
         return CompletableFuture.supplyAsync(() -> commentRepository.countByAuthor(username), applicationTaskExecutor);
     }
 
+    @Transactional(readOnly = true)
     public PageResponse<UserResponseDTO> getAllUsers(int page, int size, String sortBy, String order, String search) {
         Pageable pageable = userUtils.createPageable(page, Math.min(size, 30), sortBy, order);
 
@@ -114,6 +117,7 @@ public class UserService {
         return userUtils.mapUserPageToUserResponsePage(users);
     }
 
+    @Transactional(readOnly = true)
     public UserProfileSummary getUserSummary(String userId) {
         User user = userRepository.findById(UUID.fromString(userId)).orElseThrow(
                 () -> new ResourceNotFoundException("User not found with id: " + userId));
