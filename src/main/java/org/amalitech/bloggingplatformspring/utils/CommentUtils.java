@@ -21,7 +21,6 @@ import java.util.List;
 @Component
 public class CommentUtils {
 
-    private final CommentRepository commentRepository;
     private final MongoTemplate mongoTemplate;
 
     public CommentResponse createCommentResponseFromComment(Comment comment) {
