@@ -280,8 +280,12 @@ PUBLIC ENDPOINTS (No authentication required)
 |-- /login/oauth2/**       OAuth2 callbacks
 |-- /graphql               GraphQL endpoint
 |-- /graphiql              GraphQL IDE
+|-- /actuator/health       Health endpoint
+|-- /swagger-ui/**         OpenAPI UI
+|-- /v3/api-docs/**        OpenAPI docs
 |-- GET /api/posts/**      Public post viewing
-+-- GET /api/tags/**       Public tag viewing
+|-- GET /api/tags/**       Public tag viewing
+|-- /api/feed/**           Public feed endpoints (all methods)
 
 ROLE-RESTRICTED ENDPOINTS
 |-- ROLE_AUTHOR
@@ -295,7 +299,8 @@ ROLE-RESTRICTED ENDPOINTS
     |-- /api/admin/**
     |-- /api/users/**
     |-- /api/metrics/performance/**
-    +-- /api/security/audit/**
+       |-- /api/security/audit/**
+       +-- /actuator/**
 
 AUTHENTICATED ENDPOINTS
 +-- /api/users/profile     Any authenticated user
