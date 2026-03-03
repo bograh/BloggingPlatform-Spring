@@ -4,20 +4,26 @@ This document captures endpoint updates after the async/concurrency feature roll
 
 ## Updated Existing Endpoint
 
-### `POST /api/posts` (now supports two content types)
+### Post Creation Endpoints
 
-#### 1) JSON create post (existing)
+#### 1) JSON create post
+- **Path:** `/api/posts/old`
 - **Content-Type:** `application/json`
 - **Body:** `CreatePostDTO`
 - **Purpose:** Create post without image
 
-#### 2) Multipart create post with optional image (new)
+#### 2) Multipart create post with optional image
+- **Path:** `/api/posts`
 - **Content-Type:** `multipart/form-data`
 - **Parts:**
   - `post` (required): JSON object matching `CreatePostDTO`
   - `image` (optional): image file (`image/jpeg`, `image/png`, `image/gif`, `image/webp`)
 - **Purpose:** Create post and trigger async image upload in one request
 - **Post response update:** `PostResponseDTO` now includes `imageUrls` (list of image CDN URLs)
+
+Security note:
+- `POST /api/posts` requires role `AUTHOR` by URL security rule.
+- `POST /api/posts/old` falls under default authentication rules (not explicitly `permitAll`).
 
 Example multipart payload:
 - `post`: `{ "title": "My title", "body": "My body", "tags": ["spring", "java"] }`
@@ -149,6 +155,10 @@ Example multipart payload:
 - Starts async report generation job.
 - Requires admin role.
 
+### `GET /api/reports/download/{reportId}`
+- Downloads generated report file.
+- Requires admin role.
+
 ### `GET /api/reports/{reportId}`
 - Gets report generation status and metadata.
 - Requires admin role.
@@ -157,6 +167,15 @@ Example multipart payload:
 - Lists report exports for current user.
 - Query params: `limit` (default `20`)
 - Requires admin role.
+
+---
+
+## Security Alignment (Implementation)
+
+- Public for all methods: `/api/auth/**`, `/oauth2/**`, `/login/oauth2/**`, `/graphql`, `/graphiql`, docs endpoints, `/actuator/health`.
+- Public GET only: `/api/posts/**`, `/api/tags/**`.
+- Public feed routes: `/api/feed/**` for all methods.
+- Admin-protected: `/api/admin/**`, `/api/users/**`, `/api/metrics/performance/**`, `/api/security/audit/**`, `/actuator/**`.
 
 ---
 
