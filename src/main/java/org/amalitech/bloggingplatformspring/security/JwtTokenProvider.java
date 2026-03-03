@@ -1,9 +1,10 @@
 package org.amalitech.bloggingplatformspring.security;
 
-import io.jsonwebtoken.*;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -12,146 +13,94 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
-import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Slf4j
-@RequiredArgsConstructor
 @Service
 public class JwtTokenProvider {
 
-    @Value("${jwt.access-token-secret}")
-    private String accessTokenSecret;
+    private final SecretKey accessKey;
+    private final SecretKey refreshKey;
 
     @Value("${jwt.access-token-expiration-ms}")
-    private long accessTokenExpirationMs;
-
-    @Value("${jwt.refresh-token-secret}")
-    private String refreshTokenSecret;
+    private long accessExpiration;
 
     @Value("${jwt.refresh-token-expiration-ms}")
-    private long refreshTokenExpirationMs;
+    private long refreshExpiration;
 
-    private SecretKey getSigningKey(String secret) {
-        return Keys.hmacShaKeyFor(secret.getBytes());
+    public JwtTokenProvider(
+            @Value("${jwt.access-token-secret}") String accessSecret,
+            @Value("${jwt.refresh-token-secret}") String refreshSecret) {
+
+        this.accessKey = Keys.hmacShaKeyFor(accessSecret.getBytes());
+        this.refreshKey = Keys.hmacShaKeyFor(refreshSecret.getBytes());
     }
 
     public String createAccessToken(Authentication authentication) {
-        return createToken(authentication, accessTokenSecret, accessTokenExpirationMs);
-    }
-
-    public String createRefreshToken(Authentication authentication) {
-        return createToken(authentication, refreshTokenSecret, refreshTokenExpirationMs);
-    }
-
-    public String getEmailFromAccessToken(String token) {
-        return getEmailFromToken(token, accessTokenSecret);
-    }
-
-    public String getEmailFromRefreshToken(String token) {
-        return getEmailFromToken(token, refreshTokenSecret);
-    }
-
-    public boolean validAccessToken(String token) {
-        return validateToken(token, accessTokenSecret);
-    }
-
-    public boolean validRefreshToken(String token) {
-        return validateToken(token, refreshTokenSecret);
-    }
-
-    public List<String> getRolesFromAccessToken(String token) {
-        return getRolesFromToken(token, accessTokenSecret);
-    }
-
-    public List<String> getRolesFromRefreshToken(String token) {
-        return getRolesFromToken(token, refreshTokenSecret);
-    }
-
-    public long getExpirationTimeFromAccessToken(String token) {
-        return getExpirationDateFromToken(token, accessTokenSecret);
-    }
-
-    public long getExpirationTimeFromRefreshToken(String token) {
-        return getExpirationDateFromToken(token, refreshTokenSecret);
-    }
-
-    public String getTokenFromRequest(HttpServletRequest request) {
-        String bearerToken = request.getHeader("Authorization");
-        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
-        }
-        return null;
-    }
-
-    private String createToken(Authentication authentication, String secret, long expirationMs) {
-        String email = authentication.getName();
 
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + expirationMs);
+        Date expiry = new Date(now.getTime() + accessExpiration);
 
         return Jwts.builder()
+                .subject(authentication.getName())
                 .issuedAt(now)
-                .expiration(expiryDate)
-                .subject(email)
-                .claim("roles", authentication.getAuthorities().stream()
-                        .map(GrantedAuthority::getAuthority)
-                        .toList())
-                .id(String.valueOf(UUID.randomUUID()))
-                .signWith(getSigningKey(secret))
+                .expiration(expiry)
+                .id(UUID.randomUUID().toString())
+                .claim("roles",
+                        authentication.getAuthorities()
+                                .stream()
+                                .map(GrantedAuthority::getAuthority)
+                                .toList())
+                .signWith(accessKey)
                 .compact();
     }
 
-    private String getEmailFromToken(String token, String secret) {
-        Claims claims = Jwts.parser()
-                .verifyWith(getSigningKey(secret))
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+    public String createRefreshToken(Authentication authentication) {
 
-        return claims.getSubject();
+        Date now = new Date();
+        Date expiry = new Date(now.getTime() + refreshExpiration);
+        String email = authentication.getName();
+
+        return Jwts.builder()
+                .subject(email)
+                .issuedAt(now)
+                .expiration(expiry)
+                .id(UUID.randomUUID().toString())
+                .claim("roles",
+                        authentication.getAuthorities()
+                                .stream()
+                                .map(GrantedAuthority::getAuthority)
+                                .toList())
+                .signWith(refreshKey)
+                .compact();
     }
 
-    private List<String> getRolesFromToken(String token, String secret) {
-        Claims claims = Jwts.parser()
-                .verifyWith(getSigningKey(secret))
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-
-        List<?> roles = claims.get("roles", List.class);
-
-        return roles.stream()
-                .filter(role -> role instanceof String)
-                .map(role -> (String) role)
-                .collect(Collectors.toList());
+    public Claims parseAccessToken(String token) {
+        return parse(token, accessKey);
     }
 
-    private long getExpirationDateFromToken(String token, String secret) {
-        Claims claims = Jwts.parser()
-                .verifyWith(getSigningKey(secret))
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-        Date expirationDate = claims.getExpiration();
-        if (expirationDate != null) {
-            return expirationDate.getTime();
-        }
-        return 0;
+    public Claims parseRefreshToken(String token) {
+        return parse(token, refreshKey);
     }
 
-    private boolean validateToken(String authToken, String secret) {
+    private Claims parse(String token, SecretKey key) {
         try {
-            Jwts.parser()
-                    .verifyWith(getSigningKey(secret))
+            return Jwts.parser()
+                    .verifyWith(key)
                     .build()
-                    .parseSignedClaims(authToken);
-            return true;
-        } catch (SecurityException | UnsupportedJwtException | IllegalArgumentException | MalformedJwtException |
-                 ExpiredJwtException ex) {
-            return false;
+                    .parseSignedClaims(token)
+                    .getPayload();
+        } catch (JwtException | IllegalArgumentException e) {
+            return null;
         }
     }
 
+    public String getTokenFromRequest(HttpServletRequest request) {
+        String bearer = request.getHeader("Authorization");
+        if (bearer != null && bearer.startsWith("Bearer ")) {
+            return bearer.substring(7);
+        }
+
+        return null;
+    }
 }

@@ -1,5 +1,6 @@
 package org.amalitech.bloggingplatformspring.controllers;
 
+import io.jsonwebtoken.Claims;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -138,7 +139,8 @@ public class AuthController {
         }
 
         if (accessToken != null) {
-            String email = jwtTokenProvider.getEmailFromAccessToken(accessToken);
+            Claims claims = jwtTokenProvider.parseAccessToken(accessToken);
+            String email = claims.getSubject();
             tokenSessionService.removeSession(email);
             tokenSessionService.revokeToken(accessToken);
         }

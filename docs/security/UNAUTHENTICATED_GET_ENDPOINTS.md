@@ -9,6 +9,10 @@ These are explicitly allowed by method + path rule:
 - `GET /api/posts/**`
 - `GET /api/tags/**`
 
+Additionally, feed routes are public for all methods:
+
+- `/api/feed/**`
+
 ## 2) Implemented controller GET endpoints covered by those patterns
 
 ### Posts (`/api/posts`)
@@ -21,6 +25,11 @@ These are explicitly allowed by method + path rule:
 ### Tags (`/api/tags`)
 
 - `GET /api/tags/popular`
+
+### Feed (`/api/feed`)
+
+- `GET /api/feed`
+- `GET /api/feed/trending/live`
 
 ### Comments (`/api/comments`)
 
@@ -39,7 +48,7 @@ The following are in `PUBLIC_ENDPOINTS` (`permitAll` for any HTTP method), so `G
 - `/graphql`
 - `/graphiql`
 - `/favicon.ico`
-- `/actuator/**`
+- `/actuator/health`
 - `/swagger-ui.html`
 - `/swagger-ui/**`
 - `/v3/api-docs/**`

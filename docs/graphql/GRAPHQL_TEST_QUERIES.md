@@ -6,10 +6,12 @@
 ### 1. Get All Posts (Simple)
 ```graphql
 query {
-  getAllPosts {
-    id
-    title
-    body
+  getAllPosts(page: 0, size: 10, sortBy: "updatedAt", sortDirection: "desc") {
+    content {
+      id
+      title
+      body
+    }
   }
 }
 ```
@@ -17,14 +19,16 @@ query {
 ### 2. Get All Posts with Tags
 ```graphql
 query {
-  getAllPosts {
-    id
-    title
-    body
-    tags {
-      name
+  getAllPosts(page: 0, size: 10, sortBy: "updatedAt", sortDirection: "desc") {
+    content {
+      id
+      title
+      body
+      tags {
+        name
+      }
+      updatedAt
     }
-    updatedAt
   }
 }
 ```
@@ -50,14 +54,7 @@ query {
 ### 4. Get Paginated Posts
 ```graphql
 query {
-  getPaginatedPosts(
-    pageRequest: {
-      page: 0
-      size: 5
-      sortBy: "createdAt"
-      sortDirection: "DESC"
-    }
-  ) {
+  getAllPosts(page: 0, size: 5, sortBy: "updatedAt", sortDirection: "desc") {
     content {
       id
       title
@@ -76,7 +73,7 @@ query {
 query {
   getCommentsByPost(postId: 1) {
     id
-    authorUsername
+    author
     content
     createdAt
   }
@@ -96,9 +93,11 @@ query {
 ### 7. Combined Query (Multiple Operations)
 ```graphql
 query {
-  posts: getAllPosts {
-    id
-    title
+  posts: getAllPosts(page: 0, size: 5) {
+    content {
+      id
+      title
+    }
   }
   tags: getAllTags {
     name
@@ -116,9 +115,12 @@ mutation {
     email: "test@example.com"
     password: "Password123!"
   }) {
-    id
-    username
-    email
+    token
+    user {
+      id
+      username
+      email
+    }
   }
 }
 ```
@@ -143,7 +145,6 @@ mutation {
   createPost(input: {
     title: "My First GraphQL Post"
     body: "This is a test post created via GraphQL"
-    authorId: "YOUR_USER_ID_HERE"
     tags: ["graphql", "testing"]
   }) {
     id
@@ -164,7 +165,6 @@ mutation {
     input: {
       title: "Updated Title"
       body: "Updated content"
-      authorId: "YOUR_USER_ID_HERE"
       tags: ["updated", "graphql"]
     }
   ) {
@@ -181,11 +181,10 @@ mutation {
 mutation {
   createComment(input: {
     postId: 1
-    authorId: "YOUR_USER_ID_HERE"
     commentContent: "Great post!"
   }) {
     id
-    authorUsername
+    author
     content
     createdAt
   }
@@ -197,7 +196,6 @@ mutation {
 mutation {
   deletePost(
     postId: 1
-    authorId: "YOUR_USER_ID_HERE"
   )
 }
 ```
@@ -208,7 +206,7 @@ mutation {
   deleteComment(
     commentId: "COMMENT_ID_HERE"
     input: {
-      authorId: "YOUR_USER_ID_HERE"
+      postId: 1
     }
   )
 }
@@ -246,7 +244,6 @@ mutation {
 
 ## Notes
 
-- Replace `YOUR_USER_ID_HERE` with an actual UUID from your database
 - Replace `COMMENT_ID_HERE` with an actual comment ID (MongoDB ObjectId)
 - All timestamps are in ISO 8601 format
 - GraphQL queries are case-sensitive
@@ -255,24 +252,24 @@ mutation {
 ## Common Errors and Solutions
 
 ### Error: "User not found"
-- Ensure the UUID is valid and exists in the database
+- Ensure the user exists in the application
 - Use the registerUser mutation to create a new user first
 
 ### Error: "Post not found"
 - Verify the post ID exists
 - Use getAllPosts query to see available posts
 
-### Error: "Invalid authorId UUID"
-- Check that the authorId is a valid UUID format
-- Example valid UUID: `550e8400-e29b-41d4-a716-446655440000`
+### Error: "Unauthorized"
+- Provide a valid JWT access token for protected mutations
+- Sign in via REST (`POST /api/auth/sign-in`) and send `Authorization: Bearer <token>`
 
 ## REST API Still Works!
 
 All existing REST endpoints continue to function normally:
-- `POST /api/users/register`
-- `POST /api/users/signin`
+- `POST /api/auth/register`
+- `POST /api/auth/sign-in`
 - `GET /api/posts`
-- `POST /api/posts`
+- `POST /api/posts/old`
 - etc.
 
 Both REST and GraphQL can be used simultaneously!

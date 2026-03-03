@@ -14,13 +14,13 @@ import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.amalitech.bloggingplatformspring.repository.NotificationOutboxRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -36,6 +36,7 @@ public class NotificationOutboxProcessor {
     private static final int RETRY_DELAY_MINUTES = 5;
     private static final int MAX_RETRY_COUNT = 3;
     private static final int CLEANUP_DAYS = 30;
+    private static final int DIGEST_USER_BATCH_SIZE = 500;
 
     private final NotificationOutboxRepository notificationRepository;
     private final EmailService emailService;
@@ -125,7 +126,7 @@ public class NotificationOutboxProcessor {
      * @param notification notification to process
      */
     @Async("applicationTaskExecutor")
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public CompletableFuture<Void> processNotificationAsync(NotificationOutbox notification) {
         log.debug("Processing notification {} for {}", notification.getId(), notification.getRecipientEmail());
 
@@ -161,13 +162,22 @@ public class NotificationOutboxProcessor {
         String topPostTitle = recentPosts.isEmpty() ? "No new posts this week" : recentPosts.get(0).getTitle();
         String topPostExcerpt = recentPosts.isEmpty() ? "" : truncate(recentPosts.get(0).getBody());
 
-        List<User> allUsers = userRepository.findAll();
-        log.info("Sending weekly digest to {} users", allUsers.size());
+        int page = 0;
+        int queuedUsers = 0;
+        Page<User> usersPage;
 
-        allUsers.forEach(user -> notificationQueueService.queueWeeklyDigestEmail(
-                user, newPosts, newComments, topPostTitle, topPostExcerpt));
+        do {
+            usersPage = userRepository.findAll(PageRequest.of(page, DIGEST_USER_BATCH_SIZE));
+            for (User user : usersPage.getContent()) {
+                notificationQueueService.queueWeeklyDigestEmail(
+                        user, newPosts, newComments, topPostTitle, topPostExcerpt);
+            }
 
-        log.info("Weekly digest queued for {} users", allUsers.size());
+            queuedUsers += usersPage.getNumberOfElements();
+            page++;
+        } while (usersPage.hasNext());
+
+        log.info("Weekly digest queued for {} users", queuedUsers);
     }
 
     private String truncate(String text) {

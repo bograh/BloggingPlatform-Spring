@@ -5,7 +5,6 @@ import org.amalitech.bloggingplatformspring.dtos.requests.CommentFilterRequest;
 import org.amalitech.bloggingplatformspring.dtos.responses.CommentResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.PageResponse;
 import org.amalitech.bloggingplatformspring.entity.Comment;
-import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -21,7 +20,6 @@ import java.util.List;
 @Component
 public class CommentUtils {
 
-    private final CommentRepository commentRepository;
     private final MongoTemplate mongoTemplate;
 
     public CommentResponse createCommentResponseFromComment(Comment comment) {

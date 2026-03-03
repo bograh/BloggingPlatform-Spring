@@ -234,17 +234,25 @@ http://localhost:8080/api/metrics/performance
 
 ### Endpoint Summary
 
-| Method | Endpoint                 | Description                 |
-|--------|--------------------------|-----------------------------|
-| GET    | `/`                      | Get all metrics             |
-| GET    | `/{layer}/{methodName}`  | Get specific method metrics |
-| GET    | `/summary`               | Get summary statistics      |
-| GET    | `/slow?thresholdMs={ms}` | Get slow methods            |
-| GET    | `/top?limit={n}`         | Get top N slowest methods   |
-| GET    | `/layer/{layer}`         | Get metrics by layer        |
-| GET    | `/failures`              | Get failure statistics      |
-| DELETE | `/reset`                 | Reset all metrics           |
-| POST   | `/export-log`            | Export to application log   |
+| Method | Endpoint                           | Description                               |
+|--------|------------------------------------|-------------------------------------------|
+| GET    | `/`                                | Get all method metrics                    |
+| GET    | `/{layer}/{methodName}`            | Get method metrics by layer + method name |
+| GET    | `/method/{methodName}`             | Get method metrics by explicit method key |
+| GET    | `/summary`                         | Get summary statistics                    |
+| GET    | `/runtime?limit={n}`               | Get runtime API metrics snapshot          |
+| POST   | `/runtime/export?limit={n}`        | Export runtime metrics CSV                |
+| DELETE | `/runtime/reset`                   | Reset runtime counters                    |
+| GET    | `/cache`                           | Get all cache metrics                     |
+| GET    | `/cache/{cacheName}`               | Get cache metrics by cache name           |
+| GET    | `/cache/summary`                   | Get cache summary                         |
+| DELETE | `/cache/reset`                     | Reset cache statistics                    |
+| POST   | `/cache/export-log`                | Export cache metrics log                  |
+| POST   | `/export-log`                      | Export performance metrics log            |
+| POST   | `/export-all`                      | Export performance + cache metrics        |
+| POST   | `/baseline` / `/postcache`         | Save PRE_CACHE / POST_CACHE snapshots     |
+| GET    | `/comparison/database`             | Compare latest PRE_CACHE vs POST_CACHE    |
+| POST   | `/simulation/run`                  | Run full cache simulation                 |
 
 ---
 

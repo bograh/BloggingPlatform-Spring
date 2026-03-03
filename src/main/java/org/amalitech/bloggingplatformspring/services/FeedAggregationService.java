@@ -9,12 +9,10 @@ import org.amalitech.bloggingplatformspring.entity.Post;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 /**
@@ -42,15 +40,9 @@ public class FeedAggregationService {
         long startTime = System.currentTimeMillis();
         int effectiveLimit = Math.min(Math.max(limit, 1), MAX_FEED_LIMIT);
 
-        CompletableFuture<List<FeedItemDTO>> recentFuture = fetchRecentPostsAsync(effectiveLimit);
-        CompletableFuture<List<FeedItemDTO>> trendingFuture = fetchTrendingPostsAsync(effectiveLimit);
-        CompletableFuture<List<FeedItemDTO>> popularFuture = fetchPopularPostsAsync(effectiveLimit);
-
-        CompletableFuture.allOf(recentFuture, trendingFuture, popularFuture).join();
-
-        List<FeedItemDTO> recentPosts = recentFuture.join();
-        List<FeedItemDTO> trendingPosts = trendingFuture.join();
-        List<FeedItemDTO> popularPosts = popularFuture.join();
+        List<FeedItemDTO> recentPosts = fetchRecentPosts(effectiveLimit);
+        List<FeedItemDTO> trendingPosts = fetchTrendingPosts(effectiveLimit);
+        List<FeedItemDTO> popularPosts = fetchPopularPosts(effectiveLimit);
 
         long generationTimeMs = System.currentTimeMillis() - startTime;
         int totalItems = recentPosts.size() + trendingPosts.size() + popularPosts.size();
@@ -68,49 +60,43 @@ public class FeedAggregationService {
                 .build();
     }
 
-    @Async("applicationTaskExecutor")
-    public CompletableFuture<List<FeedItemDTO>> fetchRecentPostsAsync(int limit) {
+    private List<FeedItemDTO> fetchRecentPosts(int limit) {
         log.debug("Fetching recent posts asynchronously, limit: {}", limit);
         try {
             PageRequest pageRequest = PageRequest.of(0, limit, Sort.by(Sort.Direction.DESC, "postedAt"));
-            List<Post> posts = postRepository.findAll(pageRequest).getContent();
-            List<FeedItemDTO> feedItems = posts.stream()
+            List<Post> posts = postRepository.findRecentPosts(pageRequest).getContent();
+            return posts.stream()
                     .map(post -> mapToFeedItem(post, "RECENT"))
                     .collect(Collectors.toList());
-            return CompletableFuture.completedFuture(feedItems);
         } catch (Exception e) {
             log.error("Error fetching recent posts: {}", e.getMessage(), e);
-            return CompletableFuture.completedFuture(List.of());
+            return List.of();
         }
     }
 
-    @Async("applicationTaskExecutor")
-    public CompletableFuture<List<FeedItemDTO>> fetchTrendingPostsAsync(int limit) {
+    private List<FeedItemDTO> fetchTrendingPosts(int limit) {
         log.debug("Fetching trending posts asynchronously, limit: {}", limit);
         try {
             List<PostResponseDTO> trending = postRankingIndexService.getTrendingPosts(limit);
-            List<FeedItemDTO> feedItems = trending.stream()
+            return trending.stream()
                     .map(dto -> mapResponseToFeedItem(dto, "TRENDING"))
                     .collect(Collectors.toList());
-            return CompletableFuture.completedFuture(feedItems);
         } catch (Exception e) {
             log.error("Error fetching trending posts: {}", e.getMessage(), e);
-            return CompletableFuture.completedFuture(List.of());
+            return List.of();
         }
     }
 
-    @Async("applicationTaskExecutor")
-    public CompletableFuture<List<FeedItemDTO>> fetchPopularPostsAsync(int limit) {
+    private List<FeedItemDTO> fetchPopularPosts(int limit) {
         log.debug("Fetching popular posts asynchronously, limit: {}", limit);
         try {
             List<PostResponseDTO> popular = postRankingIndexService.getPopularPosts(limit);
-            List<FeedItemDTO> feedItems = popular.stream()
+            return popular.stream()
                     .map(dto -> mapResponseToFeedItem(dto, "POPULAR"))
                     .collect(Collectors.toList());
-            return CompletableFuture.completedFuture(feedItems);
         } catch (Exception e) {
             log.error("Error fetching popular posts: {}", e.getMessage(), e);
-            return CompletableFuture.completedFuture(List.of());
+            return List.of();
         }
     }
 

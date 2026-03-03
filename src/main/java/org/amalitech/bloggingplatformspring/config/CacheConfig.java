@@ -55,7 +55,8 @@ public class CacheConfig {
                 Constants.TAGS_CACHE_NAME,
                 Constants.COMMENTS_CACHE_NAME,
                 Constants.POPULAR_POSTS_CACHE_NAME,
-                Constants.TRENDING_POSTS_CACHE_NAME
+            Constants.TRENDING_POSTS_CACHE_NAME,
+            Constants.SECURITY_AUDIT_STATS_CACHE_NAME
         };
 
         Arrays.stream(cacheNames).forEach(name -> cacheStats.putIfAbsent(name, new CacheStatistics(name)));
@@ -108,7 +109,14 @@ public class CacheConfig {
                                 .expireAfterWrite(2, TimeUnit.MINUTES)
                                 .recordStats()
                                 .build(),
-                        cacheStats.get(Constants.TRENDING_POSTS_CACHE_NAME))));
+                    cacheStats.get(Constants.TRENDING_POSTS_CACHE_NAME)),
+
+                new MonitoredCaffeineCache(Constants.SECURITY_AUDIT_STATS_CACHE_NAME,
+                    Caffeine.newBuilder()
+                        .expireAfterWrite(60, TimeUnit.SECONDS)
+                        .recordStats()
+                        .build(),
+                    cacheStats.get(Constants.SECURITY_AUDIT_STATS_CACHE_NAME))));
 
         return cacheManager;
     }

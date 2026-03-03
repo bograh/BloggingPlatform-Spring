@@ -9,7 +9,7 @@
 ├── 📄 Schema Definition (schema.graphqls)
 ├── 🔧 Custom Scalars (UUID, DateTime)
 ├── 📊 GraphQL Types (User, Post, Comment, Tag)
-├── 🔍 Query Resolver (8 queries)
+├── 🔍 Query Resolver (6 queries)
 ├── ✏️ Mutation Resolver (7 mutations)
 ├── ⚙️ Configuration (application.properties)
 └── 🧪 Tests (GraphQLIntegrationTest)
@@ -91,8 +91,7 @@ mutation {
 
 - ✅ `getUser` - Fetch user by ID
 - ✅ `getPost` - Fetch post with author and tags
-- ✅ `getAllPosts` - Fetch all posts
-- ✅ `getPaginatedPosts` - Paginated posts with filters
+- ✅ `getAllPosts` - Fetch paginated posts with filters
 - ✅ `getComment` - Fetch comment by ID
 - ✅ `getCommentsByPost` - Fetch comments for a post
 - ✅ `getAllTags` - Fetch all tags
@@ -146,9 +145,7 @@ Built-in pagination support:
 
 ```graphql
 query {
-  getPaginatedPosts(
-    pageRequest: { page: 0, size: 10 }
-  ) {
+  getAllPosts(page: 0, size: 10, sortBy: "updatedAt", sortDirection: "desc") {
     content { id title }
     totalElements
     totalPages
@@ -161,7 +158,7 @@ query {
 | Criteria                          | Status     | Details                       |
 |-----------------------------------|------------|-------------------------------|
 | Schema defined for key entities   | ✅ Complete | User, Post, Comment, Tag      |
-| Queries and mutations implemented | ✅ Complete | 8 queries, 7 mutations        |
+| Queries and mutations implemented | ✅ Complete | 6 queries, 7 mutations        |
 | REST and GraphQL coexist          | ✅ Complete | Both APIs work simultaneously |
 | Tested through GraphiQL           | ✅ Complete | GraphiQL enabled at /graphiql |
 

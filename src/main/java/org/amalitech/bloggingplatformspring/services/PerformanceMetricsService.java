@@ -585,12 +585,8 @@ public class PerformanceMetricsService {
     }
 
     private Map<String, PreCacheMetrics> parsePreCacheFile(String fileName) {
-        Path filePath = Paths.get(PRE_CACHE_DIR, fileName);
+        Path filePath = resolvePreCacheFilePath(fileName);
         Map<String, PreCacheMetrics> result = new HashMap<>();
-
-        if (!Files.exists(filePath)) {
-            throw new BadRequestException("Pre-cache file not found: " + fileName);
-        }
 
         try {
             List<String> lines = Files.readAllLines(filePath);
@@ -652,6 +648,25 @@ public class PerformanceMetricsService {
         }
 
         return result;
+    }
+
+    private Path resolvePreCacheFilePath(String fileName) {
+        if (fileName == null || fileName.isBlank()) {
+            throw new BadRequestException("Pre-cache file name is required");
+        }
+
+        Path baseDir = Paths.get(PRE_CACHE_DIR).toAbsolutePath().normalize();
+        Path resolvedPath = baseDir.resolve(fileName).normalize();
+
+        if (!resolvedPath.startsWith(baseDir)) {
+            throw new BadRequestException("Invalid pre-cache file path");
+        }
+
+        if (!Files.isRegularFile(resolvedPath)) {
+            throw new BadRequestException("Pre-cache file not found: " + fileName);
+        }
+
+        return resolvedPath;
     }
 
     /**

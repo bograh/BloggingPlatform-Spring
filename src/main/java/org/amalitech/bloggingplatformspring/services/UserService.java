@@ -13,6 +13,7 @@ import org.amalitech.bloggingplatformspring.exceptions.BadRequestException;
 import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
 import org.amalitech.bloggingplatformspring.exceptions.UnauthorizedException;
 import org.amalitech.bloggingplatformspring.repository.CommentRepository;
+import org.amalitech.bloggingplatformspring.repository.PostCommentCountProjection;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.amalitech.bloggingplatformspring.utils.CommentUtils;
@@ -24,13 +25,16 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.stream.Collectors;
 
 @Slf4j
 @AllArgsConstructor
@@ -46,6 +50,7 @@ public class UserService {
     @Qualifier("applicationTaskExecutor")
     private final Executor applicationTaskExecutor;
 
+    @Transactional(readOnly = true)
     public UserProfileResponse getUserProfile(HttpServletRequest httpServletRequest) {
         User user = userUtils.getUserFromRequest(httpServletRequest);
         String userId = String.valueOf(user.getId());
@@ -77,11 +82,24 @@ public class UserService {
     private CompletableFuture<List<PostResponseDTO>> getRecentPostsResponseAsync(User user) {
         return CompletableFuture.supplyAsync(() -> {
             List<Post> recentPosts = postRepository.findPostsByAuthorOrderByUpdatedAtDesc(user, Limit.of(4));
+            if (recentPosts.isEmpty()) {
+                return List.of();
+            }
+
+            List<Long> postIds = recentPosts.stream()
+                    .map(Post::getId)
+                    .toList();
+
+            Map<Long, Long> commentCountsByPostId = commentRepository.countCommentsByPostIds(postIds)
+                    .stream()
+                    .collect(Collectors.toMap(
+                            PostCommentCountProjection::getPostId,
+                            PostCommentCountProjection::getTotalComments));
+
             return recentPosts.stream()
-                    .map(post -> {
-                        Long totalComments = commentRepository.countByPostId(post.getId());
-                        return postUtils.createPostResponseFromPost(post, totalComments);
-                    })
+                    .map(post -> postUtils.createPostResponseFromPost(
+                            post,
+                            commentCountsByPostId.getOrDefault(post.getId(), 0L)))
                     .toList();
         }, applicationTaskExecutor);
     }
@@ -104,6 +122,7 @@ public class UserService {
         return CompletableFuture.supplyAsync(() -> commentRepository.countByAuthor(username), applicationTaskExecutor);
     }
 
+    @Transactional(readOnly = true)
     public PageResponse<UserResponseDTO> getAllUsers(int page, int size, String sortBy, String order, String search) {
         Pageable pageable = userUtils.createPageable(page, Math.min(size, 30), sortBy, order);
 
@@ -114,6 +133,7 @@ public class UserService {
         return userUtils.mapUserPageToUserResponsePage(users);
     }
 
+    @Transactional(readOnly = true)
     public UserProfileSummary getUserSummary(String userId) {
         User user = userRepository.findById(UUID.fromString(userId)).orElseThrow(
                 () -> new ResourceNotFoundException("User not found with id: " + userId));
