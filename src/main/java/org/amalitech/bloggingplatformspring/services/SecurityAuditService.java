@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -33,12 +34,16 @@ public class SecurityAuditService {
   // In-memory cache for quick brute force detection
   private final ConcurrentHashMap<String, AtomicInteger> failedAttemptsByIp = new ConcurrentHashMap<>();
   private final ConcurrentHashMap<String, AtomicInteger> failedAttemptsByEmail = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, LocalDateTime> lastFailedAttemptByIp = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, LocalDateTime> lastFailedAttemptByEmail = new ConcurrentHashMap<>();
   private final ConcurrentHashMap<String, LocalDateTime> lastFailedAttemptTime = new ConcurrentHashMap<>();
 
   // Thresholds for brute force detection
   private static final int MAX_FAILED_ATTEMPTS = 5;
   private static final int BRUTE_FORCE_WINDOW_MINUTES = 15;
   private static final int RAPID_ATTEMPT_THRESHOLD_SECONDS = 2;
+  private static final int MAX_TRACKED_IDENTIFIERS = 10_000;
+  private static final int DB_CHECK_TRIGGER_ATTEMPTS = MAX_FAILED_ATTEMPTS - 1;
 
   /**
    * Log a successful sign-in attempt
@@ -171,27 +176,36 @@ public class SecurityAuditService {
     // Track by IP
     AtomicInteger ipAttempts = failedAttemptsByIp.computeIfAbsent(ipAddress, k -> new AtomicInteger(0));
     int ipCount = ipAttempts.incrementAndGet();
+    lastFailedAttemptByIp.put(ipAddress, now);
+    enforceMapCapacity(failedAttemptsByIp);
+    enforceMapCapacity(lastFailedAttemptByIp);
 
     // Track by email if provided
     int emailCount = 0;
     if (email != null && !email.isEmpty()) {
       AtomicInteger emailAttempts = failedAttemptsByEmail.computeIfAbsent(email, k -> new AtomicInteger(0));
       emailCount = emailAttempts.incrementAndGet();
+      lastFailedAttemptByEmail.put(email, now);
+      enforceMapCapacity(failedAttemptsByEmail);
+      enforceMapCapacity(lastFailedAttemptByEmail);
     }
 
     // Check for rapid attempts (potential automated attack)
     String attemptKey = ipAddress + ":" + (email != null ? email : "unknown");
     AtomicBoolean rapidAttempt = new AtomicBoolean(false);
     lastFailedAttemptTime.compute(attemptKey, (key, lastAttempt) -> {
-      if (lastAttempt != null &&
-          java.time.Duration.between(lastAttempt, now).getSeconds() < RAPID_ATTEMPT_THRESHOLD_SECONDS) {
+      if (lastAttempt != null && lastAttempt.isAfter(now.minusSeconds(RAPID_ATTEMPT_THRESHOLD_SECONDS))) {
         rapidAttempt.set(true);
       }
       return now;
     });
+    enforceMapCapacity(lastFailedAttemptTime);
 
     // Check database for historical failed attempts
-    long dbFailedCount = checkDatabaseFailedAttempts(email, ipAddress);
+    long dbFailedCount = 0;
+    if (rapidAttempt.get() || ipCount >= DB_CHECK_TRIGGER_ATTEMPTS || emailCount >= DB_CHECK_TRIGGER_ATTEMPTS) {
+      dbFailedCount = checkDatabaseFailedAttempts(email, ipAddress);
+    }
 
     // Detect brute force
     if (ipCount >= MAX_FAILED_ATTEMPTS || emailCount >= MAX_FAILED_ATTEMPTS ||
@@ -248,11 +262,47 @@ public class SecurityAuditService {
    */
   private void resetFailedAttempts(String email, String ipAddress) {
     failedAttemptsByIp.remove(ipAddress);
+    lastFailedAttemptByIp.remove(ipAddress);
     if (email != null) {
       failedAttemptsByEmail.remove(email);
+      lastFailedAttemptByEmail.remove(email);
     }
     String attemptKey = ipAddress + ":" + (email != null ? email : "unknown");
     lastFailedAttemptTime.remove(attemptKey);
+  }
+
+  @Scheduled(fixedRate = 300000)
+  public void cleanupTrackingCaches() {
+    LocalDateTime threshold = LocalDateTime.now().minusMinutes(BRUTE_FORCE_WINDOW_MINUTES);
+
+    pruneCountersByLastAttempt(failedAttemptsByIp, lastFailedAttemptByIp, threshold);
+    pruneCountersByLastAttempt(failedAttemptsByEmail, lastFailedAttemptByEmail, threshold);
+    lastFailedAttemptTime.entrySet().removeIf(entry -> entry.getValue().isBefore(threshold));
+  }
+
+  private void pruneCountersByLastAttempt(Map<String, AtomicInteger> counters,
+      Map<String, LocalDateTime> lastAttempts,
+      LocalDateTime threshold) {
+    lastAttempts.entrySet().removeIf(entry -> {
+      boolean expired = entry.getValue().isBefore(threshold);
+      if (expired) {
+        counters.remove(entry.getKey());
+      }
+      return expired;
+    });
+  }
+
+  private void enforceMapCapacity(Map<String, ?> map) {
+    if (map.size() <= MAX_TRACKED_IDENTIFIERS) {
+      return;
+    }
+    int itemsToRemove = map.size() - MAX_TRACKED_IDENTIFIERS;
+    var iterator = map.keySet().iterator();
+    while (itemsToRemove > 0 && iterator.hasNext()) {
+      iterator.next();
+      iterator.remove();
+      itemsToRemove--;
+    }
   }
 
   /**
@@ -354,6 +404,8 @@ public class SecurityAuditService {
   public void clearTrackingCaches() {
     failedAttemptsByIp.clear();
     failedAttemptsByEmail.clear();
+    lastFailedAttemptByIp.clear();
+    lastFailedAttemptByEmail.clear();
     lastFailedAttemptTime.clear();
     log.info("[SECURITY] Tracking caches cleared");
   }
