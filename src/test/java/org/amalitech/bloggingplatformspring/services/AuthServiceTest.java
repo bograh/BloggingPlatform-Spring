@@ -37,282 +37,288 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
 
-    @Mock
-    private UserRepository userRepository;
+        @Mock
+        private UserRepository userRepository;
 
-    @Mock
-    private JwtTokenProvider jwtTokenProvider;
+        @Mock
+        private JwtTokenProvider jwtTokenProvider;
 
-    @Mock
-    private UserUtils userUtils;
+        @Mock
+        private UserUtils userUtils;
 
-    @Mock
-    private PasswordEncoder passwordEncoder;
+        @Mock
+        private PasswordEncoder passwordEncoder;
 
-    @Mock
-    private AuthenticationManager authenticationManager;
+        @Mock
+        private AuthenticationManager authenticationManager;
 
-    @InjectMocks
-    private AuthService authService;
+        @Mock
+        private CustomUserDetailsService customUserDetailsService;
 
-    private RegisterUserDTO validRegisterDTO;
-    private SignInUserDTO validSignInDTO;
-    private User mockUser;
-    private UserResponseDTO mockUserResponse;
-    private Authentication mockAuthentication;
+        @Mock
+        private NotificationQueueService notificationQueueService;
 
-    @BeforeEach
-    void setUp() {
-        validRegisterDTO = new RegisterUserDTO();
-        validRegisterDTO.setUsername("testuser");
-        validRegisterDTO.setEmail("test@example.com");
-        validRegisterDTO.setPassword("Password123!");
+        @InjectMocks
+        private AuthService authService;
 
-        validSignInDTO = new SignInUserDTO();
-        validSignInDTO.setEmail("test@example.com");
-        validSignInDTO.setPassword("Password123!");
+        private RegisterUserDTO validRegisterDTO;
+        private SignInUserDTO validSignInDTO;
+        private User mockUser;
+        private UserResponseDTO mockUserResponse;
+        private Authentication mockAuthentication;
 
-        mockUser = new User();
-        mockUser.setId(UUID.randomUUID());
-        mockUser.setUsername("testuser");
-        mockUser.setEmail("test@example.com");
-        mockUser.setPassword("hashed-password");
-        mockUser.setUserRoles(List.of(UserRoles.READER, UserRoles.AUTHOR));
+        @BeforeEach
+        void setUp() {
+                validRegisterDTO = new RegisterUserDTO();
+                validRegisterDTO.setUsername("testuser");
+                validRegisterDTO.setEmail("test@example.com");
+                validRegisterDTO.setPassword("Password123!");
 
-        mockUserResponse = new UserResponseDTO();
-        mockUserResponse.setId(mockUser.getId().toString());
-        mockUserResponse.setUsername("testuser");
-        mockUserResponse.setEmail("test@example.com");
+                validSignInDTO = new SignInUserDTO();
+                validSignInDTO.setEmail("test@example.com");
+                validSignInDTO.setPassword("Password123!");
 
-        mockAuthentication = new UsernamePasswordAuthenticationToken(
-                "test@example.com",
-                "Password123!",
-                List.of(new SimpleGrantedAuthority("ROLE_READER")));
-    }
+                mockUser = new User();
+                mockUser.setId(UUID.randomUUID());
+                mockUser.setUsername("testuser");
+                mockUser.setEmail("test@example.com");
+                mockUser.setPassword("hashed-password");
+                mockUser.setUserRoles(List.of(UserRoles.READER, UserRoles.AUTHOR));
 
-    @Test
-    void registerUser_shouldRegisterSuccessfully_whenValidData() {
-        when(userRepository.existsByUsernameIgnoreCase("testuser")).thenReturn(false);
-        when(userRepository.existsByEmailIgnoreCase("test@example.com")).thenReturn(false);
-        when(passwordEncoder.encode("Password123!")).thenReturn("hashed-password");
-        when(userRepository.save(any(User.class))).thenReturn(mockUser);
-        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
-                .thenReturn(mockAuthentication);
-        when(jwtTokenProvider.createAccessToken(mockAuthentication)).thenReturn("access-token");
-        when(jwtTokenProvider.createRefreshToken(mockAuthentication)).thenReturn("refresh-token");
-        when(userUtils.mapUserToUserResponse(mockUser)).thenReturn(mockUserResponse);
+                mockUserResponse = new UserResponseDTO();
+                mockUserResponse.setId(mockUser.getId().toString());
+                mockUserResponse.setUsername("testuser");
+                mockUserResponse.setEmail("test@example.com");
 
-        AuthResponseDTO result = authService.registerUser(validRegisterDTO);
+                mockAuthentication = new UsernamePasswordAuthenticationToken(
+                                "test@example.com",
+                                "Password123!",
+                                List.of(new SimpleGrantedAuthority("ROLE_READER")));
+        }
 
-        assertNotNull(result);
-        assertNotNull(result.getAuthResponse());
-        assertNotNull(result.getRefreshToken());
-        assertEquals("access-token", result.getAuthResponse().accessToken());
-        assertEquals("refresh-token", result.getRefreshToken());
-        assertEquals("testuser", result.getAuthResponse().user().getUsername());
+        @Test
+        void registerUser_shouldRegisterSuccessfully_whenValidData() {
+                when(userRepository.existsByUsernameIgnoreCase("testuser")).thenReturn(false);
+                when(userRepository.existsByEmailIgnoreCase("test@example.com")).thenReturn(false);
+                when(passwordEncoder.encode("Password123!")).thenReturn("hashed-password");
+                when(userRepository.save(any(User.class))).thenReturn(mockUser);
+                when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                                .thenReturn(mockAuthentication);
+                when(jwtTokenProvider.createAccessToken(mockAuthentication)).thenReturn("access-token");
+                when(jwtTokenProvider.createRefreshToken(mockAuthentication)).thenReturn("refresh-token");
+                when(userUtils.mapUserToUserResponse(mockUser)).thenReturn(mockUserResponse);
 
-        verify(userRepository).existsByUsernameIgnoreCase("testuser");
-        verify(userRepository).existsByEmailIgnoreCase("test@example.com");
-        verify(passwordEncoder).encode("Password123!");
-        verify(userRepository).save(any(User.class));
-        verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
-    }
+                AuthResponseDTO result = authService.registerUser(validRegisterDTO);
 
-    @Test
-    void registerUser_shouldThrowBadRequestException_whenUsernameExists() {
-        when(userRepository.existsByUsernameIgnoreCase("testuser")).thenReturn(true);
+                assertNotNull(result);
+                assertNotNull(result.getAuthResponse());
+                assertNotNull(result.getRefreshToken());
+                assertEquals("access-token", result.getAuthResponse().accessToken());
+                assertEquals("refresh-token", result.getRefreshToken());
+                assertEquals("testuser", result.getAuthResponse().user().getUsername());
 
-        BadRequestException exception = assertThrows(
-                BadRequestException.class,
-                () -> authService.registerUser(validRegisterDTO));
+                verify(userRepository).existsByUsernameIgnoreCase("testuser");
+                verify(userRepository).existsByEmailIgnoreCase("test@example.com");
+                verify(passwordEncoder).encode("Password123!");
+                verify(userRepository).save(any(User.class));
+                verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
+        }
 
-        assertEquals("Username is taken", exception.getMessage());
-        verify(userRepository).existsByUsernameIgnoreCase("testuser");
-        verify(userRepository, never()).save(any(User.class));
-    }
+        @Test
+        void registerUser_shouldThrowBadRequestException_whenUsernameExists() {
+                when(userRepository.existsByUsernameIgnoreCase("testuser")).thenReturn(true);
 
-    @Test
-    void registerUser_shouldThrowBadRequestException_whenEmailExists() {
-        when(userRepository.existsByUsernameIgnoreCase("testuser")).thenReturn(false);
-        when(userRepository.existsByEmailIgnoreCase("test@example.com")).thenReturn(true);
+                BadRequestException exception = assertThrows(
+                                BadRequestException.class,
+                                () -> authService.registerUser(validRegisterDTO));
 
-        BadRequestException exception = assertThrows(
-                BadRequestException.class,
-                () -> authService.registerUser(validRegisterDTO));
+                assertEquals("Username is taken", exception.getMessage());
+                verify(userRepository).existsByUsernameIgnoreCase("testuser");
+                verify(userRepository, never()).save(any(User.class));
+        }
 
-        assertEquals("Email is taken", exception.getMessage());
-        verify(userRepository).existsByEmailIgnoreCase("test@example.com");
-        verify(userRepository, never()).save(any(User.class));
-    }
+        @Test
+        void registerUser_shouldThrowBadRequestException_whenEmailExists() {
+                when(userRepository.existsByUsernameIgnoreCase("testuser")).thenReturn(false);
+                when(userRepository.existsByEmailIgnoreCase("test@example.com")).thenReturn(true);
 
-    @Test
-    void registerUser_shouldThrowBadRequestException_whenPasswordContainsUsername() {
-        validRegisterDTO.setPassword("testuser123");
+                BadRequestException exception = assertThrows(
+                                BadRequestException.class,
+                                () -> authService.registerUser(validRegisterDTO));
 
-        BadRequestException exception = assertThrows(
-                BadRequestException.class,
-                () -> authService.registerUser(validRegisterDTO));
+                assertEquals("Email is taken", exception.getMessage());
+                verify(userRepository).existsByEmailIgnoreCase("test@example.com");
+                verify(userRepository, never()).save(any(User.class));
+        }
 
-        assertEquals("Password must not contain username", exception.getMessage());
-        verify(userRepository, never()).existsByUsernameIgnoreCase(anyString());
-        verify(userRepository, never()).save(any(User.class));
-    }
+        @Test
+        void registerUser_shouldThrowBadRequestException_whenPasswordContainsUsername() {
+                validRegisterDTO.setPassword("testuser123");
 
-    @Test
-    void registerUser_shouldTrimAndLowercaseEmailAndUsername() {
-        validRegisterDTO.setUsername("  TestUser  ");
-        validRegisterDTO.setEmail("  Test@Example.COM  ");
+                BadRequestException exception = assertThrows(
+                                BadRequestException.class,
+                                () -> authService.registerUser(validRegisterDTO));
 
-        when(userRepository.existsByUsernameIgnoreCase("testuser")).thenReturn(false);
-        when(userRepository.existsByEmailIgnoreCase("test@example.com")).thenReturn(false);
-        when(passwordEncoder.encode(anyString())).thenReturn("hashed-password");
-        when(userRepository.save(any(User.class))).thenReturn(mockUser);
-        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
-                .thenReturn(mockAuthentication);
-        when(jwtTokenProvider.createAccessToken(any())).thenReturn("access-token");
-        when(jwtTokenProvider.createRefreshToken(any())).thenReturn("refresh-token");
-        when(userUtils.mapUserToUserResponse(any())).thenReturn(mockUserResponse);
+                assertEquals("Password must not contain username", exception.getMessage());
+                verify(userRepository, never()).existsByUsernameIgnoreCase(anyString());
+                verify(userRepository, never()).save(any(User.class));
+        }
 
-        authService.registerUser(validRegisterDTO);
+        @Test
+        void registerUser_shouldTrimAndLowercaseEmailAndUsername() {
+                validRegisterDTO.setUsername("  TestUser  ");
+                validRegisterDTO.setEmail("  Test@Example.COM  ");
 
-        verify(userRepository).existsByUsernameIgnoreCase("testuser");
-        verify(userRepository).existsByEmailIgnoreCase("test@example.com");
-    }
+                when(userRepository.existsByUsernameIgnoreCase("testuser")).thenReturn(false);
+                when(userRepository.existsByEmailIgnoreCase("test@example.com")).thenReturn(false);
+                when(passwordEncoder.encode(anyString())).thenReturn("hashed-password");
+                when(userRepository.save(any(User.class))).thenReturn(mockUser);
+                when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                                .thenReturn(mockAuthentication);
+                when(jwtTokenProvider.createAccessToken(any())).thenReturn("access-token");
+                when(jwtTokenProvider.createRefreshToken(any())).thenReturn("refresh-token");
+                when(userUtils.mapUserToUserResponse(any())).thenReturn(mockUserResponse);
 
-    @Test
-    void signInUser_shouldSignInSuccessfully_whenValidCredentials() {
-        when(userRepository.existsByEmailIgnoreCase("test@example.com")).thenReturn(true);
-        when(userRepository.findUserByEmailIgnoreCase("test@example.com"))
-                .thenReturn(Optional.of(mockUser));
-        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
-                .thenReturn(mockAuthentication);
-        when(jwtTokenProvider.createAccessToken(mockAuthentication)).thenReturn("access-token");
-        when(jwtTokenProvider.createRefreshToken(mockAuthentication)).thenReturn("refresh-token");
-        when(userUtils.mapUserToUserResponse(mockUser)).thenReturn(mockUserResponse);
+                authService.registerUser(validRegisterDTO);
 
-        AuthResponseDTO result = authService.signInUser(validSignInDTO);
+                verify(userRepository).existsByUsernameIgnoreCase("testuser");
+                verify(userRepository).existsByEmailIgnoreCase("test@example.com");
+        }
 
-        assertNotNull(result);
-        assertNotNull(result.getAuthResponse());
-        assertEquals("access-token", result.getAuthResponse().accessToken());
-        assertEquals("refresh-token", result.getRefreshToken());
+        @Test
+        void signInUser_shouldSignInSuccessfully_whenValidCredentials() {
+                when(userRepository.existsByEmailIgnoreCase("test@example.com")).thenReturn(true);
+                when(userRepository.findUserByEmailIgnoreCase("test@example.com"))
+                                .thenReturn(Optional.of(mockUser));
+                when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                                .thenReturn(mockAuthentication);
+                when(jwtTokenProvider.createAccessToken(mockAuthentication)).thenReturn("access-token");
+                when(jwtTokenProvider.createRefreshToken(mockAuthentication)).thenReturn("refresh-token");
+                when(userUtils.mapUserToUserResponse(mockUser)).thenReturn(mockUserResponse);
 
-        verify(userRepository).existsByEmailIgnoreCase("test@example.com");
-        verify(userRepository).findUserByEmailIgnoreCase("test@example.com");
-        verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
-    }
+                AuthResponseDTO result = authService.signInUser(validSignInDTO);
 
-    @Test
-    void signInUser_shouldThrowUnauthorizedException_whenEmailDoesNotExist() {
-        when(userRepository.existsByEmailIgnoreCase("test@example.com")).thenReturn(false);
+                assertNotNull(result);
+                assertNotNull(result.getAuthResponse());
+                assertEquals("access-token", result.getAuthResponse().accessToken());
+                assertEquals("refresh-token", result.getRefreshToken());
 
-        UnauthorizedException exception = assertThrows(
-                UnauthorizedException.class,
-                () -> authService.signInUser(validSignInDTO));
+                verify(userRepository).existsByEmailIgnoreCase("test@example.com");
+                verify(userRepository).findUserByEmailIgnoreCase("test@example.com");
+                verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
+        }
 
-        assertEquals("Invalid email or password", exception.getMessage());
-        verify(userRepository).existsByEmailIgnoreCase("test@example.com");
-        verify(authenticationManager, never()).authenticate(any());
-    }
+        @Test
+        void signInUser_shouldThrowUnauthorizedException_whenEmailDoesNotExist() {
+                when(userRepository.existsByEmailIgnoreCase("test@example.com")).thenReturn(false);
 
-    @Test
-    void signInUser_shouldThrowUnauthorizedException_whenWrongPassword() {
-        when(userRepository.existsByEmailIgnoreCase("test@example.com")).thenReturn(true);
-        when(userRepository.findUserByEmailIgnoreCase("test@example.com"))
-                .thenReturn(Optional.of(mockUser));
-        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
-                .thenThrow(new BadCredentialsException("Bad credentials"));
+                UnauthorizedException exception = assertThrows(
+                                UnauthorizedException.class,
+                                () -> authService.signInUser(validSignInDTO));
 
-        UnauthorizedException exception = assertThrows(
-                UnauthorizedException.class,
-                () -> authService.signInUser(validSignInDTO));
+                assertEquals("Invalid email or password", exception.getMessage());
+                verify(userRepository).existsByEmailIgnoreCase("test@example.com");
+                verify(authenticationManager, never()).authenticate(any());
+        }
 
-        assertEquals("Invalid email or password", exception.getMessage());
-        verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
-    }
+        @Test
+        void signInUser_shouldThrowUnauthorizedException_whenWrongPassword() {
+                when(userRepository.existsByEmailIgnoreCase("test@example.com")).thenReturn(true);
+                when(userRepository.findUserByEmailIgnoreCase("test@example.com"))
+                                .thenReturn(Optional.of(mockUser));
+                when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                                .thenThrow(new BadCredentialsException("Bad credentials"));
 
-    @Test
-    void signInUser_shouldTrimAndLowercaseEmail() {
-        validSignInDTO.setEmail("  Test@Example.COM  ");
+                UnauthorizedException exception = assertThrows(
+                                UnauthorizedException.class,
+                                () -> authService.signInUser(validSignInDTO));
 
-        when(userRepository.existsByEmailIgnoreCase("test@example.com")).thenReturn(true);
-        when(userRepository.findUserByEmailIgnoreCase("test@example.com"))
-                .thenReturn(Optional.of(mockUser));
-        when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
-                .thenReturn(mockAuthentication);
-        when(jwtTokenProvider.createAccessToken(any())).thenReturn("access-token");
-        when(jwtTokenProvider.createRefreshToken(any())).thenReturn("refresh-token");
-        when(userUtils.mapUserToUserResponse(any())).thenReturn(mockUserResponse);
+                assertEquals("Invalid email or password", exception.getMessage());
+                verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
+        }
 
-        authService.signInUser(validSignInDTO);
+        @Test
+        void signInUser_shouldTrimAndLowercaseEmail() {
+                validSignInDTO.setEmail("  Test@Example.COM  ");
 
-        verify(userRepository).existsByEmailIgnoreCase("test@example.com");
-    }
+                when(userRepository.existsByEmailIgnoreCase("test@example.com")).thenReturn(true);
+                when(userRepository.findUserByEmailIgnoreCase("test@example.com"))
+                                .thenReturn(Optional.of(mockUser));
+                when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                                .thenReturn(mockAuthentication);
+                when(jwtTokenProvider.createAccessToken(any())).thenReturn("access-token");
+                when(jwtTokenProvider.createRefreshToken(any())).thenReturn("refresh-token");
+                when(userUtils.mapUserToUserResponse(any())).thenReturn(mockUserResponse);
 
-    @Test
-    void refreshAccessToken_shouldReturnNewTokens_whenValidRefreshToken() {
+                authService.signInUser(validSignInDTO);
 
-        String refreshToken = "valid-refresh-token";
-        String email = "test@example.com";
+                verify(userRepository).existsByEmailIgnoreCase("test@example.com");
+        }
 
-        Claims claims = mock(Claims.class);
-        when(claims.getSubject()).thenReturn(email);
+        @Test
+        void refreshAccessToken_shouldReturnNewTokens_whenValidRefreshToken() {
 
-        when(jwtTokenProvider.parseRefreshToken(refreshToken)).thenReturn(claims);
-        when(userRepository.findUserByEmailIgnoreCase(email)).thenReturn(Optional.of(mockUser));
-        when(jwtTokenProvider.createAccessToken(any(Authentication.class)))
-                .thenReturn("new-access-token");
-        when(jwtTokenProvider.createRefreshToken(mockAuthentication))
-                .thenReturn("new-refresh-token");
-        when(userUtils.mapUserToUserResponse(mockUser))
-                .thenReturn(mockUserResponse);
+                String refreshToken = "valid-refresh-token";
+                String email = "test@example.com";
 
-        AuthResponseDTO result = authService.refreshAccessToken(refreshToken);
+                Claims claims = mock(Claims.class);
+                when(claims.getSubject()).thenReturn(email);
 
-        assertNotNull(result);
-        assertEquals("new-access-token", result.getAuthResponse().accessToken());
-        assertEquals("new-refresh-token", result.getRefreshToken());
+                when(jwtTokenProvider.parseRefreshToken(refreshToken)).thenReturn(claims);
+                when(userRepository.findUserByEmailIgnoreCase(email)).thenReturn(Optional.of(mockUser));
+                when(jwtTokenProvider.createAccessToken(any(Authentication.class)))
+                                .thenReturn("new-access-token");
+                when(jwtTokenProvider.createRefreshToken(any(Authentication.class)))
+                                .thenReturn("new-refresh-token");
+                when(userUtils.mapUserToUserResponse(mockUser))
+                                .thenReturn(mockUserResponse);
 
-        verify(jwtTokenProvider).parseRefreshToken(refreshToken);
-        verify(userRepository).findUserByEmailIgnoreCase(email);
-    }
+                AuthResponseDTO result = authService.refreshAccessToken(refreshToken);
 
-    @Test
-    void refreshAccessToken_shouldThrowUnauthorizedException_whenNullToken() {
-        UnauthorizedException exception = assertThrows(
-                UnauthorizedException.class,
-                () -> authService.refreshAccessToken(null));
+                assertNotNull(result);
+                assertEquals("new-access-token", result.getAuthResponse().accessToken());
+                assertEquals("new-refresh-token", result.getRefreshToken());
 
-        assertEquals("Invalid refresh token", exception.getMessage());
-        verify(jwtTokenProvider, never()).parseRefreshToken(anyString());
-    }
+                verify(jwtTokenProvider).parseRefreshToken(refreshToken);
+                verify(userRepository).findUserByEmailIgnoreCase(email);
+        }
 
-    @Test
-    void refreshAccessToken_shouldThrowUnauthorizedException_whenInvalidToken() {
-        String invalidToken = "invalid-token";
-        when(jwtTokenProvider.parseRefreshToken(invalidToken))
-                .thenReturn(null);
-        UnauthorizedException exception = assertThrows(
-                UnauthorizedException.class,
-                () -> authService.refreshAccessToken(invalidToken));
-        assertEquals("Invalid or expired refresh token", exception.getMessage());
-        verify(jwtTokenProvider).parseRefreshToken(invalidToken);
-        verify(userRepository, never()).findUserByEmailIgnoreCase(anyString());
-    }
+        @Test
+        void refreshAccessToken_shouldThrowUnauthorizedException_whenNullToken() {
+                UnauthorizedException exception = assertThrows(
+                                UnauthorizedException.class,
+                                () -> authService.refreshAccessToken(null));
 
-    @Test
-    void refreshAccessToken_shouldThrowUnauthorizedException_whenUserNotFound() {
-        String refreshToken = "valid-refresh-token";
-        String email = "test@example.com";
-        Claims claims = mock(Claims.class);
-        when(claims.getSubject()).thenReturn(email);
-        when(jwtTokenProvider.parseRefreshToken(refreshToken)).thenReturn(claims);
-        when(userRepository.findUserByEmailIgnoreCase(email)).thenReturn(Optional.empty());
-        UnauthorizedException exception = assertThrows(
-                UnauthorizedException.class,
-                () -> authService.refreshAccessToken(refreshToken));
+                assertEquals("Invalid refresh token", exception.getMessage());
+                verify(jwtTokenProvider, never()).parseRefreshToken(anyString());
+        }
 
-        assertEquals("Invalid refresh token", exception.getMessage());
-        verify(userRepository).findUserByEmailIgnoreCase(email);
-    }
+        @Test
+        void refreshAccessToken_shouldThrowUnauthorizedException_whenInvalidToken() {
+                String invalidToken = "invalid-token";
+                when(jwtTokenProvider.parseRefreshToken(invalidToken))
+                                .thenReturn(null);
+                UnauthorizedException exception = assertThrows(
+                                UnauthorizedException.class,
+                                () -> authService.refreshAccessToken(invalidToken));
+                assertEquals("Invalid or expired refresh token", exception.getMessage());
+                verify(jwtTokenProvider).parseRefreshToken(invalidToken);
+                verify(userRepository, never()).findUserByEmailIgnoreCase(anyString());
+        }
+
+        @Test
+        void refreshAccessToken_shouldThrowUnauthorizedException_whenUserNotFound() {
+                String refreshToken = "valid-refresh-token";
+                String email = "test@example.com";
+                Claims claims = mock(Claims.class);
+                when(claims.getSubject()).thenReturn(email);
+                when(jwtTokenProvider.parseRefreshToken(refreshToken)).thenReturn(claims);
+                when(userRepository.findUserByEmailIgnoreCase(email)).thenReturn(Optional.empty());
+                UnauthorizedException exception = assertThrows(
+                                UnauthorizedException.class,
+                                () -> authService.refreshAccessToken(refreshToken));
+
+                assertEquals("Invalid refresh token", exception.getMessage());
+                verify(userRepository).findUserByEmailIgnoreCase(email);
+        }
 }

@@ -54,6 +54,9 @@ class PerformanceMetricsControllerTest {
         @MockitoBean
         private org.amalitech.bloggingplatformspring.services.SecurityAuditService securityAuditService;
 
+        @MockitoBean
+        private org.amalitech.bloggingplatformspring.utils.UserUtils userUtils;
+
         @Test
         void getAllMetrics_ShouldReturnOkWithMetrics_WhenMetricsExist() throws Exception {
                 List<MethodMetricsDTO> metricsList = new ArrayList<>();

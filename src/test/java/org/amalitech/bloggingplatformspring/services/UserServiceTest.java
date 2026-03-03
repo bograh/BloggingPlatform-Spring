@@ -107,8 +107,8 @@ class UserServiceTest {
 
     when(userUtils.getUserFromRequest(request)).thenReturn(user);
     when(postRepository.findPostsByAuthorOrderByUpdatedAtDesc(eq(user), any(Limit.class))).thenReturn(List.of(post));
-    when(commentRepository.countByPostId(1L)).thenReturn(1L);
-    when(postUtils.createPostResponseFromPost(eq(post), eq(1L))).thenReturn(postResponse);
+    when(commentRepository.countCommentsByPostIds(anyList())).thenReturn(List.of());
+    when(postUtils.createPostResponseFromPost(eq(post), eq(0L))).thenReturn(postResponse);
     when(commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(eq(user.getUsername()), any(Limit.class)))
         .thenReturn(List.of(comment));
     when(commentUtils.createCommentResponseFromComment(comment)).thenReturn(commentResponse);

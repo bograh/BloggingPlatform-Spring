@@ -57,6 +57,12 @@ class AuthControllerTest {
     @MockitoBean
     private org.amalitech.bloggingplatformspring.services.SecurityAuditService securityAuditService;
 
+    @MockitoBean
+    private org.amalitech.bloggingplatformspring.services.RuntimeMetricsService runtimeMetricsService;
+
+    @MockitoBean
+    private org.amalitech.bloggingplatformspring.utils.UserUtils userUtils;
+
     @Test
     void registerUser_shouldReturnCreatedStatus_whenValidData() throws Exception {
         RegisterUserDTO registerDTO = new RegisterUserDTO();
@@ -78,8 +84,8 @@ class AuthControllerTest {
         when(authService.registerUser(any(RegisterUserDTO.class))).thenReturn(authResponseDTO);
 
         mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(registerDTO)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(registerDTO)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("success"))
                 .andExpect(jsonPath("$.message").value("User registration successful"))
@@ -100,8 +106,8 @@ class AuthControllerTest {
         registerDTO.setPassword("weak");
 
         mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(registerDTO)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(registerDTO)))
                 .andExpect(status().isBadRequest());
 
         verify(authService, never()).registerUser(any(RegisterUserDTO.class));
@@ -127,8 +133,8 @@ class AuthControllerTest {
         when(authService.signInUser(any(SignInUserDTO.class))).thenReturn(authResponseDTO);
 
         mockMvc.perform(post("/api/auth/sign-in")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(signInDTO)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(signInDTO)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("success"))
                 .andExpect(jsonPath("$.message").value("User sign in successful"))
@@ -147,8 +153,8 @@ class AuthControllerTest {
         signInDTO.setPassword("");
 
         mockMvc.perform(post("/api/auth/sign-in")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(signInDTO)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(signInDTO)))
                 .andExpect(status().isBadRequest());
 
         verify(authService, never()).signInUser(any(SignInUserDTO.class));
@@ -173,8 +179,8 @@ class AuthControllerTest {
         when(authService.refreshAccessToken(refreshToken)).thenReturn(authResponseDTO);
 
         mockMvc.perform(post("/api/auth/refresh-token")
-                        .cookie(new Cookie("refreshToken", refreshToken))
-                        .contentType(MediaType.APPLICATION_JSON))
+                .cookie(new Cookie("refreshToken", refreshToken))
+                .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("success"))
                 .andExpect(jsonPath("$.message").value("Access token refreshed successfully"))
@@ -193,8 +199,8 @@ class AuthControllerTest {
         when(tokenSessionService.isTokenRevoked(revokedToken)).thenReturn(true);
 
         mockMvc.perform(post("/api/auth/refresh-token")
-                        .cookie(new Cookie("refreshToken", revokedToken))
-                        .contentType(MediaType.APPLICATION_JSON))
+                .cookie(new Cookie("refreshToken", revokedToken))
+                .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized());
 
         verify(tokenSessionService).isTokenRevoked(revokedToken);
@@ -212,9 +218,9 @@ class AuthControllerTest {
         when(jwtTokenProvider.parseAccessToken(accessToken)).thenReturn(claims);
 
         mockMvc.perform(post("/api/auth/sign-out")
-                        .header("Authorization", "Bearer " + accessToken)
-                        .cookie(new Cookie("refreshToken", refreshToken))
-                        .contentType(MediaType.APPLICATION_JSON))
+                .header("Authorization", "Bearer " + accessToken)
+                .cookie(new Cookie("refreshToken", refreshToken))
+                .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("success"))
                 .andExpect(jsonPath("$.message")
@@ -231,7 +237,7 @@ class AuthControllerTest {
     void signOutUser_shouldStillWork_whenNoTokensProvided() throws Exception {
 
         mockMvc.perform(post("/api/auth/sign-out")
-                        .contentType(MediaType.APPLICATION_JSON))
+                .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("success"))
                 .andExpect(jsonPath("$.message")
@@ -248,14 +254,13 @@ class AuthControllerTest {
     void signOutUser_shouldRevokeOnlyRefreshToken_whenNoAccessToken() throws Exception {
         String refreshToken = "valid-refresh-token";
         mockMvc.perform(post("/api/auth/sign-out")
-                        .cookie(new Cookie("refreshToken", refreshToken))
-                        .contentType(MediaType.APPLICATION_JSON))
+                .cookie(new Cookie("refreshToken", refreshToken))
+                .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("success"));
 
         verify(jwtTokenProvider, never()).parseAccessToken(anyString());
         verify(tokenSessionService, never()).removeSession(anyString());
-        verify(tokenSessionService, never()).revokeToken(anyString());
         verify(tokenSessionService).revokeToken(refreshToken);
         verify(refreshCookieService).clearRefreshTokenCookie(any());
     }

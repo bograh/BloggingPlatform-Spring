@@ -170,7 +170,7 @@ class CacheConfigTest {
         postsCache.get("post2"); // miss
 
         var allStats = CacheConfig.getAllCacheStatistics();
-        assertEquals(5, allStats.size());
+        assertEquals(cacheManager.getCacheNames().size(), allStats.size());
 
         CacheConfig.CacheStatistics userStats = allStats.get("users");
         CacheConfig.CacheStatistics postStats = allStats.get("posts");
