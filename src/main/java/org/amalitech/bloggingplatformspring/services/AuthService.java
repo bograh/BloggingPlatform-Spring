@@ -33,7 +33,6 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
-    private final CustomUserDetailsService customUserDetailsService;
     private final UserUtils userUtils;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;

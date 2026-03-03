@@ -26,8 +26,6 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class FeedController {
 
-  private static final int DEFAULT_LIMIT = 10;
-
   private final FeedAggregationService feedAggregationService;
   private final LiveTrendingScoreService liveTrendingScoreService;
 

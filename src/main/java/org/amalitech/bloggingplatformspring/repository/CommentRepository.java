@@ -23,9 +23,8 @@ public interface CommentRepository extends MongoRepository<Comment, String> {
     List<Comment> findCommentsByAuthorOrderByCommentedAtDesc(String author, Limit limit);
 
     @Aggregation(pipeline = {
-            "{ '$addFields': { 'postIdLong': { '$convert': { 'input': '$post_id', 'to': 'long', 'onError': null, 'onNull': null } } } }",
-            "{ '$match': { 'postIdLong': { '$in': ?0 } } }",
-            "{ '$group': { '_id': '$postIdLong', 'totalComments': { '$sum': 1 } } }",
+            "{ '$match': { 'post_id': { '$in': ?0 } } }",
+            "{ '$group': { '_id': '$post_id', 'totalComments': { '$sum': 1 } } }",
             "{ '$project': { '_id': 0, 'postId': '$_id', 'totalComments': 1 } }"
     })
     List<PostCommentCountProjection> countCommentsByPostIds(List<Long> postIds);
