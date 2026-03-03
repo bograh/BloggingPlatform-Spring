@@ -13,6 +13,7 @@ Aspect-Oriented Programming.
 - [Quick Start](#quick-start)
 - [API Documentation](#api-documentation)
 - [Documentation Index](#documentation-index)
+- [Optimization Implementation](#optimization-implementation)
 - [Database Schema](#database-schema)
 - [Performance & Monitoring](#performance--monitoring)
 - [Technology Stack](#technology-stack)
@@ -343,6 +344,10 @@ createComment(input: CreateCommentInput!): Comment!
 ## Documentation Index
 
 Centralized docs navigation lives in [docs/README.md](docs/README.md).
+
+## Optimization Implementation
+
+- [Optimization Implementation Documentation](docs/optimization/OPTIMIZATION.md) - Concrete implementation details for async processing, concurrency/thread safety, retrieval optimization, and metrics evidence workflow.
 
 **For detailed examples:**
 

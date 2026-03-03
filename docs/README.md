@@ -46,6 +46,9 @@ Use this index to navigate implementation-aligned docs by area.
 - [Request Masking Examples](aop/REQUEST_MASKING_EXAMPLES.md)
 - [Sensitive Data Masking](aop/SENSITIVE_DATA_MASKING.md)
 
+## Optimization & Profiling
+- [Optimization](optimization/OPTIMIZATION.md)
+
 ## Notes
 
 - Source of truth for endpoint behavior is controller mappings in `src/main/java/.../controllers`.
