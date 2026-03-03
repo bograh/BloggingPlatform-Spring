@@ -81,7 +81,7 @@ curl -X POST http://localhost:8080/api/metrics/performance/simulation/run
     "overallAvgPreCacheMs": "25.50",
     "overallAvgPostCacheMs": "0.75",
     "overallImprovementPercent": "97.06%",
-    "recommendation": "Cache performance simulation complete. Found 7 method(s) with significant cache benefit (>50ms pre-cache). Use '/api/metrics/cache' to monitor real-time cache hit rates."
+    "recommendation": "Cache performance simulation complete. Found 7 method(s) with significant cache benefit (>50ms pre-cache). Use '/api/metrics/performance/cache' to monitor real-time cache hit rates."
   },
   "simulationEndTime": "2026-02-16T10:30:05"
 }
@@ -258,10 +258,10 @@ curl -X POST http://localhost:8080/api/metrics/performance/simulation/getPopular
 
 | Method | Cached? | Cache Name | TTL |
 |--------|---------|------------|-----|
-| `PostService.getAllPosts()` | ✅ Yes | `postListCache` | 5 min |
-| `PostService.getPostById()` | ✅ Yes | `postsCache` | 15 min |
-| `CommentService.getAllCommentsByPostId()` | ✅ Yes | `commentsCache` | 5 min |
-| `TagService.getPopularTags()` | ✅ Yes | `tagsCache` | 15 min |
+| `PostService.getAllPosts()` | ✅ Yes | `postsList` | 5 min |
+| `PostService.getPostById()` | ✅ Yes | `posts` | 15 min |
+| `CommentService.getAllCommentsByPostId()` | ✅ Yes | `comments` | 5 min |
+| `TagService.getPopularTags()` | ✅ Yes | `tags` | 15 min |
 | `CommentService.getAllComments()` | ❌ No | - | - |
 
 ---
