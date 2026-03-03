@@ -46,8 +46,6 @@ public class NotificationOutboxProcessor {
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final NotificationQueueService notificationQueueService;
-    @Lazy
-    private final NotificationOutboxProcessor self;
 
     /**
      * Queues a notification for processing.
@@ -116,7 +114,7 @@ public class NotificationOutboxProcessor {
 
             if (!pending.isEmpty()) {
                 log.info("Processing {} pending notifications", pending.size());
-                pending.forEach(self::processNotificationAsync);
+                pending.forEach(this::processNotificationAsync);
             }
         } catch (Exception e) {
             log.error("Error processing pending notifications: {}", e.getMessage(), e);
