@@ -5,7 +5,6 @@ import org.amalitech.bloggingplatformspring.dtos.requests.CommentFilterRequest;
 import org.amalitech.bloggingplatformspring.dtos.responses.CommentResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.PageResponse;
 import org.amalitech.bloggingplatformspring.entity.Comment;
-import org.amalitech.bloggingplatformspring.repository.CommentRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
