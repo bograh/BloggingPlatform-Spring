@@ -11,6 +11,11 @@ type User {
     email: String!
 }
 
+type AuthResponse {
+    token: String!
+    user: User!
+}
+
 # Post Type
 type Post {
     id: Int!
@@ -63,25 +68,21 @@ input SignInUserInput {
 input CreatePostInput {
     title: String!
     body: String!
-    authorId: String!
     tags: [String!]
 }
 
 input UpdatePostInput {
     title: String
     body: String
-    authorId: String!
     tags: [String!]
 }
 
 input CreateCommentInput {
     postId: Int!
-    authorId: String!
     commentContent: String!
 }
 
 input DeleteCommentInput {
-    authorId: String!
     postId: Int!
 }
 
@@ -113,13 +114,13 @@ type Query {
 # Mutation Type
 type Mutation {
     # User Mutations
-    registerUser(input: RegisterUserInput!): User!
+    registerUser(input: RegisterUserInput!): AuthResponse!
     signInUser(input: SignInUserInput!): User!
 
     # Post Mutations
     createPost(input: CreatePostInput!): Post!
     updatePost(postId: Int!, input: UpdatePostInput!): Post!
-    deletePost(postId: Int!, authorId: String!): Boolean!
+    deletePost(postId: Int!): Boolean!
 
     # Comment Mutations
     createComment(input: CreateCommentInput!): Comment!

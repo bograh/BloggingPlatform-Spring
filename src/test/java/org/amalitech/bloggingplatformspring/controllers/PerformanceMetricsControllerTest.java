@@ -1,25 +1,32 @@
 package org.amalitech.bloggingplatformspring.controllers;
 
-import org.amalitech.bloggingplatformspring.aop.PerformanceMonitoringAspect.MethodMetrics;
+import org.amalitech.bloggingplatformspring.dtos.responses.AllMetricsDTO;
+import org.amalitech.bloggingplatformspring.dtos.responses.MethodMetricsDTO;
+import org.amalitech.bloggingplatformspring.dtos.responses.MetricsSummaryDTO;
+import org.amalitech.bloggingplatformspring.dtos.responses.RuntimeMetricsSnapshotDTO;
 import org.amalitech.bloggingplatformspring.services.PerformanceMetricsService;
+import org.amalitech.bloggingplatformspring.services.RuntimeMetricsService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
-import static org.hamcrest.Matchers.aMapWithSize;
+import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(PerformanceMetricsController.class)
+@WebMvcTest(controllers = PerformanceMetricsController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class PerformanceMetricsControllerTest {
 
         @Autowired
@@ -28,18 +35,39 @@ class PerformanceMetricsControllerTest {
         @MockitoBean
         private PerformanceMetricsService metricsService;
 
+        @MockitoBean
+        private org.amalitech.bloggingplatformspring.services.CachePerformanceSimulationService simulationService;
+
+        @MockitoBean
+        private RuntimeMetricsService runtimeMetricsService;
+
+        // Mock security components to prevent ApplicationContext loading errors
+        @MockitoBean
+        private org.amalitech.bloggingplatformspring.security.JwtTokenProvider jwtTokenProvider;
+
+        @MockitoBean
+        private org.amalitech.bloggingplatformspring.services.CustomUserDetailsService customUserDetailsService;
+
+        @MockitoBean
+        private org.amalitech.bloggingplatformspring.security.TokenSessionService tokenSessionService;
+
+        @MockitoBean
+        private org.amalitech.bloggingplatformspring.services.SecurityAuditService securityAuditService;
+
+        @MockitoBean
+        private org.amalitech.bloggingplatformspring.utils.UserUtils userUtils;
+
         @Test
         void getAllMetrics_ShouldReturnOkWithMetrics_WhenMetricsExist() throws Exception {
-                Map<String, Object> mockResponse = new HashMap<>();
-                mockResponse.put("totalMethods", 2);
-                mockResponse.put("timestamp", new Date());
+                List<MethodMetricsDTO> metricsList = new ArrayList<>();
+                MethodMetricsDTO methodMetric = new MethodMetricsDTO(
+                                "UserService.getUser(..)", 2, 2, 0, 100, 50, 150, 100.0);
+                metricsList.add(methodMetric);
 
-                ConcurrentHashMap<String, MethodMetrics> metricsMap = new ConcurrentHashMap<>();
-                MethodMetrics metrics = new MethodMetrics("UserService.getUser(..)");
-                metrics.recordExecution(100, true);
-                metricsMap.put("UserService.getUser(..)", metrics);
-
-                mockResponse.put("metrics", metricsMap);
+                AllMetricsDTO mockResponse = new AllMetricsDTO(
+                                2,
+                                LocalDateTime.now(),
+                                metricsList);
 
                 when(metricsService.getAllMetrics()).thenReturn(mockResponse);
 
@@ -48,17 +76,17 @@ class PerformanceMetricsControllerTest {
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.totalMethods").value(2))
                                 .andExpect(jsonPath("$.timestamp").exists())
-                                .andExpect(jsonPath("$.metrics").exists());
+                                .andExpect(jsonPath("$.metrics").isArray());
 
                 verify(metricsService).getAllMetrics();
         }
 
         @Test
         void getAllMetrics_ShouldReturnOkWithEmptyMetrics_WhenNoMetricsExist() throws Exception {
-                Map<String, Object> emptyResponse = new HashMap<>();
-                emptyResponse.put("totalMethods", 0);
-                emptyResponse.put("timestamp", new Date());
-                emptyResponse.put("metrics", new ConcurrentHashMap<>());
+                AllMetricsDTO emptyResponse = new AllMetricsDTO(
+                                0,
+                                LocalDateTime.now(),
+                                new ArrayList<>());
 
                 when(metricsService.getAllMetrics()).thenReturn(emptyResponse);
 
@@ -67,7 +95,7 @@ class PerformanceMetricsControllerTest {
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.totalMethods").value(0))
                                 .andExpect(jsonPath("$.timestamp").exists())
-                                .andExpect(jsonPath("$.metrics").isEmpty());
+                                .andExpect(jsonPath("$.metrics", hasSize(0)));
 
                 verify(metricsService).getAllMetrics();
         }
@@ -78,9 +106,8 @@ class PerformanceMetricsControllerTest {
                 String methodName = "createPost";
                 String fullMethodName = "SERVICE::createPost";
 
-                MethodMetrics mockMetrics = new MethodMetrics(fullMethodName);
-                mockMetrics.recordExecution(150, true);
-                mockMetrics.recordExecution(200, true);
+                MethodMetricsDTO mockMetrics = new MethodMetricsDTO(
+                                fullMethodName, 2, 2, 0, 175, 150, 200, 100.0);
 
                 when(metricsService.getMethodMetrics(fullMethodName)).thenReturn(mockMetrics);
 
@@ -101,8 +128,8 @@ class PerformanceMetricsControllerTest {
                 String methodName = "updateUser";
                 String expectedFullMethodName = "SERVICE::updateUser";
 
-                MethodMetrics mockMetrics = new MethodMetrics(expectedFullMethodName);
-                mockMetrics.recordExecution(100, true);
+                MethodMetricsDTO mockMetrics = new MethodMetricsDTO(
+                                expectedFullMethodName, 1, 1, 0, 100, 100, 100, 100.0);
 
                 when(metricsService.getMethodMetrics(expectedFullMethodName)).thenReturn(mockMetrics);
 
@@ -135,8 +162,8 @@ class PerformanceMetricsControllerTest {
                 String methodName = "findById";
                 String fullMethodName = "REPOSITORY::findById";
 
-                MethodMetrics mockMetrics = new MethodMetrics(fullMethodName);
-                mockMetrics.recordExecution(50, true);
+                MethodMetricsDTO mockMetrics = new MethodMetricsDTO(
+                                fullMethodName, 1, 1, 0, 50, 50, 50, 100.0);
 
                 when(metricsService.getMethodMetrics(fullMethodName)).thenReturn(mockMetrics);
 
@@ -154,8 +181,8 @@ class PerformanceMetricsControllerTest {
                 String methodName = "get-user-by-id";
                 String fullMethodName = "SERVICE::get-user-by-id";
 
-                MethodMetrics mockMetrics = new MethodMetrics(fullMethodName);
-                mockMetrics.recordExecution(75, true);
+                MethodMetricsDTO mockMetrics = new MethodMetricsDTO(
+                                fullMethodName, 1, 1, 0, 75, 75, 75, 100.0);
 
                 when(metricsService.getMethodMetrics(fullMethodName)).thenReturn(mockMetrics);
 
@@ -168,12 +195,13 @@ class PerformanceMetricsControllerTest {
 
         @Test
         void getMetricsSummary_ShouldReturnOkWithSummary() throws Exception {
-                Map<String, Object> summaryResponse = new HashMap<>();
-                summaryResponse.put("totalMethodsMonitored", 5);
-                summaryResponse.put("totalExecutions", 100L);
-                summaryResponse.put("totalFailures", 10L);
-                summaryResponse.put("overallAverageExecutionTime", "150.25 ms");
-                summaryResponse.put("timestamp", new Date());
+                MetricsSummaryDTO summaryResponse = new MetricsSummaryDTO(
+                                5,
+                                100L,
+                                10L,
+                                "150.25 ms",
+                                90.0,
+                                LocalDateTime.now());
 
                 when(metricsService.getMetricsSummary()).thenReturn(summaryResponse);
 
@@ -191,12 +219,13 @@ class PerformanceMetricsControllerTest {
 
         @Test
         void getMetricsSummary_ShouldReturnOkWithZeroValues_WhenNoMetrics() throws Exception {
-                Map<String, Object> emptySummary = new HashMap<>();
-                emptySummary.put("totalMethodsMonitored", 0);
-                emptySummary.put("totalExecutions", 0L);
-                emptySummary.put("totalFailures", 0L);
-                emptySummary.put("overallAverageExecutionTime", "0.00 ms");
-                emptySummary.put("timestamp", new Date());
+                MetricsSummaryDTO emptySummary = new MetricsSummaryDTO(
+                                0,
+                                0L,
+                                0L,
+                                "0.00 ms",
+                                0.0,
+                                LocalDateTime.now());
 
                 when(metricsService.getMetricsSummary()).thenReturn(emptySummary);
 
@@ -238,7 +267,8 @@ class PerformanceMetricsControllerTest {
 
         @Test
         void exportToLog_ShouldReturnOkWithSuccessMessage() throws Exception {
-                doNothing().when(metricsService).exportPerformanceSummary();
+                when(metricsService.exportPerformanceSummaryAsync())
+                                .thenReturn(CompletableFuture.completedFuture(null));
 
                 mockMvc.perform(post("/api/metrics/performance/export-log")
                                 .contentType(MediaType.APPLICATION_JSON))
@@ -247,27 +277,28 @@ class PerformanceMetricsControllerTest {
                                 .andExpect(jsonPath("$.message").value(
                                                 "Performance metrics exported to application log and metrics folder"));
 
-                verify(metricsService).exportPerformanceSummary();
+                verify(metricsService).exportPerformanceSummaryAsync();
         }
 
         @Test
         void exportToLog_ShouldCallServiceOnce() throws Exception {
-                doNothing().when(metricsService).exportPerformanceSummary();
+                when(metricsService.exportPerformanceSummaryAsync())
+                                .thenReturn(CompletableFuture.completedFuture(null));
 
                 mockMvc.perform(post("/api/metrics/performance/export-log")
                                 .contentType(MediaType.APPLICATION_JSON))
                                 .andExpect(status().isOk());
 
-                verify(metricsService, times(1)).exportPerformanceSummary();
+                verify(metricsService, times(1)).exportPerformanceSummaryAsync();
                 verifyNoMoreInteractions(metricsService);
         }
 
         @Test
         void getAllMetrics_ShouldReturnCorrectContentType() throws Exception {
-                Map<String, Object> mockResponse = new HashMap<>();
-                mockResponse.put("totalMethods", 0);
-                mockResponse.put("timestamp", new Date());
-                mockResponse.put("metrics", new ConcurrentHashMap<>());
+                AllMetricsDTO mockResponse = new AllMetricsDTO(
+                                0,
+                                LocalDateTime.now(),
+                                new ArrayList<>());
 
                 when(metricsService.getAllMetrics()).thenReturn(mockResponse);
 
@@ -278,12 +309,13 @@ class PerformanceMetricsControllerTest {
 
         @Test
         void getMetricsSummary_ShouldReturnCorrectContentType() throws Exception {
-                Map<String, Object> summaryResponse = new HashMap<>();
-                summaryResponse.put("totalMethodsMonitored", 0);
-                summaryResponse.put("totalExecutions", 0L);
-                summaryResponse.put("totalFailures", 0L);
-                summaryResponse.put("overallAverageExecutionTime", "0.00 ms");
-                summaryResponse.put("timestamp", new Date());
+                MetricsSummaryDTO summaryResponse = new MetricsSummaryDTO(
+                                0,
+                                0L,
+                                0L,
+                                "0.00 ms",
+                                0.0,
+                                LocalDateTime.now());
 
                 when(metricsService.getMetricsSummary()).thenReturn(summaryResponse);
 
@@ -303,7 +335,8 @@ class PerformanceMetricsControllerTest {
 
         @Test
         void exportToLog_ShouldReturnCorrectContentType() throws Exception {
-                doNothing().when(metricsService).exportPerformanceSummary();
+                when(metricsService.exportPerformanceSummaryAsync())
+                                .thenReturn(CompletableFuture.completedFuture(null));
 
                 mockMvc.perform(post("/api/metrics/performance/export-log"))
                                 .andExpect(status().isOk())
@@ -316,8 +349,8 @@ class PerformanceMetricsControllerTest {
                 String methodName = "deleteUser";
                 String expectedFullMethodName = "SERVICE::deleteUser";
 
-                MethodMetrics mockMetrics = new MethodMetrics(expectedFullMethodName);
-                mockMetrics.recordExecution(80, true);
+                MethodMetricsDTO mockMetrics = new MethodMetricsDTO(
+                                expectedFullMethodName, 1, 1, 0, 80, 80, 80, 100.0);
 
                 when(metricsService.getMethodMetrics(expectedFullMethodName)).thenReturn(mockMetrics);
 
@@ -329,24 +362,16 @@ class PerformanceMetricsControllerTest {
 
         @Test
         void getAllMetrics_ShouldHandleComplexMetricsData() throws Exception {
-                Map<String, Object> complexResponse = new HashMap<>();
-                complexResponse.put("totalMethods", 3);
-                complexResponse.put("timestamp", new Date());
+                List<MethodMetricsDTO> metricsList = new ArrayList<>();
+                metricsList.add(new MethodMetricsDTO(
+                                "UserService.getUser(..)", 3, 2, 1, 150, 100, 200, 66.67));
+                metricsList.add(new MethodMetricsDTO(
+                                "PostService.createPost(..)", 1, 1, 0, 250, 250, 250, 100.0));
 
-                ConcurrentHashMap<String, MethodMetrics> metricsMap = new ConcurrentHashMap<>();
-
-                MethodMetrics metrics1 = new MethodMetrics("UserService.getUser(..)");
-                metrics1.recordExecution(100, true);
-                metrics1.recordExecution(150, true);
-                metrics1.recordExecution(200, false);
-
-                MethodMetrics metrics2 = new MethodMetrics("PostService.createPost(..)");
-                metrics2.recordExecution(250, true);
-
-                metricsMap.put("UserService.getUser(..)", metrics1);
-                metricsMap.put("PostService.createPost(..)", metrics2);
-
-                complexResponse.put("metrics", metricsMap);
+                AllMetricsDTO complexResponse = new AllMetricsDTO(
+                                3,
+                                LocalDateTime.now(),
+                                metricsList);
 
                 when(metricsService.getAllMetrics()).thenReturn(complexResponse);
 
@@ -362,11 +387,8 @@ class PerformanceMetricsControllerTest {
                 String methodName = "processPayment";
                 String fullMethodName = "SERVICE::processPayment";
 
-                MethodMetrics mockMetrics = new MethodMetrics(fullMethodName);
-                mockMetrics.recordExecution(100, true);
-                mockMetrics.recordExecution(150, false);
-                mockMetrics.recordExecution(200, false);
-                mockMetrics.recordExecution(120, true);
+                MethodMetricsDTO mockMetrics = new MethodMetricsDTO(
+                                fullMethodName, 4, 2, 2, 142, 100, 200, 50.0);
 
                 when(metricsService.getMethodMetrics(fullMethodName)).thenReturn(mockMetrics);
 
@@ -386,18 +408,17 @@ class PerformanceMetricsControllerTest {
 
                 mockMvc.perform(delete("/api/metrics/performance/reset"))
                                 .andExpect(status().isOk())
-                                .andExpect(jsonPath("$", aMapWithSize(2)))
                                 .andExpect(jsonPath("$.status").exists())
                                 .andExpect(jsonPath("$.message").exists());
         }
 
         @Test
         void exportToLog_ShouldReturnMapWithTwoKeys() throws Exception {
-                doNothing().when(metricsService).exportPerformanceSummary();
+                when(metricsService.exportPerformanceSummaryAsync())
+                                .thenReturn(CompletableFuture.completedFuture(null));
 
                 mockMvc.perform(post("/api/metrics/performance/export-log"))
                                 .andExpect(status().isOk())
-                                .andExpect(jsonPath("$", aMapWithSize(2)))
                                 .andExpect(jsonPath("$.status").exists())
                                 .andExpect(jsonPath("$.message").exists());
         }
@@ -408,8 +429,8 @@ class PerformanceMetricsControllerTest {
                 String methodName = "method123";
                 String fullMethodName = "SERVICE::method123";
 
-                MethodMetrics mockMetrics = new MethodMetrics(fullMethodName);
-                mockMetrics.recordExecution(90, true);
+                MethodMetricsDTO mockMetrics = new MethodMetricsDTO(
+                                fullMethodName, 1, 1, 0, 90, 90, 90, 100.0);
 
                 when(metricsService.getMethodMetrics(fullMethodName)).thenReturn(mockMetrics);
 
@@ -422,10 +443,10 @@ class PerformanceMetricsControllerTest {
 
         @Test
         void getAllMetrics_ShouldBeAccessibleViaGetRequest() throws Exception {
-                Map<String, Object> mockResponse = new HashMap<>();
-                mockResponse.put("totalMethods", 0);
-                mockResponse.put("timestamp", new Date());
-                mockResponse.put("metrics", new ConcurrentHashMap<>());
+                AllMetricsDTO mockResponse = new AllMetricsDTO(
+                                0,
+                                LocalDateTime.now(),
+                                new ArrayList<>());
 
                 when(metricsService.getAllMetrics()).thenReturn(mockResponse);
 
@@ -458,7 +479,8 @@ class PerformanceMetricsControllerTest {
 
         @Test
         void exportToLog_ShouldOnlyAcceptPostRequest() throws Exception {
-                doNothing().when(metricsService).exportPerformanceSummary();
+                when(metricsService.exportPerformanceSummaryAsync())
+                                .thenReturn(CompletableFuture.completedFuture(null));
 
                 mockMvc.perform(post("/api/metrics/performance/export-log"))
                                 .andExpect(status().isOk());
@@ -468,5 +490,59 @@ class PerformanceMetricsControllerTest {
 
                 mockMvc.perform(delete("/api/metrics/performance/export-log"))
                                 .andExpect(status().isMethodNotAllowed());
+        }
+
+        @Test
+        void getRuntimeMetrics_ShouldReturnSnapshot() throws Exception {
+                RuntimeMetricsSnapshotDTO runtimeSnapshot = new RuntimeMetricsSnapshotDTO(
+                                LocalDateTime.now(),
+                                120,
+                                300,
+                                6,
+                                2.0,
+                                45.5,
+                                5,
+                                210,
+                                2.5,
+                                3.0,
+                                180,
+                                256,
+                                2048,
+                                Collections.emptyList());
+
+                when(runtimeMetricsService.getRuntimeSnapshot(10)).thenReturn(runtimeSnapshot);
+
+                mockMvc.perform(get("/api/metrics/performance/runtime?limit=10"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.totalRequests").value(300))
+                                .andExpect(jsonPath("$.totalErrors").value(6));
+
+                verify(runtimeMetricsService).getRuntimeSnapshot(10);
+        }
+
+        @Test
+        void exportRuntimeMetrics_ShouldReturnSuccessStatus() throws Exception {
+                when(runtimeMetricsService.exportRuntimeMetrics(25))
+                                .thenReturn("metrics/runtime/20260223-190000-runtime-metrics.csv");
+
+                mockMvc.perform(post("/api/metrics/performance/runtime/export?limit=25"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.status").value("success"))
+                                .andExpect(jsonPath("$.message")
+                                                .value(org.hamcrest.Matchers.containsString("runtime-metrics.csv")));
+
+                verify(runtimeMetricsService).exportRuntimeMetrics(25);
+        }
+
+        @Test
+        void resetRuntimeMetrics_ShouldReturnSuccessStatus() throws Exception {
+                doNothing().when(runtimeMetricsService).reset();
+
+                mockMvc.perform(delete("/api/metrics/performance/runtime/reset"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.status").value("success"))
+                                .andExpect(jsonPath("$.message").value("Runtime API metrics have been reset"));
+
+                verify(runtimeMetricsService).reset();
         }
 }

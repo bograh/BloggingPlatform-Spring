@@ -9,6 +9,8 @@ import org.jspecify.annotations.NonNull;
 import org.springframework.graphql.execution.DataFetcherExceptionResolverAdapter;
 import org.springframework.graphql.execution.ErrorType;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 
@@ -24,6 +26,12 @@ public class CustomExceptionResolver extends DataFetcherExceptionResolverAdapter
     ) {
 
         return switch (ex) {
+            case AccessDeniedException e ->
+                    buildError(e, env, "FORBIDDEN", HttpStatus.FORBIDDEN.value(), ErrorType.FORBIDDEN);
+
+            case AuthenticationException e ->
+                    buildError(e, env, "UNAUTHORIZED", HttpStatus.UNAUTHORIZED.value(), ErrorType.UNAUTHORIZED);
+
             case UnauthorizedException e ->
                     buildError(e, env, "UNAUTHORIZED", HttpStatus.UNAUTHORIZED.value(), ErrorType.UNAUTHORIZED);
 

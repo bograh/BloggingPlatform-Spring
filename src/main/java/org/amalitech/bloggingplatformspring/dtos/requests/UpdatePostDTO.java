@@ -13,11 +13,11 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UpdatePostDTO {
+    @NotBlank(message = "Title is required")
     private String title;
-    private String body;
 
-    @NotBlank(message = "Author ID is required")
-    private String authorId;
+    @NotBlank(message = "Body is required")
+    private String body;
 
     private List<String> tags;
 }

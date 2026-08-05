@@ -136,6 +136,9 @@ docs/
 - `DELETE /api/metrics/performance/cache/reset` - Reset cache statistics
 - `POST /api/metrics/performance/cache/export-log` - Export cache metrics
 - `POST /api/metrics/performance/export-all` - Export combined metrics
+- `GET /api/metrics/performance/runtime` - Runtime API latency/throughput/memory snapshot
+- `POST /api/metrics/performance/runtime/export` - Export runtime metrics CSV
+- `DELETE /api/metrics/performance/runtime/reset` - Reset runtime metrics counters
 
 ### Database Architecture
 

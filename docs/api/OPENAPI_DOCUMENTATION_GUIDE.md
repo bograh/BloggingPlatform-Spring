@@ -42,7 +42,7 @@ available endpoints.
 #### 1. User Management
 
 **Tag**: User Management
-**Base Path**: `/api/v1/users`
+**Base Path**: `/api/users`
 
 | Method | Endpoint    | Description                        |
 |--------|-------------|------------------------------------|
@@ -52,13 +52,15 @@ available endpoints.
 #### 2. Post Management
 
 **Tag**: Post Management
-**Base Path**: `/api/v1/posts`
+**Base Path**: `/api/posts`
 
 | Method | Endpoint    | Description                                 |
 |--------|-------------|---------------------------------------------|
 | POST   | `/`         | Create a new blog post                      |
 | GET    | `/`         | Get all posts with pagination and filtering |
 | GET    | `/{postId}` | Get a specific post by ID                   |
+| GET    | `/popular`  | Get top popular posts (indexed + cached)    |
+| GET    | `/trending` | Get top trending posts (indexed + cached)   |
 | PUT    | `/{postId}` | Update an existing post                     |
 | DELETE | `/{postId}` | Delete a post                               |
 
@@ -72,10 +74,18 @@ available endpoints.
 - `tags`: Filter by tag names (comma-separated)
 - `search`: Search in title and content
 
+**Query Parameters for GET /popular and GET /trending**:
+
+- `limit`: Maximum number of posts to return (default: 10, max: 50)
+
+**Optimization Reference:**
+
+- [Data & Algorithmic Optimization Report](../performance/RETRIEVAL_OPTIMIZATION_REPORT.md)
+
 #### 3. Comment Management
 
 **Tag**: Comment Management
-**Base Path**: `/api/v1/comments`
+**Base Path**: `/api/comments`
 
 | Method | Endpoint         | Description                  |
 |--------|------------------|------------------------------|
@@ -91,17 +101,45 @@ available endpoints.
 **Tag**: Performance Metrics
 **Base Path**: `/api/metrics/performance`
 
-| Method | Endpoint                | Description                                       |
-|--------|-------------------------|---------------------------------------------------|
-| GET    | `/`                     | Get all performance metrics                       |
-| GET    | `/{layer}/{methodName}` | Get metrics for a specific method                 |
-| GET    | `/summary`              | Get aggregated metrics summary                    |
-| GET    | `/slow`                 | Get methods exceeding threshold (default: 1000ms) |
-| GET    | `/top`                  | Get top N slowest methods (default: 10)           |
-| GET    | `/layer/{layer}`        | Get metrics by layer (SERVICE/REPOSITORY)         |
-| GET    | `/failures`             | Get failure statistics                            |
-| DELETE | `/reset`                | Reset all metrics                                 |
-| POST   | `/export-log`           | Export metrics to log file                        |
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET    | `/` | Get all method-level performance metrics |
+| GET    | `/{layer}/{methodName}` | Get method metrics by layer/name |
+| GET    | `/method/{methodName}` | Get method metrics by full name |
+| GET    | `/summary` | Get aggregated method metrics summary |
+| DELETE | `/reset` | Reset method-level metrics |
+| POST   | `/export-log` | Export method-level metrics |
+| GET    | `/runtime` | Runtime API metrics (latency, throughput, memory) |
+| POST   | `/runtime/export` | Export runtime metrics to CSV |
+| DELETE | `/runtime/reset` | Reset runtime counters |
+| GET    | `/cache` | Get all cache metrics |
+| GET    | `/cache/{cacheName}` | Get specific cache metrics |
+| GET    | `/cache/summary` | Get cache summary |
+| DELETE | `/cache/reset` | Reset cache metrics |
+| POST   | `/cache/export-log` | Export cache metrics |
+| POST   | `/export-all` | Export combined metrics |
+| POST   | `/baseline` | Save PRE_CACHE baseline snapshot |
+| POST   | `/postcache` | Save POST_CACHE snapshot |
+| GET    | `/baseline/latest` | Latest PRE_CACHE snapshot |
+| GET    | `/postcache/latest` | Latest POST_CACHE snapshot |
+| GET    | `/baseline/history` | PRE_CACHE history |
+| GET    | `/postcache/history` | POST_CACHE history |
+| GET    | `/comparison/pre-cache-files` | List available pre-cache files |
+| GET    | `/comparison/{fileName}` | Compare current metrics with selected pre-cache file |
+| GET    | `/comparison` | Compare current metrics with latest pre-cache file |
+| GET    | `/comparison/database` | Compare latest PRE_CACHE vs POST_CACHE snapshots |
+| GET    | `/comparison/database/{preCacheId}/{postCacheId}` | Compare specific snapshots by ID |
+| POST   | `/save` | Save performance snapshot |
+| POST   | `/cache/save` | Save cache snapshot |
+| POST   | `/save-all` | Save performance + cache snapshots |
+| GET    | `/history` | Performance snapshot history |
+| GET    | `/cache/history` | Cache snapshot history |
+| POST   | `/simulation/run` | Run full cache simulation |
+| POST   | `/simulation/method/{methodType}` | Run simulation for specific method type |
+| POST   | `/simulation/getAllPosts` | Simulate getAllPosts |
+| POST   | `/simulation/getPostById/{postId}` | Simulate getPostById |
+| POST   | `/simulation/getCommentsByPostId/{postId}` | Simulate getCommentsByPostId |
+| POST   | `/simulation/getPopularTags` | Simulate getPopularTags |
 
 ## Using Swagger UI
 
@@ -116,7 +154,7 @@ available endpoints.
 #### Example: Creating a User
 
 1. Expand the **User Management** section
-2. Click on `POST /api/v1/users/register`
+2. Click on `POST /api/users/register`
 3. Click the **Try it out** button
 4. Edit the request body JSON:
 
@@ -135,7 +173,7 @@ available endpoints.
 #### Example: Getting Posts with Filters
 
 1. Expand the **Post Management** section
-2. Click on `GET /api/v1/posts`
+2. Click on `GET /api/posts`
 3. Click **Try it out**
 4. Fill in optional parameters:
     - `page`: 0
@@ -175,7 +213,7 @@ Example response codes:
 Most list endpoints support pagination:
 
 ```
-GET /api/v1/posts?page=0&size=10&sort=lastUpdated&order=DESC
+GET /api/posts?page=0&size=10&sort=lastUpdated&order=DESC
 ```
 
 Response includes:
@@ -207,7 +245,7 @@ Posts can be filtered by:
 Combine filters:
 
 ```
-GET /api/v1/posts?author=John&tags=java,spring&search=tutorial&page=0&size=10
+GET /api/posts?author=John&tags=java,spring&search=tutorial&page=0&size=10
 ```
 
 ### 3. Error Handling
@@ -243,7 +281,7 @@ All endpoints return consistent error responses:
 #### Register User
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/users/register \
+curl -X POST http://localhost:8080/api/users/register \
   -H "Content-Type: application/json" \
   -d '{
     "firstName": "John",
@@ -256,13 +294,13 @@ curl -X POST http://localhost:8080/api/v1/users/register \
 #### Get Posts
 
 ```bash
-curl -X GET "http://localhost:8080/api/v1/posts?page=0&size=10&sort=lastUpdated&order=DESC"
+curl -X GET "http://localhost:8080/api/posts?page=0&size=10&sort=lastUpdated&order=DESC"
 ```
 
 #### Create Post
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/posts \
+curl -X POST http://localhost:8080/api/posts \
   -H "Content-Type: application/json" \
   -d '{
     "title": "Getting Started with Spring Boot",
@@ -275,7 +313,7 @@ curl -X POST http://localhost:8080/api/v1/posts \
 #### Add Comment
 
 ```bash
-curl -X POST http://localhost:8080/api/v1/comments \
+curl -X POST http://localhost:8080/api/comments \
   -H "Content-Type: application/json" \
   -d '{
     "postId": 1,
@@ -400,7 +438,8 @@ This API also supports GraphQL:
 
 Monitor API performance using:
 
-- **Metrics Endpoint**: `/api/metrics/performance`
+- **Method Metrics Endpoint**: `/api/metrics/performance`
+- **Runtime Metrics Endpoint**: `/api/metrics/performance/runtime`
 - **Actuator**: `/actuator/metrics`
 - **Documentation**: See [docs/aop/PERFORMANCE_METRICS_GUIDE.md](../aop/PERFORMANCE_METRICS_GUIDE.md)
 
@@ -424,7 +463,7 @@ For issues or questions:
 
 ---
 
-**Last Updated**: January 20, 2026
+**Last Updated**: February 23, 2026
 **Version**: 1.0.0
 **Springdoc Version**: 2.3.0
 **OpenAPI Version**: 3.0

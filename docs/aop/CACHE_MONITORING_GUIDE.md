@@ -15,7 +15,8 @@ Complete guide to the caching and monitoring system in the Blogging Platform.
 
 ## Overview
 
-The Blogging Platform implements intelligent caching with comprehensive monitoring capabilities to optimize performance and provide insights into cache effectiveness.
+The Blogging Platform implements intelligent caching with comprehensive monitoring capabilities to optimize performance
+and provide insights into cache effectiveness.
 
 ### Features
 
@@ -38,7 +39,7 @@ public class CacheConfig {
     @Bean
     public CacheManager cacheManager() {
         SimpleCacheManager cacheManager = new SimpleCacheManager();
-        String[] cacheNames = {"users", "posts", "allPosts", "comments", "tags"};
+    String[] cacheNames = {"users", "posts", "postsList", "tags", "comments", "popularPosts", "trendingPosts"};
         // ... monitoring setup
         return cacheManager;
     }
@@ -48,6 +49,7 @@ public class CacheConfig {
 ### Monitored Cache Implementation
 
 Each cache is wrapped in a `MonitoredCache` that tracks:
+
 - Cache hits
 - Cache misses
 - Cache puts (additions)
@@ -63,13 +65,16 @@ Each cache is wrapped in a `MonitoredCache` that tracks:
 **Key Format**: `'profile:' + userID`
 
 **Cached By**:
+
 - `UserService.getUserById(UUID userID)`
 
 **Evicted On**:
+
 - User update operations
 - User deletion
 
 **Example**:
+
 ```java
 @Cacheable(cacheNames = "users", key = "'profile:' + #userID")
 public GetUserDTO getUserById(UUID userID) {
@@ -84,13 +89,16 @@ public GetUserDTO getUserById(UUID userID) {
 **Key Format**: Post ID
 
 **Cached By**:
+
 - `PostService.getPostById(Long postId)`
 
 **Evicted On**:
+
 - Post update
 - Post deletion
 
 **Example**:
+
 ```java
 @Cacheable(cacheNames = "posts", key = "#postId")
 public GetPostDTO getPostById(Long postId) {
@@ -98,23 +106,26 @@ public GetPostDTO getPostById(Long postId) {
 }
 ```
 
-### 3. All Posts Cache (`allPosts`)
+### 3. Post List Cache (`postsList`)
 
 **Purpose**: Caches paginated post listings
 
 **Key Format**: `'page:' + page + 'size:' + size + 'sort:' + sortBy + 'order:' + order`
 
 **Cached By**:
+
 - `PostService.getAllPosts(int page, int size, String sortBy, String order)`
 
 **Evicted On**:
+
 - New post creation
 - Any post update
 - Any post deletion
 
 **Example**:
+
 ```java
-@Cacheable(cacheNames = "allPosts",
+@Cacheable(cacheNames = "postsList",
     key = "'page:' + #page + 'size:' + #size + 'sort:' + #sortBy + 'order:' + #order")
 public PaginatedResponse<GetPostDTO> getAllPosts(...) {
     // ...
@@ -126,14 +137,17 @@ public PaginatedResponse<GetPostDTO> getAllPosts(...) {
 **Purpose**: Caches comment data and lists
 
 **Key Formats**:
+
 - Individual: Comment ID
 - By Post: `'post:' + postId`
 
 **Cached By**:
+
 - `CommentService.getCommentById(String commentId)`
 - `CommentService.getCommentsByPostId(Long postId)`
 
 **Evicted On**:
+
 - Comment creation (clears all)
 - Comment deletion (clears all)
 - User updates (clears related)
@@ -145,10 +159,12 @@ public PaginatedResponse<GetPostDTO> getAllPosts(...) {
 **Key Format**: `'popular'`
 
 **Cached By**:
+
 - `TagService.getPopularTags()`
 
 **Evicted On**:
-- Manual refresh via `/api/v1/tags/refresh`
+
+- Cache resets/evictions and tag update flows
 
 ## Cache Metrics
 
@@ -156,16 +172,16 @@ public PaginatedResponse<GetPostDTO> getAllPosts(...) {
 
 For each cache, the following metrics are tracked:
 
-| Metric | Description | Type |
-|--------|-------------|------|
-| **Hits** | Number of successful cache retrievals | Counter |
-| **Misses** | Number of cache misses (data not in cache) | Counter |
-| **Hit Rate** | Percentage of requests served from cache | Percentage |
-| **Miss Rate** | Percentage of requests requiring database lookup | Percentage |
-| **Total Requests** | Total cache access attempts (hits + misses) | Counter |
-| **Puts** | Number of items added to cache | Counter |
-| **Evictions** | Number of items removed from cache | Counter |
-| **Clears** | Number of times cache was completely cleared | Counter |
+| Metric             | Description                                      | Type       |
+|--------------------|--------------------------------------------------|------------|
+| **Hits**           | Number of successful cache retrievals            | Counter    |
+| **Misses**         | Number of cache misses (data not in cache)       | Counter    |
+| **Hit Rate**       | Percentage of requests served from cache         | Percentage |
+| **Miss Rate**      | Percentage of requests requiring database lookup | Percentage |
+| **Total Requests** | Total cache access attempts (hits + misses)      | Counter    |
+| **Puts**           | Number of items added to cache                   | Counter    |
+| **Evictions**      | Number of items removed from cache               | Counter    |
+| **Clears**         | Number of times cache was completely cleared     | Counter    |
 
 ### Calculating Hit Rate
 
@@ -175,6 +191,7 @@ Miss Rate = (Misses / Total Requests) × 100%
 ```
 
 **Example**:
+
 - Hits: 850
 - Misses: 150
 - Total Requests: 1000
@@ -188,6 +205,7 @@ Miss Rate = (Misses / Total Requests) × 100%
 **Endpoint**: `GET /api/metrics/performance/cache`
 
 **Response**:
+
 ```json
 {
   "totalCaches": 5,
@@ -225,6 +243,7 @@ Miss Rate = (Misses / Total Requests) × 100%
 **Endpoint**: `GET /api/metrics/performance/cache/summary`
 
 **Response**:
+
 ```json
 {
   "totalCaches": 5,
@@ -239,7 +258,7 @@ Miss Rate = (Misses / Total Requests) × 100%
     "hitRate": "92.31%"
   },
   "worstPerformingCache": {
-    "name": "allPosts",
+    "name": "postsList",
     "hitRate": "67.45%"
   },
   "timestamp": "2026-02-02T10:30:00.000"
@@ -253,6 +272,7 @@ Miss Rate = (Misses / Total Requests) × 100%
 **Example**: `GET /api/metrics/performance/cache/users`
 
 **Response**:
+
 ```json
 {
   "cacheName": "users",
@@ -273,6 +293,7 @@ Miss Rate = (Misses / Total Requests) × 100%
 **Endpoint**: `DELETE /api/metrics/performance/cache/reset`
 
 **Response**:
+
 ```json
 {
   "status": "success",
@@ -291,6 +312,7 @@ Miss Rate = (Misses / Total Requests) × 100%
 **Creates**: `metrics/YYYYMMDD-HHmmss-cache-metrics.log`
 
 **Response**:
+
 ```json
 {
   "status": "success",
@@ -305,10 +327,12 @@ Miss Rate = (Misses / Total Requests) × 100%
 **Creates**: `metrics/YYYYMMDD-HHmmss-combined-metrics.log`
 
 **Includes**:
+
 - Performance metrics (method execution times)
 - Cache metrics (hit rates, statistics)
 
 **Response**:
+
 ```json
 {
   "status": "success",
@@ -319,6 +343,7 @@ Miss Rate = (Misses / Total Requests) × 100%
 ### Export File Format
 
 **Example cache metrics export**:
+
 ```
 ================================================================================
 CACHE METRICS SUMMARY
@@ -333,7 +358,7 @@ Overall Cache Statistics:
   Total Puts: 342
   Total Evictions: 12
   Best Performing Cache: users (92.31%)
-  Worst Performing Cache: allPosts (67.45%)
+  Worst Performing Cache: postsList (67.45%)
 
 --------------------------------------------------------------------------------
 Individual Cache Details:
@@ -373,6 +398,7 @@ curl http://localhost:8080/api/metrics/performance/cache/summary
 ```
 
 Look for caches with:
+
 - Hit rates < 70%
 - High eviction counts
 - Unusual miss patterns
@@ -380,6 +406,7 @@ Look for caches with:
 #### 2. Analyze Cache Keys
 
 Ensure cache keys are:
+
 - **Consistent**: Same input produces same key
 - **Unique**: Different data gets different keys
 - **Stable**: Keys don't change unexpectedly
@@ -387,6 +414,7 @@ Ensure cache keys are:
 #### 3. Review Eviction Strategies
 
 High evictions may indicate:
+
 - Cache size too small
 - Too many updates
 - Inefficient eviction patterns
@@ -430,6 +458,7 @@ public GetPostDTO getPostById(Long postId) {
 - Use targeted eviction in updates
 
 **Good**:
+
 ```java
 @CacheEvict(cacheNames = "posts", key = "#postId")
 public void updatePost(Long postId, UpdatePostDTO dto) {
@@ -438,6 +467,7 @@ public void updatePost(Long postId, UpdatePostDTO dto) {
 ```
 
 **Avoid**:
+
 ```java
 @CacheEvict(cacheNames = "posts", allEntries = true)
 public void updatePost(Long postId, UpdatePostDTO dto) {
@@ -448,12 +478,14 @@ public void updatePost(Long postId, UpdatePostDTO dto) {
 ### 3. Cache Appropriate Data
 
 **Good candidates for caching**:
+
 - Frequently accessed data
 - Relatively static data
 - Expensive database queries
 - Computed results
 
 **Poor candidates**:
+
 - Highly dynamic data
 - User-specific sensitive data
 - Very large objects
@@ -462,6 +494,7 @@ public void updatePost(Long postId, UpdatePostDTO dto) {
 ### 4. Monitor Cache Size
 
 Keep track of:
+
 - Number of cached items
 - Memory usage
 - Eviction frequency
@@ -469,6 +502,7 @@ Keep track of:
 ### 5. Test Cache Behavior
 
 Include cache testing in your test suite:
+
 ```java
 @Test
 void testUserCaching() {
@@ -491,12 +525,14 @@ void testUserCaching() {
 **Symptoms**: Hit rate < 60%
 
 **Possible causes**:
+
 1. Cache keys not consistent
 2. Data changes too frequently
 3. Cache warming not implemented
 4. Cache size too small
 
 **Solutions**:
+
 - Review cache key generation
 - Implement cache warming on startup
 - Adjust eviction strategy
@@ -507,11 +543,13 @@ void testUserCaching() {
 **Symptoms**: Evictions/puts ratio > 0.5
 
 **Possible causes**:
+
 1. Cache size too small
 2. Too many update operations
 3. Aggressive eviction policy
 
 **Solutions**:
+
 - Increase cache capacity
 - Optimize update patterns
 - Review eviction conditions
@@ -521,6 +559,7 @@ void testUserCaching() {
 **Symptoms**: Sudden spike in misses after eviction
 
 **Solution**: Implement cache warming:
+
 ```java
 @PostConstruct
 public void warmupCache() {
@@ -581,5 +620,6 @@ The cache monitoring system provides comprehensive insights into application per
 ✅ Optimize based on data-driven decisions
 
 For more information, see:
+
 - [Performance Metrics Guide](PERFORMANCE_METRICS_GUIDE.md)
 - [AOP Implementation Guide](AOP_IMPLEMENTATION_GUIDE.md)

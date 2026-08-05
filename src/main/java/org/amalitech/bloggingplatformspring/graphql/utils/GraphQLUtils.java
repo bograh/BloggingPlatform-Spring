@@ -1,24 +1,33 @@
 package org.amalitech.bloggingplatformspring.graphql.utils;
 
-import org.amalitech.bloggingplatformspring.dtos.responses.CommentResponse;
-import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
+import org.amalitech.bloggingplatformspring.dtos.responses.*;
 import org.amalitech.bloggingplatformspring.entity.User;
-import org.amalitech.bloggingplatformspring.graphql.types.GraphQLComment;
-import org.amalitech.bloggingplatformspring.graphql.types.GraphQLPost;
-import org.amalitech.bloggingplatformspring.graphql.types.GraphQLTag;
-import org.amalitech.bloggingplatformspring.graphql.types.GraphQLUser;
+import org.amalitech.bloggingplatformspring.graphql.types.*;
 import org.amalitech.bloggingplatformspring.utils.Constants;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Component
 public class GraphQLUtils {
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(Constants.DATE_TIME_FORMAT_PATTERN);
+
+    public GraphQLAuthResponse createGraphQLAuthResponse(AuthResponseDTO authResponseDTO) {
+        AuthResponse authResponse = authResponseDTO.getAuthResponse();
+        UserResponseDTO userResponse = authResponse.user();
+        GraphQLUser user = new GraphQLUser(
+                UUID.fromString(userResponse.getId()), userResponse.getUsername(), userResponse.getEmail()
+        );
+        return new GraphQLAuthResponse(
+                authResponse.accessToken(),
+                user
+        );
+    }
 
     public GraphQLUser mapUserToGraphQLUser(User user) {
         return new GraphQLUser(

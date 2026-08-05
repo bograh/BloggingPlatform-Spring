@@ -2,7 +2,9 @@ package org.amalitech.bloggingplatformspring.repository;
 
 import org.amalitech.bloggingplatformspring.entity.Comment;
 import org.springframework.data.domain.Limit;
+import org.springframework.data.mongodb.repository.Aggregation;
 import org.springframework.data.mongodb.repository.MongoRepository;
+import java.time.LocalDateTime;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -20,5 +22,14 @@ public interface CommentRepository extends MongoRepository<Comment, String> {
 
     List<Comment> findCommentsByAuthorOrderByCommentedAtDesc(String author, Limit limit);
 
+    @Aggregation(pipeline = {
+            "{ '$match': { 'post_id': { '$in': ?0 } } }",
+            "{ '$group': { '_id': '$post_id', 'totalComments': { '$sum': 1 } } }",
+            "{ '$project': { '_id': 0, 'postId': '$_id', 'totalComments': 1 } }"
+    })
+    List<PostCommentCountProjection> countCommentsByPostIds(List<Long> postIds);
+
     void deleteCommentsByPostId(Long postId);
+
+    long countByCommentedAtAfter(LocalDateTime since);
 }

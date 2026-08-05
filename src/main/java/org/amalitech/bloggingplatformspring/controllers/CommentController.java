@@ -7,7 +7,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.amalitech.bloggingplatformspring.dtos.requests.CreateCommentDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.DeleteCommentRequestDTO;
 import org.amalitech.bloggingplatformspring.dtos.responses.ApiResponseGeneric;
@@ -20,16 +22,13 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+@RequiredArgsConstructor
 @RestController
-@RequestMapping("/api/v1/comments")
-@Tag(name = "3. Comment Management", description = "APIs for managing comments on blog posts (MongoDB-backed)")
+@RequestMapping("/api/comments")
+@Tag(name = "4. Comment Management", description = "APIs for managing comments on blog posts (MongoDB-backed)")
 public class CommentController {
 
     private final CommentService commentService;
-
-    public CommentController(CommentService commentService) {
-        this.commentService = commentService;
-    }
 
     @PostMapping
     @Operation(summary = "Add a comment to a post", description = "Creates a new comment on a blog post. Comments are stored in MongoDB.")
@@ -39,8 +38,8 @@ public class CommentController {
             @ApiResponse(responseCode = "404", description = "Post or user not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<ApiResponseGeneric<CommentResponse>> addCommentToPost(
-            @Valid @RequestBody CreateCommentDTO newComment) {
-        CommentResponse commentResponse = commentService.addCommentToPost(newComment);
+            @Valid @RequestBody CreateCommentDTO newComment, HttpServletRequest request) {
+        CommentResponse commentResponse = commentService.addCommentToPost(newComment, request);
         ApiResponseGeneric<CommentResponse> response = ApiResponseGeneric.success(
                 "Comment added to post successfully",
                 commentResponse);
@@ -86,8 +85,8 @@ public class CommentController {
     })
     public ResponseEntity<ApiResponseGeneric<Void>> deleteComment(
             @Parameter(description = "MongoDB Comment ID", example = "507f1f77bcf86cd799439011") @PathVariable String commentId,
-            @RequestBody DeleteCommentRequestDTO deleteCommentRequestDTO) {
-        commentService.deleteComment(commentId, deleteCommentRequestDTO);
+            @RequestBody DeleteCommentRequestDTO deleteCommentRequestDTO, HttpServletRequest request) {
+        commentService.deleteComment(commentId, deleteCommentRequestDTO, request);
         ApiResponseGeneric<Void> response = ApiResponseGeneric.success(
                 "Comment deleted successfully");
         return new ResponseEntity<>(response, HttpStatus.NO_CONTENT);

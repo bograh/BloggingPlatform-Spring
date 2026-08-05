@@ -15,6 +15,7 @@ import org.amalitech.bloggingplatformspring.services.PostService;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.graphql.data.method.annotation.SchemaMapping;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 
 import java.util.List;
@@ -31,6 +32,7 @@ public class GraphQLQueryResolver {
     private final GraphQLUtils graphQLUtils = new GraphQLUtils();
 
     @QueryMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public GraphQLUser getUser(@Argument UUID userId) {
         return userRepository.findById(userId)
                 .map(graphQLUtils::mapUserToGraphQLUser)
@@ -70,6 +72,7 @@ public class GraphQLQueryResolver {
     }
 
     @QueryMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public GraphQLComment getComment(@Argument String commentId) {
         CommentResponse comment = commentService.getCommentById(commentId);
         return graphQLUtils.mapCommentResponseToGraphQLComment(comment);
