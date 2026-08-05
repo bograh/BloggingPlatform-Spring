@@ -12,6 +12,7 @@ import org.amalitech.bloggingplatformspring.entity.PerformanceMetricsSnapshot;
 import org.amalitech.bloggingplatformspring.exceptions.BadRequestException;
 import org.amalitech.bloggingplatformspring.repository.CacheMetricsRepository;
 import org.amalitech.bloggingplatformspring.repository.PerformanceMetricsRepository;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -20,6 +21,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Matcher;
@@ -110,6 +112,12 @@ public class PerformanceMetricsService {
         performanceAspect.exportPerformanceSummary();
     }
 
+    @Async("applicationTaskExecutor")
+    public CompletableFuture<Void> exportPerformanceSummaryAsync() {
+        exportPerformanceSummary();
+        return CompletableFuture.completedFuture(null);
+    }
+
     /**
      * Export combined performance and cache metrics summary to logs and file
      */
@@ -117,11 +125,23 @@ public class PerformanceMetricsService {
         performanceAspect.exportCombinedMetrics(buildCacheMetricsMap(), buildCacheSummaryMap());
     }
 
+    @Async("applicationTaskExecutor")
+    public CompletableFuture<Void> exportAllMetricsAsync() {
+        exportAllMetrics();
+        return CompletableFuture.completedFuture(null);
+    }
+
     /**
      * Export only cache metrics to logs and file
      */
     public void exportCacheMetrics() {
         performanceAspect.exportCacheMetricsToFile(buildCacheMetricsMap(), buildCacheSummaryMap());
+    }
+
+    @Async("applicationTaskExecutor")
+    public CompletableFuture<Void> exportCacheMetricsAsync() {
+        exportCacheMetrics();
+        return CompletableFuture.completedFuture(null);
     }
 
     /**
@@ -300,6 +320,7 @@ public class PerformanceMetricsService {
     public PerformanceComparisonDTO compareWithPreCache(String preCacheFileName) {
         Map<String, PreCacheMetrics> preCacheMetrics = parsePreCacheFile(preCacheFileName);
         ConcurrentHashMap<String, MethodMetrics> currentMetrics = performanceAspect.getAllMetrics();
+        MethodMetricsLookup methodMetricsLookup = new MethodMetricsLookup(currentMetrics);
 
         List<MethodComparisonDTO> comparisons = new ArrayList<>();
 
@@ -318,7 +339,7 @@ public class PerformanceMetricsService {
             PreCacheMetrics preCacheData = entry.getValue();
 
             // Find matching current metric
-            MethodMetrics currentData = findMatchingMethod(currentMetrics, methodName);
+            MethodMetrics currentData = methodMetricsLookup.find(methodName);
             if (currentData == null) {
                 continue; // Skip if no matching current data
             }
@@ -399,6 +420,11 @@ public class PerformanceMetricsService {
             throw new BadRequestException("No pre-cache metrics files found");
         }
         return compareWithPreCache(files.get(0));
+    }
+
+    @Async("applicationTaskExecutor")
+    public CompletableFuture<PerformanceComparisonDTO> compareWithLatestPreCacheAsync() {
+        return CompletableFuture.completedFuture(compareWithLatestPreCache());
     }
 
     /**
@@ -507,6 +533,12 @@ public class PerformanceMetricsService {
         saveCacheMetricsSnapshot(snapshotType);
     }
 
+    @Async("applicationTaskExecutor")
+    public CompletableFuture<Void> saveAllMetricsSnapshotAsync(String snapshotType) {
+        saveAllMetricsSnapshot(snapshotType);
+        return CompletableFuture.completedFuture(null);
+    }
+
     /**
      * Get performance metrics history from database
      */
@@ -552,27 +584,9 @@ public class PerformanceMetricsService {
                 successRate);
     }
 
-    private MethodMetrics findMatchingMethod(ConcurrentHashMap<String, MethodMetrics> metrics, String methodName) {
-        // Direct match first
-        if (metrics.containsKey(methodName)) {
-            return metrics.get(methodName);
-        }
-        // Try to match by short name
-        for (Map.Entry<String, MethodMetrics> entry : metrics.entrySet()) {
-            if (entry.getKey().contains(methodName) || methodName.contains(entry.getKey())) {
-                return entry.getValue();
-            }
-        }
-        return null;
-    }
-
     private Map<String, PreCacheMetrics> parsePreCacheFile(String fileName) {
-        Path filePath = Paths.get(PRE_CACHE_DIR, fileName);
+        Path filePath = resolvePreCacheFilePath(fileName);
         Map<String, PreCacheMetrics> result = new HashMap<>();
-
-        if (!Files.exists(filePath)) {
-            throw new BadRequestException("Pre-cache file not found: " + fileName);
-        }
 
         try {
             List<String> lines = Files.readAllLines(filePath);
@@ -634,6 +648,25 @@ public class PerformanceMetricsService {
         }
 
         return result;
+    }
+
+    private Path resolvePreCacheFilePath(String fileName) {
+        if (fileName == null || fileName.isBlank()) {
+            throw new BadRequestException("Pre-cache file name is required");
+        }
+
+        Path baseDir = Paths.get(PRE_CACHE_DIR).toAbsolutePath().normalize();
+        Path resolvedPath = baseDir.resolve(fileName).normalize();
+
+        if (!resolvedPath.startsWith(baseDir)) {
+            throw new BadRequestException("Invalid pre-cache file path");
+        }
+
+        if (!Files.isRegularFile(resolvedPath)) {
+            throw new BadRequestException("Pre-cache file not found: " + fileName);
+        }
+
+        return resolvedPath;
     }
 
     /**
@@ -729,17 +762,15 @@ public class PerformanceMetricsService {
                 .stream()
                 .collect(Collectors.toMap(PerformanceMetricsSnapshot.MethodMetricsData::getMethodName, m -> m));
 
+        MethodMetricsDataLookup preCacheLookup = new MethodMetricsDataLookup(preCacheMap);
+
         // Compare methods
         for (PerformanceMetricsSnapshot.MethodMetricsData postCacheData : postCacheSnapshot.getMethodMetrics()) {
             String methodName = postCacheData.getMethodName();
-            PerformanceMetricsSnapshot.MethodMetricsData preCacheData = preCacheMap.get(methodName);
+            PerformanceMetricsSnapshot.MethodMetricsData preCacheData = preCacheLookup.find(methodName);
 
             if (preCacheData == null) {
-                // Try partial match
-                preCacheData = findMatchingMethodData(preCacheMap, methodName);
-                if (preCacheData == null) {
-                    continue; // Skip if no matching pre-cache data
-                }
+                continue; // Skip if no matching pre-cache data
             }
 
             PrePostMetricsDTO preMetrics = new PrePostMetricsDTO(
@@ -809,17 +840,75 @@ public class PerformanceMetricsService {
                 LocalDateTime.now());
     }
 
-    /**
-     * Find matching method data by partial name match
-     */
-    private PerformanceMetricsSnapshot.MethodMetricsData findMatchingMethodData(
-            Map<String, PerformanceMetricsSnapshot.MethodMetricsData> methodMap, String methodName) {
-        for (Map.Entry<String, PerformanceMetricsSnapshot.MethodMetricsData> entry : methodMap.entrySet()) {
-            if (entry.getKey().contains(methodName) || methodName.contains(entry.getKey())) {
-                return entry.getValue();
+    private String normalizeMethodName(String methodName) {
+        return methodName.replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
+    }
+
+    private String simplifyMethodName(String methodName) {
+        String withoutParams = methodName.contains("(")
+                ? methodName.substring(0, methodName.indexOf('('))
+                : methodName;
+        int lastDotIndex = withoutParams.lastIndexOf('.');
+        return lastDotIndex >= 0 ? withoutParams.substring(lastDotIndex + 1) : withoutParams;
+    }
+
+    private class MethodMetricsLookup {
+        private final Map<String, MethodMetrics> exact = new HashMap<>();
+        private final Map<String, MethodMetrics> normalized = new HashMap<>();
+
+        MethodMetricsLookup(Map<String, MethodMetrics> metrics) {
+            for (Map.Entry<String, MethodMetrics> entry : metrics.entrySet()) {
+                String fullMethodName = entry.getKey();
+                MethodMetrics methodMetrics = entry.getValue();
+
+                exact.put(fullMethodName, methodMetrics);
+                normalized.putIfAbsent(normalizeMethodName(fullMethodName), methodMetrics);
+                normalized.putIfAbsent(normalizeMethodName(simplifyMethodName(fullMethodName)), methodMetrics);
             }
         }
-        return null;
+
+        MethodMetrics find(String methodName) {
+            MethodMetrics directMatch = exact.get(methodName);
+            if (directMatch != null) {
+                return directMatch;
+            }
+            MethodMetrics normalizedMatch = normalized.get(normalizeMethodName(methodName));
+            if (normalizedMatch != null) {
+                return normalizedMatch;
+            }
+            return normalized.get(normalizeMethodName(simplifyMethodName(methodName)));
+        }
+    }
+
+    private class MethodMetricsDataLookup {
+        private final Map<String, PerformanceMetricsSnapshot.MethodMetricsData> exact = new HashMap<>();
+        private final Map<String, PerformanceMetricsSnapshot.MethodMetricsData> normalized = new HashMap<>();
+
+        MethodMetricsDataLookup(Map<String, PerformanceMetricsSnapshot.MethodMetricsData> methodMap) {
+            for (Map.Entry<String, PerformanceMetricsSnapshot.MethodMetricsData> entry : methodMap.entrySet()) {
+                String fullMethodName = entry.getKey();
+                PerformanceMetricsSnapshot.MethodMetricsData data = entry.getValue();
+
+                exact.put(fullMethodName, data);
+                normalized.putIfAbsent(normalizeMethodName(fullMethodName), data);
+                normalized.putIfAbsent(normalizeMethodName(simplifyMethodName(fullMethodName)), data);
+            }
+        }
+
+        PerformanceMetricsSnapshot.MethodMetricsData find(String methodName) {
+            PerformanceMetricsSnapshot.MethodMetricsData directMatch = exact.get(methodName);
+            if (directMatch != null) {
+                return directMatch;
+            }
+
+            PerformanceMetricsSnapshot.MethodMetricsData normalizedMatch = normalized
+                    .get(normalizeMethodName(methodName));
+            if (normalizedMatch != null) {
+                return normalizedMatch;
+            }
+
+            return normalized.get(normalizeMethodName(simplifyMethodName(methodName)));
+        }
     }
 
     /**

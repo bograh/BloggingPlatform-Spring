@@ -1,13 +1,13 @@
 package org.amalitech.bloggingplatformspring.controllers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.Cookie;
 import org.amalitech.bloggingplatformspring.dtos.requests.RegisterUserDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.SignInUserDTO;
 import org.amalitech.bloggingplatformspring.dtos.responses.AuthResponse;
 import org.amalitech.bloggingplatformspring.dtos.responses.AuthResponseDTO;
 import org.amalitech.bloggingplatformspring.dtos.responses.UserResponseDTO;
-import org.amalitech.bloggingplatformspring.exceptions.UnauthorizedException;
 import org.amalitech.bloggingplatformspring.security.JwtTokenProvider;
 import org.amalitech.bloggingplatformspring.security.RefreshCookieService;
 import org.amalitech.bloggingplatformspring.security.TokenSessionService;
@@ -25,231 +25,243 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = AuthController.class)
 @AutoConfigureMockMvc(addFilters = false)
 class AuthControllerTest {
 
-  @Autowired
-  private MockMvc mockMvc;
+    @Autowired
+    private MockMvc mockMvc;
 
-  @Autowired
-  private ObjectMapper objectMapper;
+    @Autowired
+    private ObjectMapper objectMapper;
 
-  @MockitoBean
-  private AuthService authService;
+    @MockitoBean
+    private AuthService authService;
 
-  @MockitoBean
-  private RefreshCookieService refreshCookieService;
+    @MockitoBean
+    private RefreshCookieService refreshCookieService;
 
-  @MockitoBean
-  private TokenSessionService tokenSessionService;
+    @MockitoBean
+    private TokenSessionService tokenSessionService;
 
-  @MockitoBean
-  private JwtTokenProvider jwtTokenProvider;
+    @MockitoBean
+    private JwtTokenProvider jwtTokenProvider;
 
-  // Mock security components
-  @MockitoBean
-  private org.amalitech.bloggingplatformspring.services.CustomUserDetailsService customUserDetailsService;
+    // Mock security components
+    @MockitoBean
+    private org.amalitech.bloggingplatformspring.services.CustomUserDetailsService customUserDetailsService;
 
-  @MockitoBean
-  private org.amalitech.bloggingplatformspring.services.SecurityAuditService securityAuditService;
+    @MockitoBean
+    private org.amalitech.bloggingplatformspring.services.SecurityAuditService securityAuditService;
 
-  @Test
-  void registerUser_shouldReturnCreatedStatus_whenValidData() throws Exception {
-    RegisterUserDTO registerDTO = new RegisterUserDTO();
-    registerDTO.setUsername("testuser");
-    registerDTO.setEmail("test@example.com");
-    registerDTO.setPassword("Password123!");
+    @MockitoBean
+    private org.amalitech.bloggingplatformspring.services.RuntimeMetricsService runtimeMetricsService;
 
-    UserResponseDTO userResponse = new UserResponseDTO();
-    userResponse.setId(UUID.randomUUID().toString());
-    userResponse.setUsername("testuser");
-    userResponse.setEmail("test@example.com");
+    @MockitoBean
+    private org.amalitech.bloggingplatformspring.utils.UserUtils userUtils;
 
-    String accessToken = "access-token-123";
-    String refreshToken = "refresh-token-123";
+    @Test
+    void registerUser_shouldReturnCreatedStatus_whenValidData() throws Exception {
+        RegisterUserDTO registerDTO = new RegisterUserDTO();
+        registerDTO.setUsername("testuser");
+        registerDTO.setEmail("test@example.com");
+        registerDTO.setPassword("Password123!");
 
-    AuthResponse authResponse = new AuthResponse(userResponse, accessToken);
-    AuthResponseDTO authResponseDTO = new AuthResponseDTO(refreshToken, authResponse);
+        UserResponseDTO userResponse = new UserResponseDTO();
+        userResponse.setId(UUID.randomUUID().toString());
+        userResponse.setUsername("testuser");
+        userResponse.setEmail("test@example.com");
 
-    when(authService.registerUser(any(RegisterUserDTO.class))).thenReturn(authResponseDTO);
+        String accessToken = "access-token-123";
+        String refreshToken = "refresh-token-123";
 
-    mockMvc.perform(post("/api/auth/register")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(registerDTO)))
-        .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.status").value("success"))
-        .andExpect(jsonPath("$.message").value("User registration successful"))
-        .andExpect(jsonPath("$.data.user.username").value("testuser"))
-        .andExpect(jsonPath("$.data.user.email").value("test@example.com"))
-        .andExpect(jsonPath("$.data.accessToken").value(accessToken));
+        AuthResponse authResponse = new AuthResponse(userResponse, accessToken);
+        AuthResponseDTO authResponseDTO = new AuthResponseDTO(refreshToken, authResponse);
 
-    verify(authService).registerUser(any(RegisterUserDTO.class));
-    verify(tokenSessionService).createSession(eq("test@example.com"), eq(accessToken), eq(refreshToken));
-    verify(refreshCookieService).setRefreshTokenCookie(eq(refreshToken), any());
-  }
+        when(authService.registerUser(any(RegisterUserDTO.class))).thenReturn(authResponseDTO);
 
-  @Test
-  void registerUser_shouldReturnBadRequest_whenInvalidData() throws Exception {
-    RegisterUserDTO registerDTO = new RegisterUserDTO();
-    registerDTO.setUsername("");
-    registerDTO.setEmail("invalid-email");
-    registerDTO.setPassword("weak");
+        mockMvc.perform(post("/api/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(registerDTO)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("success"))
+                .andExpect(jsonPath("$.message").value("User registration successful"))
+                .andExpect(jsonPath("$.data.user.username").value("testuser"))
+                .andExpect(jsonPath("$.data.user.email").value("test@example.com"))
+                .andExpect(jsonPath("$.data.accessToken").value(accessToken));
 
-    mockMvc.perform(post("/api/auth/register")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(registerDTO)))
-        .andExpect(status().isBadRequest());
+        verify(authService).registerUser(any(RegisterUserDTO.class));
+        verify(tokenSessionService).createSession(eq("test@example.com"), eq(accessToken), eq(refreshToken));
+        verify(refreshCookieService).setRefreshTokenCookie(eq(refreshToken), any());
+    }
 
-    verify(authService, never()).registerUser(any(RegisterUserDTO.class));
-  }
+    @Test
+    void registerUser_shouldReturnBadRequest_whenInvalidData() throws Exception {
+        RegisterUserDTO registerDTO = new RegisterUserDTO();
+        registerDTO.setUsername("");
+        registerDTO.setEmail("invalid-email");
+        registerDTO.setPassword("weak");
 
-  @Test
-  void signInUser_shouldReturnOkStatus_whenValidCredentials() throws Exception {
-    SignInUserDTO signInDTO = new SignInUserDTO();
-    signInDTO.setEmail("test@example.com");
-    signInDTO.setPassword("Password123!");
+        mockMvc.perform(post("/api/auth/register")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(registerDTO)))
+                .andExpect(status().isBadRequest());
 
-    UserResponseDTO userResponse = new UserResponseDTO();
-    userResponse.setId(UUID.randomUUID().toString());
-    userResponse.setUsername("testuser");
-    userResponse.setEmail("test@example.com");
+        verify(authService, never()).registerUser(any(RegisterUserDTO.class));
+    }
 
-    String accessToken = "access-token-123";
-    String refreshToken = "refresh-token-123";
+    @Test
+    void signInUser_shouldReturnOkStatus_whenValidCredentials() throws Exception {
+        SignInUserDTO signInDTO = new SignInUserDTO();
+        signInDTO.setEmail("test@example.com");
+        signInDTO.setPassword("Password123!");
 
-    AuthResponse authResponse = new AuthResponse(userResponse, accessToken);
-    AuthResponseDTO authResponseDTO = new AuthResponseDTO(refreshToken, authResponse);
+        UserResponseDTO userResponse = new UserResponseDTO();
+        userResponse.setId(UUID.randomUUID().toString());
+        userResponse.setUsername("testuser");
+        userResponse.setEmail("test@example.com");
 
-    when(authService.signInUser(any(SignInUserDTO.class))).thenReturn(authResponseDTO);
+        String accessToken = "access-token-123";
+        String refreshToken = "refresh-token-123";
 
-    mockMvc.perform(post("/api/auth/sign-in")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(signInDTO)))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status").value("success"))
-        .andExpect(jsonPath("$.message").value("User sign in successful"))
-        .andExpect(jsonPath("$.data.user.email").value("test@example.com"))
-        .andExpect(jsonPath("$.data.accessToken").value(accessToken));
+        AuthResponse authResponse = new AuthResponse(userResponse, accessToken);
+        AuthResponseDTO authResponseDTO = new AuthResponseDTO(refreshToken, authResponse);
 
-    verify(authService).signInUser(any(SignInUserDTO.class));
-    verify(tokenSessionService).createSession(eq("test@example.com"), eq(accessToken), eq(refreshToken));
-    verify(refreshCookieService).setRefreshTokenCookie(eq(refreshToken), any());
-  }
+        when(authService.signInUser(any(SignInUserDTO.class))).thenReturn(authResponseDTO);
 
-  @Test
-  void signInUser_shouldReturnBadRequest_whenInvalidData() throws Exception {
-    SignInUserDTO signInDTO = new SignInUserDTO();
-    signInDTO.setEmail("");
-    signInDTO.setPassword("");
+        mockMvc.perform(post("/api/auth/sign-in")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(signInDTO)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("success"))
+                .andExpect(jsonPath("$.message").value("User sign in successful"))
+                .andExpect(jsonPath("$.data.user.email").value("test@example.com"))
+                .andExpect(jsonPath("$.data.accessToken").value(accessToken));
 
-    mockMvc.perform(post("/api/auth/sign-in")
-        .contentType(MediaType.APPLICATION_JSON)
-        .content(objectMapper.writeValueAsString(signInDTO)))
-        .andExpect(status().isBadRequest());
+        verify(authService).signInUser(any(SignInUserDTO.class));
+        verify(tokenSessionService).createSession(eq("test@example.com"), eq(accessToken), eq(refreshToken));
+        verify(refreshCookieService).setRefreshTokenCookie(eq(refreshToken), any());
+    }
 
-    verify(authService, never()).signInUser(any(SignInUserDTO.class));
-  }
+    @Test
+    void signInUser_shouldReturnBadRequest_whenInvalidData() throws Exception {
+        SignInUserDTO signInDTO = new SignInUserDTO();
+        signInDTO.setEmail("");
+        signInDTO.setPassword("");
 
-  @Test
-  void refreshAccessToken_shouldReturnNewToken_whenValidRefreshToken() throws Exception {
-    String refreshToken = "valid-refresh-token";
+        mockMvc.perform(post("/api/auth/sign-in")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(signInDTO)))
+                .andExpect(status().isBadRequest());
 
-    UserResponseDTO userResponse = new UserResponseDTO();
-    userResponse.setId(UUID.randomUUID().toString());
-    userResponse.setUsername("testuser");
-    userResponse.setEmail("test@example.com");
+        verify(authService, never()).signInUser(any(SignInUserDTO.class));
+    }
 
-    String newAccessToken = "new-access-token";
-    String newRefreshToken = "new-refresh-token";
+    @Test
+    void refreshAccessToken_shouldReturnNewToken_whenValidRefreshToken() throws Exception {
+        String refreshToken = "valid-refresh-token";
 
-    AuthResponse authResponse = new AuthResponse(userResponse, newAccessToken);
-    AuthResponseDTO authResponseDTO = new AuthResponseDTO(newRefreshToken, authResponse);
+        UserResponseDTO userResponse = new UserResponseDTO();
+        userResponse.setId(UUID.randomUUID().toString());
+        userResponse.setUsername("testuser");
+        userResponse.setEmail("test@example.com");
 
-    when(tokenSessionService.isTokenRevoked(refreshToken)).thenReturn(false);
-    when(authService.refreshAccessToken(refreshToken)).thenReturn(authResponseDTO);
+        String newAccessToken = "new-access-token";
+        String newRefreshToken = "new-refresh-token";
 
-    mockMvc.perform(post("/api/auth/refresh-token")
-        .cookie(new Cookie("refreshToken", refreshToken))
-        .contentType(MediaType.APPLICATION_JSON))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status").value("success"))
-        .andExpect(jsonPath("$.message").value("Access token refreshed successfully"))
-        .andExpect(jsonPath("$.data.accessToken").value(newAccessToken));
+        AuthResponse authResponse = new AuthResponse(userResponse, newAccessToken);
+        AuthResponseDTO authResponseDTO = new AuthResponseDTO(newRefreshToken, authResponse);
 
-    verify(tokenSessionService).isTokenRevoked(refreshToken);
-    verify(authService).refreshAccessToken(refreshToken);
-    verify(tokenSessionService).createSession(eq("test@example.com"), eq(newAccessToken), eq(newRefreshToken));
-    verify(refreshCookieService).setRefreshTokenCookie(eq(newRefreshToken), any());
-  }
+        when(tokenSessionService.isTokenRevoked(refreshToken)).thenReturn(false);
+        when(authService.refreshAccessToken(refreshToken)).thenReturn(authResponseDTO);
 
-  @Test
-  void refreshAccessToken_shouldThrowUnauthorized_whenTokenRevoked() throws Exception {
-    String revokedToken = "revoked-token";
+        mockMvc.perform(post("/api/auth/refresh-token")
+                .cookie(new Cookie("refreshToken", refreshToken))
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("success"))
+                .andExpect(jsonPath("$.message").value("Access token refreshed successfully"))
+                .andExpect(jsonPath("$.data.accessToken").value(newAccessToken));
 
-    when(tokenSessionService.isTokenRevoked(revokedToken)).thenReturn(true);
+        verify(tokenSessionService).isTokenRevoked(refreshToken);
+        verify(authService).refreshAccessToken(refreshToken);
+        verify(tokenSessionService).createSession(eq("test@example.com"), eq(newAccessToken), eq(newRefreshToken));
+        verify(refreshCookieService).setRefreshTokenCookie(eq(newRefreshToken), any());
+    }
 
-    mockMvc.perform(post("/api/auth/refresh-token")
-        .cookie(new Cookie("refreshToken", revokedToken))
-        .contentType(MediaType.APPLICATION_JSON))
-        .andExpect(status().isUnauthorized());
+    @Test
+    void refreshAccessToken_shouldThrowUnauthorized_whenTokenRevoked() throws Exception {
+        String revokedToken = "revoked-token";
 
-    verify(tokenSessionService).isTokenRevoked(revokedToken);
-    verify(authService, never()).refreshAccessToken(anyString());
-  }
+        when(tokenSessionService.isTokenRevoked(revokedToken)).thenReturn(true);
 
-  @Test
-  void signOutUser_shouldRevokeTokensAndClearCookie_whenValidTokens() throws Exception {
-    String accessToken = "valid-access-token";
-    String refreshToken = "valid-refresh-token";
-    String email = "test@example.com";
+        mockMvc.perform(post("/api/auth/refresh-token")
+                .cookie(new Cookie("refreshToken", revokedToken))
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isUnauthorized());
 
-    when(jwtTokenProvider.getEmailFromAccessToken(accessToken)).thenReturn(email);
+        verify(tokenSessionService).isTokenRevoked(revokedToken);
+        verify(authService, never()).refreshAccessToken(anyString());
+    }
 
-    mockMvc.perform(post("/api/auth/sign-out")
-        .header("Authorization", "Bearer " + accessToken)
-        .cookie(new Cookie("refreshToken", refreshToken))
-        .contentType(MediaType.APPLICATION_JSON))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status").value("success"))
-        .andExpect(jsonPath("$.message").value("User signed out successfully"));
+    @Test
+    void signOutUser_shouldRevokeTokensAndClearCookie_whenValidTokens() throws Exception {
+        String accessToken = "valid-access-token";
+        String refreshToken = "valid-refresh-token";
+        String email = "test@example.com";
 
-    verify(jwtTokenProvider).getEmailFromAccessToken(accessToken);
-    verify(tokenSessionService).removeSession(email);
-    verify(tokenSessionService).revokeToken(accessToken);
-    verify(tokenSessionService).revokeToken(refreshToken);
-    verify(refreshCookieService).clearRefreshTokenCookie(any());
-  }
+        Claims claims = mock(Claims.class);
+        when(claims.getSubject()).thenReturn(email);
+        when(jwtTokenProvider.parseAccessToken(accessToken)).thenReturn(claims);
 
-  @Test
-  void signOutUser_shouldStillWork_whenNoTokensProvided() throws Exception {
-    mockMvc.perform(post("/api/auth/sign-out")
-        .contentType(MediaType.APPLICATION_JSON))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status").value("success"))
-        .andExpect(jsonPath("$.message").value("User signed out successfully"));
+        mockMvc.perform(post("/api/auth/sign-out")
+                .header("Authorization", "Bearer " + accessToken)
+                .cookie(new Cookie("refreshToken", refreshToken))
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("success"))
+                .andExpect(jsonPath("$.message")
+                        .value("User signed out successfully"));
 
-    verify(jwtTokenProvider, never()).getEmailFromAccessToken(anyString());
-    verify(tokenSessionService, never()).removeSession(anyString());
-    verify(tokenSessionService, never()).revokeToken(anyString());
-    verify(refreshCookieService).clearRefreshTokenCookie(any());
-  }
+        verify(jwtTokenProvider).parseAccessToken(accessToken);
+        verify(tokenSessionService).removeSession(email);
+        verify(tokenSessionService).revokeToken(accessToken);
+        verify(tokenSessionService).revokeToken(refreshToken);
+        verify(refreshCookieService).clearRefreshTokenCookie(any());
+    }
 
-  @Test
-  void signOutUser_shouldRevokeOnlyRefreshToken_whenNoAccessToken() throws Exception {
-    String refreshToken = "valid-refresh-token";
+    @Test
+    void signOutUser_shouldStillWork_whenNoTokensProvided() throws Exception {
 
-    mockMvc.perform(post("/api/auth/sign-out")
-        .cookie(new Cookie("refreshToken", refreshToken))
-        .contentType(MediaType.APPLICATION_JSON))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status").value("success"));
+        mockMvc.perform(post("/api/auth/sign-out")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("success"))
+                .andExpect(jsonPath("$.message")
+                        .value("User signed out successfully"));
 
-    verify(jwtTokenProvider, never()).getEmailFromAccessToken(anyString());
-    verify(tokenSessionService, never()).removeSession(anyString());
-    verify(tokenSessionService).revokeToken(refreshToken);
-    verify(refreshCookieService).clearRefreshTokenCookie(any());
-  }
+        verify(jwtTokenProvider, never()).parseAccessToken(anyString());
+        verify(tokenSessionService, never()).removeSession(anyString());
+        verify(tokenSessionService, never()).revokeToken(anyString());
+        verify(tokenSessionService, never()).revokeToken(anyString());
+        verify(refreshCookieService).clearRefreshTokenCookie(any());
+    }
+
+    @Test
+    void signOutUser_shouldRevokeOnlyRefreshToken_whenNoAccessToken() throws Exception {
+        String refreshToken = "valid-refresh-token";
+        mockMvc.perform(post("/api/auth/sign-out")
+                .cookie(new Cookie("refreshToken", refreshToken))
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("success"));
+
+        verify(jwtTokenProvider, never()).parseAccessToken(anyString());
+        verify(tokenSessionService, never()).removeSession(anyString());
+        verify(tokenSessionService).revokeToken(refreshToken);
+        verify(refreshCookieService).clearRefreshTokenCookie(any());
+    }
 }

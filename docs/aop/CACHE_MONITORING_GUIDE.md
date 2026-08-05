@@ -39,7 +39,7 @@ public class CacheConfig {
     @Bean
     public CacheManager cacheManager() {
         SimpleCacheManager cacheManager = new SimpleCacheManager();
-        String[] cacheNames = {"users", "posts", "allPosts", "comments", "tags"};
+    String[] cacheNames = {"users", "posts", "postsList", "tags", "comments", "popularPosts", "trendingPosts"};
         // ... monitoring setup
         return cacheManager;
     }
@@ -106,7 +106,7 @@ public GetPostDTO getPostById(Long postId) {
 }
 ```
 
-### 3. All Posts Cache (`allPosts`)
+### 3. Post List Cache (`postsList`)
 
 **Purpose**: Caches paginated post listings
 
@@ -125,7 +125,7 @@ public GetPostDTO getPostById(Long postId) {
 **Example**:
 
 ```java
-@Cacheable(cacheNames = "allPosts",
+@Cacheable(cacheNames = "postsList",
     key = "'page:' + #page + 'size:' + #size + 'sort:' + #sortBy + 'order:' + #order")
 public PaginatedResponse<GetPostDTO> getAllPosts(...) {
     // ...
@@ -164,7 +164,7 @@ public PaginatedResponse<GetPostDTO> getAllPosts(...) {
 
 **Evicted On**:
 
-- Manual refresh via `/api/tags/refresh`
+- Cache resets/evictions and tag update flows
 
 ## Cache Metrics
 
@@ -258,7 +258,7 @@ Miss Rate = (Misses / Total Requests) × 100%
     "hitRate": "92.31%"
   },
   "worstPerformingCache": {
-    "name": "allPosts",
+    "name": "postsList",
     "hitRate": "67.45%"
   },
   "timestamp": "2026-02-02T10:30:00.000"
@@ -358,7 +358,7 @@ Overall Cache Statistics:
   Total Puts: 342
   Total Evictions: 12
   Best Performing Cache: users (92.31%)
-  Worst Performing Cache: allPosts (67.45%)
+  Worst Performing Cache: postsList (67.45%)
 
 --------------------------------------------------------------------------------
 Individual Cache Details:

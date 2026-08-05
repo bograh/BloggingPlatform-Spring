@@ -18,8 +18,10 @@ import org.amalitech.bloggingplatformspring.dtos.responses.PostResponseDTO;
 import org.amalitech.bloggingplatformspring.exceptions.ErrorResponse;
 import org.amalitech.bloggingplatformspring.services.PostService;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -34,7 +36,7 @@ public class PostController {
         this.postService = postService;
     }
 
-    @PostMapping
+    @PostMapping(path = "/old", consumes = MediaType.APPLICATION_JSON_VALUE)
     @Operation(summary = "Create a new blog post", description = "Creates a new blog post with title, content, author, and optional tags")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Post successfully created", content = @Content(schema = @Schema(implementation = PostResponseDTO.class))),
@@ -44,6 +46,23 @@ public class PostController {
     public ResponseEntity<ApiResponseGeneric<PostResponseDTO>> createPost(
             @Valid @RequestBody CreatePostDTO createPostDTO, HttpServletRequest request) {
         PostResponseDTO postResponseDTO = postService.createPost(createPostDTO, request);
+        ApiResponseGeneric<PostResponseDTO> response = ApiResponseGeneric.success("Post created successfully",
+                postResponseDTO);
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
+    }
+
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Create a new blog post with optional image", description = "Creates a new blog post and optionally uploads an image asynchronously")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Post successfully created", content = @Content(schema = @Schema(implementation = PostResponseDTO.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid input data or image", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Author not found", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<ApiResponseGeneric<PostResponseDTO>> createPostWithImage(
+            @Valid @RequestPart("post") CreatePostDTO createPostDTO,
+            @RequestPart(name = "image", required = false) MultipartFile image,
+            HttpServletRequest request) {
+        PostResponseDTO postResponseDTO = postService.createPost(createPostDTO, request, image);
         ApiResponseGeneric<PostResponseDTO> response = ApiResponseGeneric.success("Post created successfully",
                 postResponseDTO);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
@@ -65,7 +84,8 @@ public class PostController {
             @Parameter(description = "Search in title and content") @RequestParam(required = false) String search) {
 
         PostFilterRequest postFilterRequest = new PostFilterRequest(author, search, tags);
-        PageResponse<PostResponseDTO> posts = postService.getAllPosts(page, size, sortBy, sortDirection, postFilterRequest);
+        PageResponse<PostResponseDTO> posts = postService.getAllPosts(page, size, sortBy, sortDirection,
+                postFilterRequest);
         ApiResponseGeneric<PageResponse<PostResponseDTO>> response = ApiResponseGeneric
                 .success("Posts retrieved successfully", posts);
         return ResponseEntity.ok(response);
@@ -80,7 +100,28 @@ public class PostController {
     public ResponseEntity<ApiResponseGeneric<PostResponseDTO>> getPostById(
             @Parameter(description = "Post ID", example = "1") @PathVariable Long postId) {
         PostResponseDTO post = postService.getPostById(postId);
-        ApiResponseGeneric<PostResponseDTO> response = ApiResponseGeneric.success("Post retrieved successfully", post);
+        ApiResponseGeneric<PostResponseDTO> response = ApiResponseGeneric.success("Post retrieved successfully",
+                post);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/popular")
+    @Operation(summary = "Get popular posts", description = "Retrieves top popular posts using in-memory indexing and cache-backed retrieval")
+    public ResponseEntity<ApiResponseGeneric<List<PostResponseDTO>>> getPopularPosts(
+            @Parameter(description = "Max number of posts (default 10)", example = "10") @RequestParam(name = "limit", defaultValue = "10") int limit) {
+        List<PostResponseDTO> posts = postService.getPopularPosts(limit);
+        ApiResponseGeneric<List<PostResponseDTO>> response = ApiResponseGeneric
+                .success("Popular posts retrieved successfully", posts);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/trending")
+    @Operation(summary = "Get trending posts", description = "Retrieves top trending posts using in-memory indexing and cache-backed retrieval")
+    public ResponseEntity<ApiResponseGeneric<List<PostResponseDTO>>> getTrendingPosts(
+            @Parameter(description = "Max number of posts (default 10)", example = "10") @RequestParam(name = "limit", defaultValue = "10") int limit) {
+        List<PostResponseDTO> posts = postService.getTrendingPosts(limit);
+        ApiResponseGeneric<List<PostResponseDTO>> response = ApiResponseGeneric
+                .success("Trending posts retrieved successfully", posts);
         return ResponseEntity.ok(response);
     }
 
@@ -96,7 +137,8 @@ public class PostController {
             @Parameter(description = "Post ID", example = "1") @PathVariable Long postId,
             @Valid @RequestBody UpdatePostDTO updatePostDTO, HttpServletRequest request) {
         PostResponseDTO post = postService.updatePost(postId, updatePostDTO, request);
-        ApiResponseGeneric<PostResponseDTO> response = ApiResponseGeneric.success("Post updated successfully", post);
+        ApiResponseGeneric<PostResponseDTO> response = ApiResponseGeneric.success("Post updated successfully",
+                post);
         return ResponseEntity.ok(response);
     }
 

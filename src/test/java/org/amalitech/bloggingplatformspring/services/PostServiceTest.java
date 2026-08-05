@@ -13,6 +13,7 @@ import org.amalitech.bloggingplatformspring.exceptions.BadRequestException;
 import org.amalitech.bloggingplatformspring.exceptions.ForbiddenException;
 import org.amalitech.bloggingplatformspring.exceptions.ResourceNotFoundException;
 import org.amalitech.bloggingplatformspring.repository.CommentRepository;
+import org.amalitech.bloggingplatformspring.repository.PostImageRepository;
 import org.amalitech.bloggingplatformspring.repository.PostRepository;
 import org.amalitech.bloggingplatformspring.repository.UserRepository;
 import org.amalitech.bloggingplatformspring.utils.PostUtils;
@@ -59,6 +60,18 @@ class PostServiceTest {
 
     @Mock
     private UserUtils userUtils;
+
+    @Mock
+    private PostRankingIndexService postRankingIndexService;
+
+    @Mock
+    private AsyncImageUploadService asyncImageUploadService;
+
+    @Mock
+    private PostImageRepository postImageRepository;
+
+    @Mock
+    private NotificationQueueService notificationQueueService;
 
     @Mock
     private HttpServletRequest request;
@@ -113,6 +126,8 @@ class PostServiceTest {
         Tag tag2 = new Tag();
         tag2.setName("tag2");
         tags = new HashSet<>(Arrays.asList(tag1, tag2));
+
+        lenient().when(postImageRepository.findByPostId(anyLong())).thenReturn(List.of());
     }
 
     @Test

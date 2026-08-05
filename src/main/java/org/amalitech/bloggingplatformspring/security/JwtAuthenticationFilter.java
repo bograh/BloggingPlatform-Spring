@@ -1,108 +1,93 @@
 package org.amalitech.bloggingplatformspring.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.amalitech.bloggingplatformspring.exceptions.ErrorResponse;
-import org.amalitech.bloggingplatformspring.services.CustomUserDetailsService;
-import org.amalitech.bloggingplatformspring.services.SecurityAuditService;
+import org.amalitech.bloggingplatformspring.utils.UserUtils;
+import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
 
 @Slf4j
 @RequiredArgsConstructor
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    private static final String AUTH_PREFIX = "/api/auth/";
+    private static final String OAUTH2_PREFIX = "/oauth2/";
+    private static final String LOGIN_OAUTH2_PREFIX = "/login/oauth2/";
+    private static final String SWAGGER_PREFIX = "/swagger-ui/";
+    private static final String API_DOCS_PREFIX = "/v3/api-docs/";
+
     private final JwtTokenProvider jwtTokenProvider;
-    private final CustomUserDetailsService customUserDetailsService;
-    private final ObjectMapper objectMapper;
+    private final UserUtils userUtils;
     private final TokenSessionService tokenSessionService;
-    private final SecurityAuditService securityAuditService;
 
     @Override
-    protected void doFilterInternal(
-            @NonNull HttpServletRequest request,
+    protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
+        String method = request.getMethod();
+        if ("OPTIONS".equalsIgnoreCase(method)) {
+            return true;
+        }
+
+        String path = request.getRequestURI();
+        return path.startsWith(AUTH_PREFIX)
+                || path.startsWith(OAUTH2_PREFIX)
+                || path.startsWith(LOGIN_OAUTH2_PREFIX)
+                || path.startsWith(SWAGGER_PREFIX)
+                || path.startsWith(API_DOCS_PREFIX)
+                || "/graphql".equals(path)
+                || "/graphiql".equals(path)
+                || "/favicon.ico".equals(path)
+                || "/actuator/health".equals(path)
+                || "/swagger-ui.html".equals(path)
+                || "/error".equals(path);
+    }
+
+    @Override
+    protected void doFilterInternal(@NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
 
-        String token = getTokenFromAuthorizationHeader(request);
+        String token = extractTokenFromRequest(request);
 
-        if (StringUtils.hasText(token)) {
-            String ipAddress = getClientIp(request);
-            String userAgent = request.getHeader("User-Agent");
-            String endpoint = request.getRequestURI();
+        if (token != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            Claims claims = jwtTokenProvider.parseAccessToken(token);
 
-            if (tokenSessionService.isTokenRevoked(token)) {
-                securityAuditService.logTokenValidationFailure(
-                        ipAddress, userAgent, endpoint, "Token has been revoked");
-
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.setContentType("application/json");
-
-                ErrorResponse errorResponse = new ErrorResponse(
-                        "UNAUTHORIZED",
-                        "Invalid or expired token",
-                        HttpServletResponse.SC_UNAUTHORIZED);
-
-                response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
-                return;
-            }
-
-            if (jwtTokenProvider.validAccessToken(token)) {
-                String email = jwtTokenProvider.getEmailFromAccessToken(token);
-
-                tokenSessionService.updateSessionActivity(email);
-                UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
+            if (claims != null && !tokenSessionService.isTokenRevoked(token)) {
+                String email = claims.getSubject();
+                List<String> roles = userUtils.extractRoles(claims);
+                List<SimpleGrantedAuthority> authorities = roles.stream()
+                        .map(SimpleGrantedAuthority::new)
+                        .toList();
 
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.getAuthorities());
-
+                        email, null, authorities);
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
-            } else {
-                securityAuditService.logTokenValidationFailure(
-                        ipAddress, userAgent, endpoint, "Invalid or expired access token");
             }
         }
 
         filterChain.doFilter(request, response);
     }
 
-    /**
-     * Get client IP address from request
-     */
-    private String getClientIp(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            return xForwardedFor.split(",")[0].trim();
+    private String extractTokenFromRequest(HttpServletRequest request) {
+        String bearer = request.getHeader("Authorization");
+        if (bearer != null && bearer.startsWith("Bearer ")) {
+            return bearer.substring(7);
         }
-        String xRealIp = request.getHeader("X-Real-IP");
-        if (xRealIp != null && !xRealIp.isEmpty()) {
-            return xRealIp;
-        }
-        return request.getRemoteAddr();
-    }
 
-    private String getTokenFromAuthorizationHeader(HttpServletRequest request) {
-        String bearerToken = request.getHeader("Authorization");
-        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
-            return bearerToken.substring(7);
-        }
         return null;
     }
 }

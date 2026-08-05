@@ -7,6 +7,7 @@ import lombok.Setter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
+import org.springframework.data.mongodb.core.index.Indexed;
 
 import java.time.LocalDateTime;
 
@@ -21,6 +22,7 @@ public class Comment {
     private String id;
 
     @Field("post_id")
+    @Indexed(name = "idx_comments_post_id")
     private Long postId;
 
     @Field("author_id")

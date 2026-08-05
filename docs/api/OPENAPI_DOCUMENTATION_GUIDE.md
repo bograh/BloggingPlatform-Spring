@@ -59,6 +59,8 @@ available endpoints.
 | POST   | `/`         | Create a new blog post                      |
 | GET    | `/`         | Get all posts with pagination and filtering |
 | GET    | `/{postId}` | Get a specific post by ID                   |
+| GET    | `/popular`  | Get top popular posts (indexed + cached)    |
+| GET    | `/trending` | Get top trending posts (indexed + cached)   |
 | PUT    | `/{postId}` | Update an existing post                     |
 | DELETE | `/{postId}` | Delete a post                               |
 
@@ -71,6 +73,14 @@ available endpoints.
 - `author`: Filter by author name
 - `tags`: Filter by tag names (comma-separated)
 - `search`: Search in title and content
+
+**Query Parameters for GET /popular and GET /trending**:
+
+- `limit`: Maximum number of posts to return (default: 10, max: 50)
+
+**Optimization Reference:**
+
+- [Data & Algorithmic Optimization Report](../performance/RETRIEVAL_OPTIMIZATION_REPORT.md)
 
 #### 3. Comment Management
 
@@ -91,17 +101,45 @@ available endpoints.
 **Tag**: Performance Metrics
 **Base Path**: `/api/metrics/performance`
 
-| Method | Endpoint                | Description                                       |
-|--------|-------------------------|---------------------------------------------------|
-| GET    | `/`                     | Get all performance metrics                       |
-| GET    | `/{layer}/{methodName}` | Get metrics for a specific method                 |
-| GET    | `/summary`              | Get aggregated metrics summary                    |
-| GET    | `/slow`                 | Get methods exceeding threshold (default: 1000ms) |
-| GET    | `/top`                  | Get top N slowest methods (default: 10)           |
-| GET    | `/layer/{layer}`        | Get metrics by layer (SERVICE/REPOSITORY)         |
-| GET    | `/failures`             | Get failure statistics                            |
-| DELETE | `/reset`                | Reset all metrics                                 |
-| POST   | `/export-log`           | Export metrics to log file                        |
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET    | `/` | Get all method-level performance metrics |
+| GET    | `/{layer}/{methodName}` | Get method metrics by layer/name |
+| GET    | `/method/{methodName}` | Get method metrics by full name |
+| GET    | `/summary` | Get aggregated method metrics summary |
+| DELETE | `/reset` | Reset method-level metrics |
+| POST   | `/export-log` | Export method-level metrics |
+| GET    | `/runtime` | Runtime API metrics (latency, throughput, memory) |
+| POST   | `/runtime/export` | Export runtime metrics to CSV |
+| DELETE | `/runtime/reset` | Reset runtime counters |
+| GET    | `/cache` | Get all cache metrics |
+| GET    | `/cache/{cacheName}` | Get specific cache metrics |
+| GET    | `/cache/summary` | Get cache summary |
+| DELETE | `/cache/reset` | Reset cache metrics |
+| POST   | `/cache/export-log` | Export cache metrics |
+| POST   | `/export-all` | Export combined metrics |
+| POST   | `/baseline` | Save PRE_CACHE baseline snapshot |
+| POST   | `/postcache` | Save POST_CACHE snapshot |
+| GET    | `/baseline/latest` | Latest PRE_CACHE snapshot |
+| GET    | `/postcache/latest` | Latest POST_CACHE snapshot |
+| GET    | `/baseline/history` | PRE_CACHE history |
+| GET    | `/postcache/history` | POST_CACHE history |
+| GET    | `/comparison/pre-cache-files` | List available pre-cache files |
+| GET    | `/comparison/{fileName}` | Compare current metrics with selected pre-cache file |
+| GET    | `/comparison` | Compare current metrics with latest pre-cache file |
+| GET    | `/comparison/database` | Compare latest PRE_CACHE vs POST_CACHE snapshots |
+| GET    | `/comparison/database/{preCacheId}/{postCacheId}` | Compare specific snapshots by ID |
+| POST   | `/save` | Save performance snapshot |
+| POST   | `/cache/save` | Save cache snapshot |
+| POST   | `/save-all` | Save performance + cache snapshots |
+| GET    | `/history` | Performance snapshot history |
+| GET    | `/cache/history` | Cache snapshot history |
+| POST   | `/simulation/run` | Run full cache simulation |
+| POST   | `/simulation/method/{methodType}` | Run simulation for specific method type |
+| POST   | `/simulation/getAllPosts` | Simulate getAllPosts |
+| POST   | `/simulation/getPostById/{postId}` | Simulate getPostById |
+| POST   | `/simulation/getCommentsByPostId/{postId}` | Simulate getCommentsByPostId |
+| POST   | `/simulation/getPopularTags` | Simulate getPopularTags |
 
 ## Using Swagger UI
 
@@ -400,7 +438,8 @@ This API also supports GraphQL:
 
 Monitor API performance using:
 
-- **Metrics Endpoint**: `/api/metrics/performance`
+- **Method Metrics Endpoint**: `/api/metrics/performance`
+- **Runtime Metrics Endpoint**: `/api/metrics/performance/runtime`
 - **Actuator**: `/actuator/metrics`
 - **Documentation**: See [docs/aop/PERFORMANCE_METRICS_GUIDE.md](../aop/PERFORMANCE_METRICS_GUIDE.md)
 
@@ -424,7 +463,7 @@ For issues or questions:
 
 ---
 
-**Last Updated**: January 20, 2026
+**Last Updated**: February 23, 2026
 **Version**: 1.0.0
 **Springdoc Version**: 2.3.0
 **OpenAPI Version**: 3.0

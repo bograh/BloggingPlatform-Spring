@@ -1,5 +1,6 @@
 package org.amalitech.bloggingplatformspring.exceptions;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -76,6 +78,12 @@ public class GlobalExceptionHandler {
                         e.getMessage(),
                         status.value()
                 ));
+    }
+
+    @ExceptionHandler(EmailSendException.class)
+    public void handleEmailSendException(EmailSendException e) {
+        log.error("Failed to send email: {}", e.getMessage());
+        log.error("Cause:", e.getCause());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

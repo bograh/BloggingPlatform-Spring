@@ -29,8 +29,7 @@ Comprehensive schema covering all key entities:
 
 - `getUser(userId)` - Fetch user by ID
 - `getPost(postId)` - Fetch post with nested author and tags
-- `getAllPosts` - Fetch all posts
-- `getPaginatedPosts(pageRequest, filter)` - Paginated posts with filtering
+- `getAllPosts(page, size, sortBy, sortDirection, author, tags, search)` - Paginated posts with filtering
 - `getComment(commentId)` - Fetch specific comment
 - `getCommentsByPost(postId)` - Fetch all comments for a post
 - `getAllTags` - Fetch all available tags
@@ -41,7 +40,7 @@ Comprehensive schema covering all key entities:
 - `signInUser(input)` - Authenticate user
 - `createPost(input)` - Create new post with tags
 - `updatePost(postId, input)` - Update existing post
-- `deletePost(postId, authorId)` - Delete post
+- `deletePost(postId)` - Delete post
 - `createComment(input)` - Add comment to post
 - `deleteComment(commentId, input)` - Remove comment
 
@@ -196,9 +195,12 @@ Built-in pagination with filtering:
 
 ```graphql
 query {
-  getPaginatedPosts(
-    pageRequest: { page: 0, size: 10 }
-    filter: { tag: "technology" }
+  getAllPosts(
+    page: 0
+    size: 10
+    sortBy: "updatedAt"
+    sortDirection: "desc"
+    tags: ["technology"]
   ) {
     content { id title }
     totalElements
@@ -274,10 +276,12 @@ Open browser: `http://localhost:8080/graphiql`
 
 ```graphql
 query {
-  getAllPosts {
-    id
-    title
-    body
+  getAllPosts(page: 0, size: 10) {
+    content {
+      id
+      title
+      body
+    }
   }
 }
 ```

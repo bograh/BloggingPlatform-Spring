@@ -25,6 +25,7 @@ public class AdminService {
     private final CommentRepository commentRepository;
     private final TokenSessionService tokenSessionService;
 
+    @Transactional(readOnly = true)
     public StatsResponse getStats() {
         long totalUsers = userRepository.count();
         long totalPosts = postRepository.count();

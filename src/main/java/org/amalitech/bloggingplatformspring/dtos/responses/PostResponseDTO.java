@@ -21,4 +21,5 @@ public class PostResponseDTO {
     private String postedAt;
     private String lastUpdated;
     private long totalComments;
+    private List<String> imageUrls;
 }

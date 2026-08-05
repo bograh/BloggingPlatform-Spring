@@ -12,6 +12,8 @@ Aspect-Oriented Programming.
 - [Architecture](#architecture)
 - [Quick Start](#quick-start)
 - [API Documentation](#api-documentation)
+- [Documentation Index](#documentation-index)
+- [Optimization Implementation](#optimization-implementation)
 - [Database Schema](#database-schema)
 - [Performance & Monitoring](#performance--monitoring)
 - [Technology Stack](#technology-stack)
@@ -214,18 +216,25 @@ Once running, access the application at:
 
 ### REST API Endpoints
 
-#### Users API (`/api/users`)
+#### Auth API (`/api/auth`)
 
 - `POST /register` - Register a new user
-- `GET /{userId}` - Get user by ID
-- `PUT /{userId}` - Update user information
-- `DELETE /{userId}` - Delete user account
+- `POST /sign-in` - Authenticate user and issue tokens
+- `POST /refresh-token` - Rotate/refresh access token
+- `POST /sign-out` - Revoke session and clear refresh token
+
+#### Users API (`/api/users`)
+
+- `GET /profile` - Get authenticated user's profile
 
 #### Posts API (`/api/posts`)
 
-- `POST /` - Create a new post
+- `POST /old` (`application/json`) - Create post without image
+- `POST /` (`multipart/form-data`) - Create post with optional image (`post` + optional `image`)
 - `GET /` - Get all posts (paginated, filterable, sortable)
 - `GET /{postId}` - Get post by ID
+- `GET /popular?limit=10` - Get popular posts (index + cache optimized)
+- `GET /trending?limit=10` - Get trending posts (index + cache optimized)
 - `PUT /{postId}` - Update existing post
 - `DELETE /{postId}` - Delete post
 
@@ -239,7 +248,40 @@ Once running, access the application at:
 #### Tags API (`/api/tags`)
 
 - `GET /popular` - Get most used tags
-- `POST /refresh` - Refresh tag cache
+
+#### Feed API (`/api/feed`)
+
+- `GET /` - Aggregated feed (recent/trending/popular)
+- `GET /trending/live` - Live trending deltas and movement
+- `POST /trending/refresh` - Force trending snapshot refresh
+
+#### Moderation API (`/api/moderation`) *(admin)*
+
+- `POST /bulk` - Queue bulk moderation task
+- `GET /tasks/{taskId}` - Get moderation task status
+- `GET /tasks` - List moderation tasks
+
+#### Notification API (`/api/notifications`) *(admin)*
+
+- `POST /` - Queue notification outbox event
+- `GET /{notificationId}` - Get notification status
+- `GET /stats` - Get outbox processing statistics
+
+#### Reports API (`/api/reports`) *(admin)*
+
+- `POST /export` - Start async report generation
+- `GET /{reportId}` - Get report metadata/status
+- `GET /download/{reportId}` - Download generated report
+- `GET /` - List reports
+
+#### Image API (`/api/images`)
+
+- `POST /upload/{postId}` (`multipart/form-data`) - Upload image for a post
+- `GET /status/{imageId}` - Get upload status
+- `GET /post/{postId}` - List post images
+- `GET /post/{postId}/completed` - List completed post images
+- `POST /retry/{imageId}` - Retry failed image upload
+- `DELETE /{imageId}` - Delete image
 
 #### Performance Metrics API (`/api/metrics/performance`)
 
@@ -254,6 +296,9 @@ Once running, access the application at:
 - `DELETE /cache/reset` - Reset cache statistics
 - `POST /cache/export-log` - Export cache metrics to file
 - `POST /export-all` - Export combined metrics to file
+- `GET /runtime` - Get API runtime metrics (latency, req/sec, memory)
+- `POST /runtime/export` - Export runtime metrics to CSV table
+- `DELETE /runtime/reset` - Reset runtime metrics counters
 
 ### GraphQL API
 
@@ -261,16 +306,16 @@ Once running, access the application at:
 
 ```graphql
 # Get all posts with pagination
-getAllPosts(page: Int, size: Int, sortBy: String, order: String): [Post!]!
+getAllPosts(page: Int, size: Int, sortBy: String, sortDirection: String, author: String, tags: [String!], search: String): PostPage!
 
 # Get post by ID with relationships
-getPostById(postId: ID!): Post
+getPost(postId: Int!): Post
 
 # Get user by ID
-getUserById(userId: ID!): User
+getUser(userId: UUID!): User
 
 # Get comments for a post
-getCommentsByPostId(postId: ID!): [Comment!]!
+getCommentsByPost(postId: Int!): [Comment!]!
 ```
 
 **Mutation Operations:**
@@ -280,14 +325,29 @@ getCommentsByPostId(postId: ID!): [Comment!]!
 createPost(input: CreatePostInput!): Post!
 
 # Update existing post
-updatePost(postId: ID!, input: UpdatePostInput!): Post!
+updatePost(postId: Int!, input: UpdatePostInput!): Post!
 
 # Delete post
-deletePost(postId: ID!, authorId: ID!): Boolean!
+deletePost(postId: Int!): Boolean!
 
 # Create comment
 createComment(input: CreateCommentInput!): Comment!
 ```
+
+### Access Rules (Current SecurityConfig)
+
+- Public: `/api/auth/**`, `/oauth2/**`, `/login/oauth2/**`, `/graphql`, `/graphiql`, `/swagger-ui/**`, `/v3/api-docs/**`, `/actuator/health`
+- Public GET: `/api/posts/**`, `/api/tags/**`
+- Public feed: `/api/feed/**` (all methods)
+- Admin-only: `/api/admin/**`, `/api/users/**`, `/api/metrics/performance/**`, `/api/security/audit/**`, `/actuator/**`
+
+## Documentation Index
+
+Centralized docs navigation lives in [docs/README.md](docs/README.md).
+
+## Optimization Implementation
+
+- [Optimization Implementation Documentation](docs/optimization/OPTIMIZATION.md) - Concrete implementation details for async processing, concurrency/thread safety, retrieval optimization, and metrics evidence workflow.
 
 **For detailed examples:**
 
@@ -350,7 +410,49 @@ curl http://localhost:8080/api/metrics/performance/summary
 
 # Export to file (creates metrics/YYYYMMDD-HHmmss-performance-summary.log)
 curl -X POST http://localhost:8080/api/metrics/performance/export-log
+
+# Get runtime API metrics (latency/throughput/memory)
+curl "http://localhost:8080/api/metrics/performance/runtime?limit=10"
+
+# Export runtime metrics CSV table (creates metrics/runtime/YYYYMMDD-HHmmss-runtime-metrics.csv)
+curl -X POST "http://localhost:8080/api/metrics/performance/runtime/export?limit=20"
 ```
+
+### Profiling Workflow (Baseline → Optimized)
+
+1. Save baseline and reset metrics:
+
+```bash
+curl -X POST http://localhost:8080/api/metrics/performance/baseline
+```
+
+2. Run concurrent profile workload:
+
+```bash
+bash dev/performance-tests/run-admin-profile.sh
+```
+
+3. Save optimized snapshot and compare:
+
+```bash
+curl -X POST http://localhost:8080/api/metrics/performance/postcache
+curl http://localhost:8080/api/metrics/performance/comparison/database
+```
+
+4. Export runtime + method/cache metrics tables:
+
+```bash
+curl -X POST "http://localhost:8080/api/metrics/performance/runtime/export?limit=25"
+curl -X POST http://localhost:8080/api/metrics/performance/export-all
+```
+
+Related reports:
+
+- `docs/performance/BASELINE_PERFORMANCE_SUMMARY.md`
+- `docs/performance/CONCURRENT_API_CALLS_TEST_REPORT.md`
+- `docs/performance/CONCURRENCY_THREAD_SAFETY_TUNING_REPORT.md`
+- `docs/performance/RETRIEVAL_OPTIMIZATION_REPORT.md`
+- `docs/performance/FINAL_OPTIMIZATION_REPORT.md`
 
 ### Cache Monitoring
 
@@ -360,9 +462,21 @@ Intelligent caching with comprehensive statistics tracking:
 
 - `users` - User profile caching
 - `posts` - Individual post caching
-- `allPosts` - Post list caching
+- `postsList` - Post list caching
 - `comments` - Comment caching
 - `tags` - Popular tags caching
+- `popularPosts` - Popular post ranking caching
+- `trendingPosts` - Trending post ranking caching
+
+### Retrieval Optimization Notes
+
+- Popular/trending retrieval now uses in-memory ranking indexes plus cache-backed top-K reads.
+- Post list mapping avoids N+1 comment-count queries via bulk aggregation.
+- Method comparison lookups now use indexed matching instead of linear scans.
+
+Detailed benchmark report:
+
+- [Data & Algorithmic Optimization Report](docs/performance/RETRIEVAL_OPTIMIZATION_REPORT.md)
 
 **Metrics tracked per cache:**
 
@@ -471,22 +585,24 @@ Comprehensive documentation is available in the `docs/` directory:
 
 ```bash
 # Register a user
-curl -X POST http://localhost:8080/api/users/register \
+curl -X POST http://localhost:8080/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{"username":"john_doe","email":"john@example.com","password":"SecurePass123!"}'
 
-# Create a post
-curl -X POST http://localhost:8080/api/posts \
+# Create a post (JSON endpoint)
+curl -X POST http://localhost:8080/api/posts/old \
   -H "Content-Type: application/json" \
-  -d '{"title":"My First Post","body":"This is the content of my post","authorId":"<uuid>","tags":["tech","spring"]}'
+  -H "Authorization: Bearer <access_token>" \
+  -d '{"title":"My First Post","body":"This is the content of my post","tags":["tech","spring"]}'
 
 # Get all posts with pagination and sorting
-curl "http://localhost:8080/api/posts?page=0&size=10&sortBy=postedAt&order=desc"
+curl "http://localhost:8080/api/posts?page=0&size=10&sort=lastUpdated&order=DESC"
 
 # Add a comment
 curl -X POST http://localhost:8080/api/comments \
   -H "Content-Type: application/json" \
-  -d '{"postId":1,"authorId":"<uuid>","author":"john_doe","content":"Great post!"}'
+  -H "Authorization: Bearer <access_token>" \
+  -d '{"postId":1,"commentContent":"Great post!"}'
 
 # Get performance metrics summary
 curl http://localhost:8080/api/metrics/performance/summary
@@ -503,11 +619,11 @@ see [API Endpoints Reference](dev/ENDPOINTS.md)**
 ```graphql
 # Query: Get post with author and tags
 query {
-    getPostById(postId: 1) {
+  getPost(postId: 1) {
         id
         title
         body
-        postedAt
+    createdAt
         author {
             id
             username
@@ -525,26 +641,29 @@ mutation {
     createPost(input: {
         title: "My GraphQL Post"
         body: "Content created via GraphQL"
-        authorId: "<uuid>"
         tags: ["graphql", "api"]
     }) {
         id
         title
-        postedAt
+    createdAt
     }
 }
 
 # Query: Get paginated posts
 query {
-    getAllPosts(page: 0, size: 10, sortBy: "postedAt", order: "DESC") {
-        id
-        title
-        author {
-            username
-        }
-        tags {
-            name
-        }
+  getAllPosts(page: 0, size: 10, sortBy: "updatedAt", sortDirection: "desc") {
+    content {
+      id
+      title
+      author {
+        username
+      }
+      tags {
+        name
+      }
+    }
+    totalElements
+    totalPages
     }
 }
 ```

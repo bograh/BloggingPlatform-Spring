@@ -35,14 +35,18 @@ The GraphQL API supports the following entities:
 ### Query: Get All Posts
 ```graphql
 query {
-  getAllPosts {
-    id
-    title
-    body
-    tags {
-      name
+  getAllPosts(page: 0, size: 10, sortBy: "updatedAt", sortDirection: "desc") {
+    content {
+      id
+      title
+      body
+      tags {
+        name
+      }
+      updatedAt
     }
-    updatedAt
+    totalElements
+    totalPages
   }
 }
 ```
@@ -71,17 +75,13 @@ query {
 ### Query: Get Paginated Posts with Filters
 ```graphql
 query {
-  getPaginatedPosts(
-    pageRequest: {
-      page: 0
-      size: 10
-      sortBy: "createdAt"
-      sortDirection: "DESC"
-    }
-    filter: {
-      tag: "technology"
-      keyword: "spring"
-    }
+  getAllPosts(
+    page: 0
+    size: 10
+    sortBy: "updatedAt"
+    sortDirection: "desc"
+    tags: ["technology"]
+    search: "spring"
   ) {
     content {
       id
@@ -104,7 +104,7 @@ query {
 query {
   getCommentsByPost(postId: 1) {
     id
-    authorUsername
+    author
     content
     createdAt
   }
@@ -118,7 +118,6 @@ query {
     id
     username
     email
-    createdAt
   }
 }
 ```
@@ -143,10 +142,12 @@ mutation {
     email: "john@example.com"
     password: "SecurePass123!"
   }) {
-    id
-    username
-    email
-    createdAt
+    token
+    user {
+      id
+      username
+      email
+    }
   }
 }
 ```
@@ -171,7 +172,6 @@ mutation {
   createPost(input: {
     title: "Introduction to GraphQL"
     body: "GraphQL is a query language for APIs..."
-    authorId: "550e8400-e29b-41d4-a716-446655440000"
     tags: ["graphql", "api", "technology"]
   }) {
     id
@@ -193,7 +193,6 @@ mutation {
     input: {
       title: "Introduction to GraphQL - Updated"
       body: "Updated content..."
-      authorId: "550e8400-e29b-41d4-a716-446655440000"
       tags: ["graphql", "api"]
     }
   ) {
@@ -210,7 +209,6 @@ mutation {
 mutation {
   deletePost(
     postId: 1
-    authorId: "550e8400-e29b-41d4-a716-446655440000"
   )
 }
 ```
@@ -220,11 +218,10 @@ mutation {
 mutation {
   createComment(input: {
     postId: 1
-    authorId: "550e8400-e29b-41d4-a716-446655440000"
     commentContent: "Great article!"
   }) {
     id
-    authorUsername
+    author
     content
     createdAt
   }
@@ -237,7 +234,7 @@ mutation {
   deleteComment(
     commentId: "507f1f77bcf86cd799439011"
     input: {
-      authorId: "550e8400-e29b-41d4-a716-446655440000"
+      postId: 1
     }
   )
 }
@@ -261,7 +258,7 @@ query {
     }
   }
   getCommentsByPost(postId: 1) {
-    authorUsername
+    author
     content
     createdAt
   }
@@ -271,9 +268,11 @@ query {
 ### Multiple Queries in One Request
 ```graphql
 query {
-  allPosts: getAllPosts {
-    id
-    title
+  allPosts: getAllPosts(page: 0, size: 5) {
+    content {
+      id
+      title
+    }
   }
   allTags: getAllTags {
     id

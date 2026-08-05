@@ -2,52 +2,52 @@
 
 ## Quick Start
 
-### 1. View All Metrics
+### 1. View All Method Metrics
 
 ```bash
 curl http://localhost:8080/api/metrics/performance
 ```
 
-### 2. View Specific Method
-
-```bash
-curl http://localhost:8080/api/metrics/performance/SERVICE/PostServiceImpl.createPost(..)
-```
-
-### 3. View Summary
+### 2. View Metrics Summary
 
 ```bash
 curl http://localhost:8080/api/metrics/performance/summary
 ```
 
-### 4. Find Slow Methods (>1 second)
+### 3. View Specific Method (by layer/name)
 
 ```bash
-curl http://localhost:8080/api/metrics/performance/slow
+curl http://localhost:8080/api/metrics/performance/SERVICE/createPost
 ```
 
-### 5. Top 10 Slowest Methods
+### 4. View Runtime API Metrics
 
 ```bash
-curl http://localhost:8080/api/metrics/performance/top?limit=10
+curl "http://localhost:8080/api/metrics/performance/runtime?limit=10"
 ```
 
-### 6. Service Layer Only
+### 5. Export Runtime Metrics CSV
 
 ```bash
-curl http://localhost:8080/api/metrics/performance/layer/SERVICE
+curl -X POST "http://localhost:8080/api/metrics/performance/runtime/export?limit=25"
 ```
 
-### 7. Repository Layer Only
+### 6. Compare PRE_CACHE vs POST_CACHE (DB)
 
 ```bash
-curl http://localhost:8080/api/metrics/performance/layer/REPOSITORY
+curl http://localhost:8080/api/metrics/performance/comparison/database
 ```
 
-### 8. Failure Statistics
+### 7. Export Performance + Cache Metrics
 
 ```bash
-curl http://localhost:8080/api/metrics/performance/failures
+curl -X POST http://localhost:8080/api/metrics/performance/export-all
+```
+
+### 8. Reset Runtime Metrics
+
+```bash
+curl -X DELETE http://localhost:8080/api/metrics/performance/runtime/reset
 ```
 
 ### 9. Reset All Metrics
@@ -68,24 +68,18 @@ curl -X POST http://localhost:8080/api/metrics/performance/export-log
 
 ```json
 {
-  "totalMethods": 15,
-  "timestamp": "2026-01-20T10:30:45.123Z",
-  "methods": [
+  "totalMethods": 2,
+  "timestamp": "2026-02-23T19:00:00",
+  "metrics": [
     {
-      "method": "SERVICE::PostServiceImpl.createPost(..)",
+      "methodName": "PostService.getAllPosts(..)",
       "totalCalls": 245,
       "successfulCalls": 243,
       "failedCalls": 2,
-      "failureRate": "0.82%",
-      "avgExecutionTime": 125,
+      "averageExecutionTime": 125,
       "minExecutionTime": 45,
       "maxExecutionTime": 890,
-      "p50": 110,
-      "p95": 450,
-      "p99": 750,
-      "stdDev": "95.23",
-      "unit": "ms",
-      "performanceLevel": "NORMAL"
+      "successRate": 99.18
     }
   ]
 }
@@ -100,23 +94,11 @@ curl -X POST http://localhost:8080/api/metrics/performance/export-log
 | totalCalls       | Total number of method invocations      |
 | successfulCalls  | Number of successful executions         |
 | failedCalls      | Number of failed executions             |
-| failureRate      | Percentage of failed calls              |
+| successRate      | Percentage of successful calls          |
 | avgExecutionTime | Average execution time in ms            |
 | minExecutionTime | Fastest execution time in ms            |
 | maxExecutionTime | Slowest execution time in ms            |
-| p50              | Median execution time (50th percentile) |
-| p95              | 95th percentile execution time          |
-| p99              | 99th percentile execution time          |
-| stdDev           | Standard deviation of execution times   |
 
----
-
-## Performance Levels
-
-- **FAST**: < 100ms
-- **NORMAL**: 100ms - 500ms
-- **SLOW**: 500ms - 1000ms
-- **CRITICAL**: > 1000ms
 
 ---
 
@@ -145,9 +127,8 @@ curl http://localhost:8080/actuator/prometheus
 ## Log Format
 
 ```log
-[PERFORMANCE] 2026-01-20 10:30:45 | NORMAL | Method: SERVICE::PostServiceImpl.createPost(..) | Execution Time: 125 ms | Memory: 1024 KB | Status: SUCCESS
-
-[PERFORMANCE] SLOW SERVICE OPERATION DETECTED: PostServiceImpl.getAllPosts(..) took 1250 ms
+[PERFORMANCE] Method: PostService.getAllPosts(..) | Execution Time: 125 ms | Status: SUCCESS
+[RUNTIME_METRIC] method=GET path=/api/posts status=200 latencyMs=35
 ```
 
 ---
@@ -160,21 +141,22 @@ curl http://localhost:8080/actuator/prometheus
 # 1. Check summary
 curl http://localhost:8080/api/metrics/performance/summary
 
-# 2. Check for slow methods
-curl http://localhost:8080/api/metrics/performance/slow
+# 2. Check runtime snapshot
+curl "http://localhost:8080/api/metrics/performance/runtime?limit=10"
 
-# 3. Check failures
-curl http://localhost:8080/api/metrics/performance/failures
+# 3. Export runtime and all metrics
+curl -X POST "http://localhost:8080/api/metrics/performance/runtime/export?limit=25"
+curl -X POST http://localhost:8080/api/metrics/performance/export-all
 ```
 
 ### Investigate Specific Service
 
 ```bash
-# 1. Get all service layer metrics
-curl http://localhost:8080/api/metrics/performance/layer/SERVICE
+# 1. Find specific method by layer/name
+curl http://localhost:8080/api/metrics/performance/SERVICE/createPost
 
-# 2. Find specific method
-curl http://localhost:8080/api/metrics/performance/SERVICE/PostServiceImpl.createPost(..)
+# 2. Find specific method by full method name
+curl "http://localhost:8080/api/metrics/performance/method/PostService.getAllPosts(..)"
 ```
 
 ### Reset After Code Changes
@@ -197,9 +179,10 @@ curl -X DELETE http://localhost:8080/api/metrics/performance/reset
 
 - Use the reset endpoint
 
-**Need detailed logs?**
+**Need detailed logs or CSV exports?**
 
 - Use the export endpoint to print to logs
+- Use runtime export for CSV tables under `metrics/runtime/`
 - Check `logs/blogging-platform.log`
 
 ---

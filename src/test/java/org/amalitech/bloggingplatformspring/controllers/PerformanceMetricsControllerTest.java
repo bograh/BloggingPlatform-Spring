@@ -3,7 +3,9 @@ package org.amalitech.bloggingplatformspring.controllers;
 import org.amalitech.bloggingplatformspring.dtos.responses.AllMetricsDTO;
 import org.amalitech.bloggingplatformspring.dtos.responses.MethodMetricsDTO;
 import org.amalitech.bloggingplatformspring.dtos.responses.MetricsSummaryDTO;
+import org.amalitech.bloggingplatformspring.dtos.responses.RuntimeMetricsSnapshotDTO;
 import org.amalitech.bloggingplatformspring.services.PerformanceMetricsService;
+import org.amalitech.bloggingplatformspring.services.RuntimeMetricsService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -14,7 +16,9 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.*;
@@ -34,6 +38,9 @@ class PerformanceMetricsControllerTest {
         @MockitoBean
         private org.amalitech.bloggingplatformspring.services.CachePerformanceSimulationService simulationService;
 
+        @MockitoBean
+        private RuntimeMetricsService runtimeMetricsService;
+
         // Mock security components to prevent ApplicationContext loading errors
         @MockitoBean
         private org.amalitech.bloggingplatformspring.security.JwtTokenProvider jwtTokenProvider;
@@ -46,6 +53,9 @@ class PerformanceMetricsControllerTest {
 
         @MockitoBean
         private org.amalitech.bloggingplatformspring.services.SecurityAuditService securityAuditService;
+
+        @MockitoBean
+        private org.amalitech.bloggingplatformspring.utils.UserUtils userUtils;
 
         @Test
         void getAllMetrics_ShouldReturnOkWithMetrics_WhenMetricsExist() throws Exception {
@@ -257,7 +267,8 @@ class PerformanceMetricsControllerTest {
 
         @Test
         void exportToLog_ShouldReturnOkWithSuccessMessage() throws Exception {
-                doNothing().when(metricsService).exportPerformanceSummary();
+                when(metricsService.exportPerformanceSummaryAsync())
+                                .thenReturn(CompletableFuture.completedFuture(null));
 
                 mockMvc.perform(post("/api/metrics/performance/export-log")
                                 .contentType(MediaType.APPLICATION_JSON))
@@ -266,18 +277,19 @@ class PerformanceMetricsControllerTest {
                                 .andExpect(jsonPath("$.message").value(
                                                 "Performance metrics exported to application log and metrics folder"));
 
-                verify(metricsService).exportPerformanceSummary();
+                verify(metricsService).exportPerformanceSummaryAsync();
         }
 
         @Test
         void exportToLog_ShouldCallServiceOnce() throws Exception {
-                doNothing().when(metricsService).exportPerformanceSummary();
+                when(metricsService.exportPerformanceSummaryAsync())
+                                .thenReturn(CompletableFuture.completedFuture(null));
 
                 mockMvc.perform(post("/api/metrics/performance/export-log")
                                 .contentType(MediaType.APPLICATION_JSON))
                                 .andExpect(status().isOk());
 
-                verify(metricsService, times(1)).exportPerformanceSummary();
+                verify(metricsService, times(1)).exportPerformanceSummaryAsync();
                 verifyNoMoreInteractions(metricsService);
         }
 
@@ -323,7 +335,8 @@ class PerformanceMetricsControllerTest {
 
         @Test
         void exportToLog_ShouldReturnCorrectContentType() throws Exception {
-                doNothing().when(metricsService).exportPerformanceSummary();
+                when(metricsService.exportPerformanceSummaryAsync())
+                                .thenReturn(CompletableFuture.completedFuture(null));
 
                 mockMvc.perform(post("/api/metrics/performance/export-log"))
                                 .andExpect(status().isOk())
@@ -401,7 +414,8 @@ class PerformanceMetricsControllerTest {
 
         @Test
         void exportToLog_ShouldReturnMapWithTwoKeys() throws Exception {
-                doNothing().when(metricsService).exportPerformanceSummary();
+                when(metricsService.exportPerformanceSummaryAsync())
+                                .thenReturn(CompletableFuture.completedFuture(null));
 
                 mockMvc.perform(post("/api/metrics/performance/export-log"))
                                 .andExpect(status().isOk())
@@ -465,7 +479,8 @@ class PerformanceMetricsControllerTest {
 
         @Test
         void exportToLog_ShouldOnlyAcceptPostRequest() throws Exception {
-                doNothing().when(metricsService).exportPerformanceSummary();
+                when(metricsService.exportPerformanceSummaryAsync())
+                                .thenReturn(CompletableFuture.completedFuture(null));
 
                 mockMvc.perform(post("/api/metrics/performance/export-log"))
                                 .andExpect(status().isOk());
@@ -475,5 +490,59 @@ class PerformanceMetricsControllerTest {
 
                 mockMvc.perform(delete("/api/metrics/performance/export-log"))
                                 .andExpect(status().isMethodNotAllowed());
+        }
+
+        @Test
+        void getRuntimeMetrics_ShouldReturnSnapshot() throws Exception {
+                RuntimeMetricsSnapshotDTO runtimeSnapshot = new RuntimeMetricsSnapshotDTO(
+                                LocalDateTime.now(),
+                                120,
+                                300,
+                                6,
+                                2.0,
+                                45.5,
+                                5,
+                                210,
+                                2.5,
+                                3.0,
+                                180,
+                                256,
+                                2048,
+                                Collections.emptyList());
+
+                when(runtimeMetricsService.getRuntimeSnapshot(10)).thenReturn(runtimeSnapshot);
+
+                mockMvc.perform(get("/api/metrics/performance/runtime?limit=10"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.totalRequests").value(300))
+                                .andExpect(jsonPath("$.totalErrors").value(6));
+
+                verify(runtimeMetricsService).getRuntimeSnapshot(10);
+        }
+
+        @Test
+        void exportRuntimeMetrics_ShouldReturnSuccessStatus() throws Exception {
+                when(runtimeMetricsService.exportRuntimeMetrics(25))
+                                .thenReturn("metrics/runtime/20260223-190000-runtime-metrics.csv");
+
+                mockMvc.perform(post("/api/metrics/performance/runtime/export?limit=25"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.status").value("success"))
+                                .andExpect(jsonPath("$.message")
+                                                .value(org.hamcrest.Matchers.containsString("runtime-metrics.csv")));
+
+                verify(runtimeMetricsService).exportRuntimeMetrics(25);
+        }
+
+        @Test
+        void resetRuntimeMetrics_ShouldReturnSuccessStatus() throws Exception {
+                doNothing().when(runtimeMetricsService).reset();
+
+                mockMvc.perform(delete("/api/metrics/performance/runtime/reset"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.status").value("success"))
+                                .andExpect(jsonPath("$.message").value("Runtime API metrics have been reset"));
+
+                verify(runtimeMetricsService).reset();
         }
 }

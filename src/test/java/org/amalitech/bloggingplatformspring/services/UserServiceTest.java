@@ -27,9 +27,9 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.Executor;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -60,6 +60,9 @@ class UserServiceTest {
   private CommentUtils commentUtils;
 
   @Mock
+  private Executor applicationTaskExecutor;
+
+  @Mock
   private HttpServletRequest request;
 
   @InjectMocks
@@ -74,6 +77,12 @@ class UserServiceTest {
     user.setUsername("testuser");
     user.setEmail("test@example.com");
     user.setUserRoles(new ArrayList<>(List.of(UserRoles.AUTHOR, UserRoles.READER)));
+
+    lenient().doAnswer(invocation -> {
+      Runnable runnable = invocation.getArgument(0);
+      runnable.run();
+      return null;
+    }).when(applicationTaskExecutor).execute(any(Runnable.class));
   }
 
   @Test
@@ -98,8 +107,8 @@ class UserServiceTest {
 
     when(userUtils.getUserFromRequest(request)).thenReturn(user);
     when(postRepository.findPostsByAuthorOrderByUpdatedAtDesc(eq(user), any(Limit.class))).thenReturn(List.of(post));
-    when(commentRepository.countByPostId(1L)).thenReturn(1L);
-    when(postUtils.createPostResponseFromPost(eq(post), eq(1L))).thenReturn(postResponse);
+    when(commentRepository.countCommentsByPostIds(anyList())).thenReturn(List.of());
+    when(postUtils.createPostResponseFromPost(eq(post), eq(0L))).thenReturn(postResponse);
     when(commentRepository.findCommentsByAuthorOrderByCommentedAtDesc(eq(user.getUsername()), any(Limit.class)))
         .thenReturn(List.of(comment));
     when(commentUtils.createCommentResponseFromComment(comment)).thenReturn(commentResponse);

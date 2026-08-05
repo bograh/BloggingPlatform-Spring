@@ -1,5 +1,6 @@
 package org.amalitech.bloggingplatformspring.services;
 
+import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import org.amalitech.bloggingplatformspring.dtos.requests.RegisterUserDTO;
 import org.amalitech.bloggingplatformspring.dtos.requests.SignInUserDTO;
@@ -17,13 +18,14 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 @RequiredArgsConstructor
 @Service
@@ -31,10 +33,10 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
-    private final CustomUserDetailsService customUserDetailsService;
     private final UserUtils userUtils;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
+    private final NotificationQueueService notificationQueueService;
 
     public AuthResponseDTO registerUser(RegisterUserDTO registerUserDTO) {
         String username = registerUserDTO.getUsername().trim().toLowerCase();
@@ -61,13 +63,12 @@ public class AuthService {
         user.setPassword(hashedPassword);
         user.setUserRoles(new ArrayList<>(Arrays.asList(
                 UserRoles.READER,
-                UserRoles.AUTHOR
-        )));
+                UserRoles.AUTHOR)));
         user = userRepository.save(user);
+        notificationQueueService.queueWelcomeEmail(user);
 
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(email, password)
-        );
+                new UsernamePasswordAuthenticationToken(email, password));
 
         return authenticateUser(user, authentication);
     }
@@ -81,13 +82,11 @@ public class AuthService {
         }
 
         User user = userRepository.findUserByEmailIgnoreCase(email).orElseThrow(
-                () -> new UnauthorizedException("Invalid email or password")
-        );
+                () -> new UnauthorizedException("Invalid email or password"));
 
         try {
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(email, password)
-            );
+                    new UsernamePasswordAuthenticationToken(email, password));
             return authenticateUser(user, authentication);
         } catch (BadCredentialsException e) {
             throw new UnauthorizedException("Invalid email or password");
@@ -95,23 +94,33 @@ public class AuthService {
     }
 
     public AuthResponseDTO refreshAccessToken(String refreshTokenFromCookie) {
-        if (refreshTokenFromCookie == null) {
+
+        if (refreshTokenFromCookie == null || refreshTokenFromCookie.isBlank()) {
             throw new UnauthorizedException("Invalid refresh token");
         }
 
-        if (!jwtTokenProvider.validRefreshToken(refreshTokenFromCookie)) {
-            throw new UnauthorizedException("Invalid refresh token");
+        Claims claims = jwtTokenProvider.parseRefreshToken(refreshTokenFromCookie);
+
+        if (claims == null) {
+            throw new UnauthorizedException("Invalid or expired refresh token");
         }
 
-        String email = jwtTokenProvider.getEmailFromRefreshToken(refreshTokenFromCookie);
-        UserDetails userDetails = customUserDetailsService.loadUserByUsername(email);
+        String email = claims.getSubject();
 
-        User user = userRepository.findUserByEmailIgnoreCase(email).orElseThrow(
-                () -> new UnauthorizedException("Invalid email or password")
+        User user = userRepository.findUserByEmailIgnoreCase(email)
+                .orElseThrow(() -> new UnauthorizedException("Invalid refresh token"));
+
+        List<String> roles = userUtils.extractRoles(claims);
+
+        List<SimpleGrantedAuthority> authorities = roles.stream()
+                .map(SimpleGrantedAuthority::new)
+                .toList();
+
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                email,
+                null,
+                authorities
         );
-
-        Authentication authentication =
-                new UsernamePasswordAuthenticationToken(email, null, userDetails.getAuthorities());
 
         return authenticateUser(user, authentication);
     }

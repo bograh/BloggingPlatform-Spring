@@ -19,7 +19,7 @@ This document compares the performance metrics of key service methods **before**
 ### 1. PostService.getAllPosts()
 
 **Cache Configuration:**
-- Cache Name: `postListCache`
+- Cache Name: `postsList`
 - TTL: 5 minutes
 - Key: `'page:' + #page + 'size:' + #size + 'sort:' + #sortBy + 'order:' + #order`
 - Condition: Only cached when no filters are applied
@@ -50,7 +50,7 @@ This document compares the performance metrics of key service methods **before**
 ### 2. PostService.getPostById()
 
 **Cache Configuration:**
-- Cache Name: `postsCache`
+- Cache Name: `posts`
 - TTL: 15 minutes
 - Key: `#postId`
 
@@ -81,7 +81,7 @@ This document compares the performance metrics of key service methods **before**
 ### 3. CommentService.getAllCommentsByPostId()
 
 **Cache Configuration:**
-- Cache Name: `commentsCache`
+- Cache Name: `comments`
 - TTL: 5 minutes
 - Key: `'post:' + #postId`
 
@@ -114,7 +114,7 @@ This document compares the performance metrics of key service methods **before**
 ### 4. TagService.getPopularTags()
 
 **Cache Configuration:**
-- Cache Name: `tagsCache`
+- Cache Name: `tags`
 - TTL: 15 minutes
 - Key: `'popular'`
 
@@ -140,7 +140,7 @@ This document compares the performance metrics of key service methods **before**
 ### 5. CommentService.getCommentById()
 
 **Cache Configuration:**
-- Cache Name: `commentsCache`
+- Cache Name: `comments`
 - TTL: 5 minutes
 - Key: `#commentId`
 
@@ -226,17 +226,17 @@ Total: ~73 database queries
 
 | Cache | TTL | Max Size | Est. Memory/Entry |
 |-------|-----|----------|-------------------|
-| `postsCache` | 15 min | Unbounded | ~2-10 KB |
-| `postListCache` | 5 min | Unbounded | ~50-200 KB (per page) |
-| `commentsCache` | 5 min | Unbounded | ~5-50 KB |
-| `usersCache` | 10 min | Unbounded | ~1-5 KB |
-| `tagsCache` | 15 min | Unbounded | ~0.5-2 KB |
+| `posts` | 15 min | Unbounded | ~2-10 KB |
+| `postsList` | 5 min | Unbounded | ~50-200 KB (per page) |
+| `comments` | 5 min | Unbounded | ~5-50 KB |
+| `users` | 10 min | Unbounded | ~1-5 KB |
+| `tags` | 15 min | Unbounded | ~0.5-2 KB |
 
 ---
 
 ## Recommendations
 
-1. **Monitor Cache Hit Rates**: Use the `/api/metrics/cache` endpoint to track actual hit rates in production
+1. **Monitor Cache Hit Rates**: Use the `/api/metrics/performance/cache` endpoint to track actual hit rates in production
 
 2. **Tune TTL Values**:
    - Increase TTL for static content (tags)
